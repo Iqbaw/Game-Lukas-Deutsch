@@ -1,0 +1,506 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Lukas Adventure — Willkommen in Hamburg! Game 3D edukasi bahasa Jerman berbasis pendekatan CTL." />
+  <meta name="theme-color" content="#b35c44" />
+  <title>Lukas Adventure — Willkommen in Hamburg!</title>
+
+  <!-- ═══════════════════════════════════════════════════════════
+       FONTS — Playfair (judul) + DM Sans (UI) + Caveat (Reisetagebuch)
+       ═══════════════════════════════════════════════════════════ -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700;900&family=DM+Sans:ital,wght@0,300;0,400;0,500;0,700;1,400&family=Caveat:wght@400;600&display=swap"
+    rel="stylesheet"
+  />
+
+  <!-- Stylesheet utama -->
+  <link rel="stylesheet" href="style.css" />
+
+  <!-- ═══════════════════════════════════════════════════════════
+       LIBRARIES — GSAP, Howler
+       ═══════════════════════════════════════════════════════════ -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/howler/2.2.3/howler.min.js"></script>
+
+  <!-- ═══════════════════════════════════════════════════════════
+       THREE.JS — via importmap (WAJIB sebelum script type=module)
+       ═══════════════════════════════════════════════════════════ -->
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://unpkg.com/three@0.158.0/build/three.module.js",
+        "three/addons/": "https://unpkg.com/three@0.158.0/examples/jsm/"
+      }
+    }
+  </script>
+</head>
+
+<body>
+  <!-- Background Music Element -->
+  <audio id="bgm" loop>
+    <source src="assets/audio/bgm.mp3" type="audio/mpeg">
+    <source src="assets/audio/bgm.ogg" type="audio/ogg">
+  </audio>
+
+  <!-- ═══════════════════════════════════════════════════════════
+       LOADING SCREEN — Hamburg silhouette + progress bar
+       Tampil pertama kali, di-fade out setelah scene siap
+       ═══════════════════════════════════════════════════════════ -->
+  <div id="loading-screen" class="loading-screen">
+
+    <!-- Layer 1: Sky gradient sore Hamburg -->
+    <div class="loading-sky"></div>
+
+    <!-- Layer 2: Siluet skyline Hamburg (SVG) -->
+    <svg
+      class="loading-skyline"
+      viewBox="0 0 1200 200"
+      xmlns="http://www.w3.org/2000/svg"
+      preserveAspectRatio="xMidYMax slice"
+      aria-hidden="true"
+    >
+      <!-- Air/ombak -->
+      <path d="M0,180 Q150,170 300,180 T600,180 T900,180 T1200,180 L1200,200 L0,200 Z"
+            fill="#3d6b85" opacity="0.6" />
+
+      <!-- Bangunan kanan (Speicherstadt) -->
+      <rect x="0"   y="120" width="60"  height="80" fill="#2a1f1a" />
+      <rect x="55"  y="100" width="70"  height="100" fill="#2a1f1a" />
+      <rect x="120" y="130" width="50"  height="70" fill="#2a1f1a" />
+      <rect x="165" y="110" width="80"  height="90" fill="#2a1f1a" />
+
+      <!-- Menara gereja St. Michaelis (Michel) — landmark Hamburg -->
+      <rect x="280" y="60"  width="40"  height="140" fill="#2a1f1a" />
+      <polygon points="280,60 300,30 320,60" fill="#2a1f1a" />
+      <rect x="296" y="10" width="8" height="20" fill="#2a1f1a" />
+
+      <!-- Bangunan tengah -->
+      <rect x="350" y="115" width="60"  height="85" fill="#2a1f1a" />
+      <rect x="405" y="95"  width="55"  height="105" fill="#2a1f1a" />
+      <rect x="455" y="125" width="70"  height="75" fill="#2a1f1a" />
+
+      <!-- Crane pelabuhan -->
+      <rect x="555" y="80"  width="4"   height="120" fill="#2a1f1a" />
+      <line x1="557" y1="80"  x2="620" y2="100" stroke="#2a1f1a" stroke-width="3" />
+      <rect x="615" y="98" width="3" height="25" fill="#2a1f1a" />
+
+      <!-- Bangunan kanan tengah -->
+      <rect x="640" y="120" width="65"  height="80" fill="#2a1f1a" />
+      <rect x="700" y="100" width="70"  height="100" fill="#2a1f1a" />
+      <rect x="765" y="115" width="55"  height="85" fill="#2a1f1a" />
+
+      <!-- Elbphilharmonie — bentuk gelombang khas -->
+      <rect x="830" y="105" width="120" height="95" fill="#2a1f1a" />
+      <path d="M830,105 Q860,75 890,90 Q920,70 950,90 L950,105 Z" fill="#2a1f1a" />
+
+      <!-- Bangunan kanan -->
+      <rect x="970"  y="125" width="60"  height="75" fill="#2a1f1a" />
+      <rect x="1025" y="105" width="70"  height="95" fill="#2a1f1a" />
+      <rect x="1090" y="120" width="60"  height="80" fill="#2a1f1a" />
+      <rect x="1145" y="130" width="55"  height="70" fill="#2a1f1a" />
+    </svg>
+
+    <!-- Layer 3: Burung camar terbang (animasi CSS) -->
+    <div class="loading-bird loading-bird-1">𓅪</div>
+    <div class="loading-bird loading-bird-2">𓅪</div>
+    <div class="loading-bird loading-bird-3">𓅪</div>
+
+    <!-- Layer 4: Konten utama loading -->
+    <div class="loading-content">
+
+      <!-- Title -->
+      <div class="loading-title-block">
+        <p class="loading-eyebrow">Ein interaktives Sprachabenteuer</p>
+        <h1 class="loading-title">Lukas Adventure</h1>
+        <p class="loading-subtitle">— Willkommen in Hamburg! —</p>
+        <p class="loading-tagline">In der Stadt &nbsp;•&nbsp; Wohnung &nbsp;•&nbsp; Reise</p>
+      </div>
+
+      <!-- Progress bar -->
+      <div class="loading-progress-container">
+        <div class="loading-progress-track">
+          <div id="loading-progress-fill" class="loading-progress-fill"></div>
+        </div>
+        <div class="loading-progress-meta">
+          <span id="loading-status" class="loading-status">Hamburg wird geladen…</span>
+          <span id="loading-percent" class="loading-percent">0%</span>
+        </div>
+      </div>
+
+      <!-- Tip rotasi -->
+      <p id="loading-tip" class="loading-tip">
+        💡 Tipp: Mit <kbd>WASD</kbd> bewegen, mit <kbd>E</kbd> sprechen, mit <kbd>TAB</kbd> Reisetagebuch öffnen.
+      </p>
+
+      <!-- Tombol mulai (muncul setelah loading 100%) -->
+      <button id="start-button" class="start-button" type="button" aria-hidden="true">
+        <span class="start-button-icon">▶</span>
+        <span class="start-button-text">Abenteuer beginnen</span>
+        <span class="start-button-shine"></span>
+      </button>
+    </div>
+
+    <!-- Footer skripsi -->
+    <div class="loading-footer">
+      <p>Lernspiel basierend auf der Skripsi von Yemima · CTL-Ansatz · Klasse XI SMA</p>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════════
+       STORY INTRO — Cinematic intro before gameplay
+       ═══════════════════════════════════════════════════════════ -->
+  <div id="story-intro" class="story-intro" style="display:none">
+    <div class="story-slides">
+      <div class="story-slide story-slide-active" data-slide="0">
+        <div class="story-emoji">✈️</div>
+        <h2 class="story-heading">Hamburg, Deutschland</h2>
+        <p class="story-text">
+          Setelah 10 tahun tidak berkunjung, <strong>Lukas</strong> — seorang remaja Indonesia — 
+          akhirnya kembali ke kota Hamburg untuk menemui kakek dan neneknya.
+        </p>
+      </div>
+      <div class="story-slide" data-slide="1">
+        <div class="story-emoji">🏡</div>
+        <h2 class="story-heading">Haus der Großeltern</h2>
+        <p class="story-text">
+          Di rumah kakek-nenek yang hangat, Oma Helga dan Opa Klaus sudah menunggu 
+          dengan masakan khas Jerman dan cerita-cerita lama.
+        </p>
+      </div>
+      <div class="story-slide" data-slide="2">
+        <div class="story-emoji">🗺️</div>
+        <h2 class="story-heading">Ein neues Abenteuer</h2>
+        <p class="story-text">
+          Bersama keluarga dan teman masa kecil, Lukas akan menjelajahi kota — 
+          dari supermarket hingga pelabuhan Elbe — sambil belajar bahasa Jerman 
+          melalui petualangan seru!
+        </p>
+      </div>
+      <div class="story-slide" data-slide="3">
+        <div class="story-emoji">📖</div>
+        <h2 class="story-heading">Bist du bereit?</h2>
+        <p class="story-text">
+          10 quest menanti. Bicaralah dengan penduduk, jelajahi setiap sudut kota, 
+          dan buktikan bahwa bahasa Jerman itu menyenangkan!
+        </p>
+        <button id="story-start-btn" class="story-start-btn">Los geht's! 🎮</button>
+      </div>
+    </div>
+    <div class="story-nav">
+      <button id="story-prev" class="story-nav-btn" style="visibility:hidden">← Zurück</button>
+      <div class="story-dots">
+        <span class="story-dot story-dot-active"></span>
+        <span class="story-dot"></span>
+        <span class="story-dot"></span>
+        <span class="story-dot"></span>
+      </div>
+      <button id="story-next" class="story-nav-btn">Weiter →</button>
+    </div>
+    <button id="story-skip" class="story-skip-btn">Überspringen ⏭</button>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════════
+       GAME CONTAINER — canvas Three.js akan dimount di sini
+       ═══════════════════════════════════════════════════════════ -->
+  <div id="game-container" class="game-container" aria-hidden="true">
+
+    <!-- Canvas Three.js (otomatis dibuat oleh main.js) -->
+    <canvas id="game-canvas"></canvas>
+
+    <!-- Film grain overlay (estetika sinematik) -->
+    <div class="film-grain" aria-hidden="true"></div>
+
+
+    <!-- ═══════════════════════════════════════════════════════
+         HUD OVERLAY — semua UI elemen di atas canvas
+         (Detail di-build di Step 11. Sekarang hanya kerangka.)
+         ═══════════════════════════════════════════════════════ -->
+    <div id="hud" class="hud">
+
+      <!-- TOP LEFT: Quest Tracker -->
+      <div id="quest-tracker" class="hud-quest-tracker hud-hidden">
+        <div class="quest-icon">📜</div>
+        <div class="quest-info">
+          <div class="quest-label">Aktuelle Aufgabe</div>
+          <div id="quest-name" class="quest-name">—</div>
+          <div class="quest-progress-track">
+            <div id="quest-progress-fill" class="quest-progress-fill"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- TOP RIGHT: Score & Streak -->
+      <div id="score-display" class="hud-score hud-hidden">
+        <div class="score-row">
+          <span class="score-label">Punkte</span>
+          <span id="score-value" class="score-value">0</span>
+        </div>
+        <div id="streak-row" class="streak-row hud-hidden">
+          <span class="streak-icon">🔥</span>
+          <span id="streak-value" class="streak-value">×1</span>
+        </div>
+      </div>
+
+      <!-- BOTTOM LEFT: Minimap & Controls hint -->
+      <div id="minimap-container" class="hud-minimap hud-hidden">
+        <canvas id="minimap-canvas" width="120" height="120"></canvas>
+        <div class="minimap-label">Hamburg</div>
+      </div>
+
+      <div id="controls-hint" class="hud-controls-hint hud-hidden">
+        <span><kbd>WASD</kbd> bewegen</span>
+        <span><kbd>Shift</kbd> rennen</span>
+        <span><kbd>E</kbd> reden</span>
+        <span>🖱️ Rechtsklick Kamera</span>
+        <span>🖱️ Scroll Zoom</span>
+        <span><kbd>ESC</kbd> Pause</span>
+      </div>
+
+      <!-- Notifikasi center (toast) -->
+      <div id="toast-container" class="hud-toast-container"></div>
+
+      <!-- Interaction prompt (muncul saat dekat NPC) -->
+      <div id="interaction-prompt" class="hud-interaction-prompt hud-hidden">
+        <kbd>E</kbd>
+        <span id="interaction-prompt-text">Sprechen</span>
+      </div>
+    </div>
+
+
+    <!-- ═══════════════════════════════════════════════════════
+         DIALOG BOX — bottom-center, dibangun lengkap di Step 8
+         ═══════════════════════════════════════════════════════ -->
+    <div id="dialog-box" class="dialog-box hud-hidden" role="dialog" aria-modal="true">
+      <div class="dialog-avatar">
+        <img id="dialog-avatar-img" src="" alt="" />
+      </div>
+      <div class="dialog-content">
+        <div id="dialog-name" class="dialog-name">NPC Name</div>
+        <div id="dialog-text" class="dialog-text"></div>
+        <div id="dialog-choices" class="dialog-choices"></div>
+        <button id="dialog-continue" class="dialog-continue">
+          Weiter <span class="arrow">→</span>
+        </button>
+      </div>
+    </div>
+
+
+    <!-- ═══════════════════════════════════════════════════════
+         REISETAGEBUCH — buku jurnal, dibangun di Step 29
+         ═══════════════════════════════════════════════════════ -->
+    <div id="reisetagebuch" class="reisetagebuch hud-hidden" aria-hidden="true">
+      <div class="reisetagebuch-book">
+        <div class="reisetagebuch-page reisetagebuch-page-left">
+          <h2>Mein Reisetagebuch</h2>
+          <p class="reisetagebuch-empty">Noch keine Einträge. Erlebe Abenteuer, um diese Seiten zu füllen!</p>
+        </div>
+        <div class="reisetagebuch-page reisetagebuch-page-right">
+          <p class="reisetagebuch-empty-right">Hamburg wartet auf dich…</p>
+        </div>
+        <button id="reisetagebuch-close" class="reisetagebuch-close" aria-label="Schließen">×</button>
+      </div>
+    </div>
+
+
+    <!-- ═══════════════════════════════════════════════════════
+         PAUSE MENU — diisi oleh ui.js
+         ═══════════════════════════════════════════════════════ -->
+    <div id="pause-menu" class="pause-menu hud-hidden" role="dialog" aria-modal="true">
+      <!-- Konten di-inject oleh ui.js saat initUI() -->
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════
+         MOBILE CONTROLS — joystick analog + action buttons
+         (disembunyikan di desktop via CSS, tampil di mobile)
+         ═══════════════════════════════════════════════════════ -->
+    <div id="mobile-controls" class="mobile-controls" aria-hidden="true" style="display:none">
+
+      <!-- Joystick kiri -->
+      <div id="joystick-zone" class="joystick-zone">
+        <div id="joystick-base"  class="joystick-base">
+          <div id="joystick-stick" class="joystick-stick"></div>
+        </div>
+      </div>
+
+      <!-- Tombol kanan: Jump, Run, Interact -->
+      <div class="mobile-action-buttons">
+        <button id="mobile-jump"     class="mobile-btn mobile-btn-jump"     aria-label="Springen">↑</button>
+        <button id="mobile-interact" class="mobile-btn mobile-btn-interact"  aria-label="Interagieren">E</button>
+        <button id="mobile-run"      class="mobile-btn mobile-btn-run"       aria-label="Rennen">⚡</button>
+      </div>
+
+      <!-- Pause button mobile (top-right) -->
+      <button id="mobile-pause-btn" class="mobile-pause-btn" aria-label="Pause">⏸</button>
+    </div>
+  </div>
+
+
+  <!-- ═══════════════════════════════════════════════════════════
+       ENTRY POINT — main.js dibuat di Step 3
+       ═══════════════════════════════════════════════════════════ -->
+  <script type="module">
+    // === LOADING SCREEN BOOTSTRAP ===
+    // Step 1: progress dummy supaya loading screen kelihatan hidup
+    // sampai main.js (Step 3) ambil alih dan kirim event progress real.
+    //
+    // Saat main.js sudah ada, ia akan fire event:
+    //   window.dispatchEvent(new CustomEvent('loading:progress', { detail: { percent, status } }));
+    //   window.dispatchEvent(new CustomEvent('loading:complete'));
+    //
+    // dan kode di bawah akan otomatis bereaksi.
+
+    const $progressFill = document.getElementById('loading-progress-fill');
+    const $progressPct  = document.getElementById('loading-percent');
+    const $progressStat = document.getElementById('loading-status');
+    const $startBtn     = document.getElementById('start-button');
+    const $loadingTip   = document.getElementById('loading-tip');
+    const $loadingScr   = document.getElementById('loading-screen');
+    const $gameContain  = document.getElementById('game-container');
+
+    // Tip rotasi setiap 4 detik
+    const TIPS = [
+      '💡 Tipp: Mit <kbd>WASD</kbd> bewegen, mit <kbd>E</kbd> sprechen, mit <kbd>TAB</kbd> Reisetagebuch öffnen.',
+      '🌅 Hamburg ist eine Hafenstadt im Norden Deutschlands.',
+      '📖 Lies die Texte im Reisetagebuch — sie helfen dir, Aufgaben zu lösen!',
+      '⭐ Antworte richtig beim ersten Versuch für Bonuspunkte.',
+      '🔥 Drei richtige Antworten in Folge = Combo-Streak!',
+      '🗺️ Sprich mit allen NPCs — manche geben geheime Hinweise.',
+    ];
+    let tipIdx = 0;
+    const tipTimer = setInterval(() => {
+      tipIdx = (tipIdx + 1) % TIPS.length;
+      $loadingTip.style.opacity = '0';
+      setTimeout(() => {
+        $loadingTip.innerHTML = TIPS[tipIdx];
+        $loadingTip.style.opacity = '1';
+      }, 300);
+    }, 4500);
+
+    // Status messages dummy untuk Step 1 (sementara, sebelum main.js ada)
+    const STATUS_MESSAGES = [
+      { until: 15,  text: 'Hamburg wird geladen…'        },
+      { until: 35,  text: 'Hafen wird vorbereitet…'      },
+      { until: 55,  text: 'Charaktere werden begrüßt…'   },
+      { until: 75,  text: 'Texte werden übersetzt…'      },
+      { until: 95,  text: 'Letzte Vorbereitungen…'       },
+      { until: 100, text: 'Bereit!'                       },
+    ];
+
+    function setProgress(pct, status) {
+      pct = Math.max(0, Math.min(100, pct));
+      $progressFill.style.width = pct + '%';
+      $progressPct.textContent  = Math.floor(pct) + '%';
+
+      if (status) {
+        $progressStat.textContent = status;
+      } else {
+        const msg = STATUS_MESSAGES.find(m => pct <= m.until);
+        if (msg) $progressStat.textContent = msg.text;
+      }
+
+      if (pct >= 100) showStartButton();
+    }
+
+    function showStartButton() {
+      $startBtn.setAttribute('aria-hidden', 'false');
+      $startBtn.classList.add('start-button-ready');
+    }
+
+    // Listen ke event dari main.js (akan dipakai mulai Step 3)
+    window.addEventListener('loading:progress', (e) => {
+      setProgress(e.detail.percent ?? 0, e.detail.status);
+    });
+
+    window.addEventListener('loading:complete', () => {
+      setProgress(100);
+    });
+
+    // === START BUTTON: fade out loading screen, masuk story intro ===
+    $startBtn.addEventListener('click', () => {
+      clearInterval(tipTimer);
+
+      const finishLoading = () => {
+        $loadingScr.style.display = 'none';
+        document.getElementById('story-intro').style.display = 'flex';
+        initStoryIntro();
+      };
+
+      if (window.gsap) {
+        window.gsap.to($loadingScr, {
+          opacity: 0, duration: 0.8, ease: 'power2.inOut', onComplete: finishLoading
+        });
+      } else {
+        $loadingScr.style.transition = 'opacity 0.8s ease';
+        $loadingScr.style.opacity = '0';
+        setTimeout(finishLoading, 800);
+      }
+    });
+
+    // === STORY INTRO LOGIC ===
+    function initStoryIntro() {
+      const slides = document.querySelectorAll('.story-slide');
+      const dots = document.querySelectorAll('.story-dot');
+      const prevBtn = document.getElementById('story-prev');
+      const nextBtn = document.getElementById('story-next');
+      const skipBtn = document.getElementById('story-skip');
+      const startIntroBtn = document.getElementById('story-start-btn');
+      
+      let currentSlide = 0;
+      
+      function updateSlides() {
+        slides.forEach((s, i) => {
+          if (i === currentSlide) {
+            s.classList.add('story-slide-active');
+            dots[i].classList.add('story-dot-active');
+          } else {
+            s.classList.remove('story-slide-active');
+            dots[i].classList.remove('story-dot-active');
+          }
+        });
+        
+        prevBtn.style.visibility = currentSlide === 0 ? 'hidden' : 'visible';
+        nextBtn.style.visibility = currentSlide === slides.length - 1 ? 'hidden' : 'visible';
+      }
+      
+      prevBtn.addEventListener('click', () => {
+        if (currentSlide > 0) { currentSlide--; updateSlides(); }
+      });
+      nextBtn.addEventListener('click', () => {
+        if (currentSlide < slides.length - 1) { currentSlide++; updateSlides(); }
+      });
+      
+      const startGameFromIntro = () => {
+        document.getElementById('story-intro').style.display = 'none';
+        window.dispatchEvent(new CustomEvent('game:start'));
+        
+        // Coba putar BGM
+        const audioEl = document.getElementById('bgm');
+        if (audioEl) {
+          audioEl.volume = 0.7; // Default volume
+          audioEl.play().catch(e => console.warn("Autoplay blocked:", e));
+        }
+
+        $gameContain.setAttribute('aria-hidden', 'false');
+        $gameContain.classList.add('game-container-active');
+      };
+      
+      skipBtn.addEventListener('click', startGameFromIntro);
+      startIntroBtn.addEventListener('click', startGameFromIntro);
+    }
+
+    // Cek browser compatibility (early warning)
+    if (!('WebGLRenderingContext' in window)) {
+      $progressStat.innerHTML = '⚠️ Dein Browser unterstützt kein WebGL.<br>Bitte nutze Chrome, Firefox oder Edge.';
+      $progressStat.style.color = '#ff6b35';
+    }
+  </script>
+
+  <!-- Entry point Three.js -->
+  <script type="module" src="js/main.js"></script>
+
+</body>
+</html>
