@@ -98,7 +98,7 @@ export const NPC_DATA = [
     name:      'Opa Klaus',
     title:     'Großvater',
     zone:      ZONES.HAUS,
-    spawn:     { x: 4.1, z: -4.2, facing: -Math.PI / 2 }, // memperbaiki kincir angin
+    spawn:     { x: 7.5, z: -5, facing: -Math.PI / 2 }, // di luar, sebelah kanan kincir angin
     level:     1,                                     // muncul dari awal
     activity:  'repairing_windmill',
     greeting:  'Ah, mein Junge! Komm, schau mal mein altes Boot.',
@@ -174,6 +174,33 @@ export const NPC_DATA = [
       pantsColor:  NPC_COLORS.SKIRT_BROWN,
       shoesColor:  NPC_COLORS.SHOES_DARK,
       hasGlasses:  true,
+    },
+  },
+
+
+  // ── 4.5. NACHBAR HANS — Tetangga yang memberi info EDEKA ──────────
+  {
+    id:        'nachbar_hans',
+    name:      'Nachbar Hans',
+    title:     'Nachbar',
+    zone:      ZONES.HAUS,
+    spawn:     { x: -5, z: 8, facing: Math.PI / 2 }, // Di luar, sebelah kiri jalan
+    level:     1,
+    activity:  'idle',
+    greeting:  'Der EDEKA-Supermarkt liegt in der Hauptstraße!',
+    hasQuest:  false,
+    questId:   null,
+
+    body: {
+      height:      1.0,
+      bodyColor:   0x7a8aa0,
+      hasApron:    false,
+      hairColor:   NPC_COLORS.HAIR_GREY,
+      hairStyle:   'short',
+      skinColor:   NPC_COLORS.SKIN_LIGHT,
+      pantsColor:  NPC_COLORS.PANTS_GREY,
+      shoesColor:  NPC_COLORS.SHOES_DARK,
+      hasGlasses:  false,
     },
   },
 

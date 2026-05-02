@@ -41,6 +41,10 @@ import { initDialog } from './dialog.js';
 // Zone Manager
 import { initZones, loadZone, updateZones } from './zone.js';
 
+// Gameplay Loop Systems
+import { ScoreSystem } from './scoring.js';
+import { QuestSystem } from './quest.js';
+
 
 // ═══════════════════════════════════════════════════════════════════
 // 1.  GLOBAL GAME STATE
@@ -243,9 +247,20 @@ export function updateIsoCamera(delta) {
   const playerPos = Game.player?.position || new THREE.Vector3(0, 0, 0);
   
   // Target: player position + offset tetap
-  const targetX = playerPos.x + Game._isoCamOffset.x;
+  let targetX = playerPos.x + Game._isoCamOffset.x;
   const targetY = Game._isoCamOffset.y;
-  const targetZ = playerPos.z + Game._isoCamOffset.z;
+  let targetZ = playerPos.z + Game._isoCamOffset.z;
+
+  // Camera bounds for Supermarket Interior (15x15 room)
+  if (Game.activeZoneId === 'supermarket_interior') {
+    // The camera should not pan past the walls.
+    // Given the room bounds: x in [-7.5, 7.5], z in [-7.5, 7.5]
+    // The player's effective position that the camera is looking at should be clamped.
+    const lookClampX = Math.max(-5, Math.min(5, playerPos.x));
+    const lookClampZ = Math.max(-5, Math.min(5, playerPos.z));
+    targetX = lookClampX + Game._isoCamOffset.x;
+    targetZ = lookClampZ + Game._isoCamOffset.z;
+  }
 
   if (!_camInitialized) {
     _camFollowPos.set(targetX, targetY, targetZ);
@@ -515,8 +530,10 @@ async function bootstrap() {
     // Expose quest data
     const { QUESTS } = await import('./data/quests.js');
     window.__questData__  = QUESTS;
-    window.__questState__ = { quest_1: 'active' };
-    window.__score__      = 0;
+
+    // Initialize gameplay systems
+    ScoreSystem.init();
+    QuestSystem.init();
 
     // Setup clock & event listeners
     Game.clock = new THREE.Clock(false);

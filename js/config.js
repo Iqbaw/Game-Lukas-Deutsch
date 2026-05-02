@@ -18,27 +18,27 @@ export const CONFIG = {
   CAMERA_LOOK_AT_OFFSET_Y: 1.2,
 
   // Isometric orthographic camera
-  ISO_ZOOM:            7,      // semakin kecil = semakin zoom in
+  ISO_ZOOM:            7,      // Comfortable isometric overview
   ISO_ANGLE_Y:         Math.PI / 4,    // 45° rotasi horizontal
   ISO_ANGLE_X:         Math.atan(1 / Math.sqrt(2)), // ~35.26° true isometric
   ISO_CAM_HEIGHT:      20,     // tinggi kamera
   ISO_CAM_FOLLOW_SPEED: 6.0,   // kecepatan kamera mengikuti player
 
   // ── WORLD (per-zona) ───────────────────────────────────
-  ZONE_SIZE:           30,     // ukuran default zona (X × Z)
+  ZONE_SIZE:           60,     // ukuran zona kota
   GROUND_COLOR:        0x6b6b5a,
   FOG_NEAR:            40,
   FOG_FAR:             80,
 
-  // ── LIGHTING (Hamburg sore keemasan) ───────────────────
-  AMBIENT_COLOR:       0xffddaa,
-  AMBIENT_INTENSITY:   0.5,
-  SUN_COLOR:           0xff9944,
-  SUN_INTENSITY:       1.2,
-  SUN_POSITION:        { x: -30, y: 35, z: -20 }, // matahari sore dari barat
-  HEMI_SKY_COLOR:      0xffd580,
-  HEMI_GROUND_COLOR:   0x6b4c2a,
-  HEMI_INTENSITY:      0.3,
+  // ── LIGHTING (Bright vibrant daylight) ───────────────────
+  AMBIENT_COLOR:       0xffffff,
+  AMBIENT_INTENSITY:   0.6,
+  SUN_COLOR:           0xfff5e6,
+  SUN_INTENSITY:       1.4,
+  SUN_POSITION:        { x: -30, y: 40, z: -20 },
+  HEMI_SKY_COLOR:      0xddeeff,
+  HEMI_GROUND_COLOR:   0x889988,
+  HEMI_INTENSITY:      0.4,
 
   // ── POST-PROCESSING ────────────────────────────────────
   BLOOM_THRESHOLD:     0.7,
@@ -121,9 +121,10 @@ export const EVENTS = {
 
 // ── ZONE IDs ──────────────────────────────────────────
 export const ZONES = {
-  HAUS:        'haus',         // Rumah kakek-nenek
-  SUPERMARKT:  'supermarkt',   // EDEKA (Quest 1)
-  SCHULE:      'schule',       // Sekolah Leni (Quest 2A)
+  HAUS:                 'haus',                 // Rumah kakek-nenek
+  SUPERMARKT:           'supermarkt',           // EDEKA (Quest 1)
+  SUPERMARKET_INTERIOR: 'supermarket_interior', // Bagian dalam EDEKA (Quest 1)
+  SCHULE:               'schule',               // Sekolah Leni (Quest 2A)
   STADTPARK:   'stadtpark',    // Taman (Quest 2B)
   HAFEN:       'hafen',        // Pelabuhan (Quest 3, 5)
   WOCHENMARKT: 'wochenmarkt',  // Pasar mingguan (Quest 4)

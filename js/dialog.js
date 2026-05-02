@@ -493,7 +493,9 @@ function onDialogKey(e) {
 
   if (e.code === 'KeyE' || e.code === 'Space') {
     e.preventDefault();
+    e.stopImmediatePropagation();
     onContinue();
+    return;
   }
 
   // Pilih dengan angka 1/2/3
@@ -503,9 +505,11 @@ function onDialogKey(e) {
       const btn = $choices.children[idx];
       if (btn && !btn.disabled) btn.click();
     }
-    // A/B/C key
+    // A/B/C/D key — intercept so they don't trigger player movement
     const keyMap = { KeyA: 0, KeyB: 1, KeyC: 2, KeyD: 3 };
     if (keyMap[e.code] !== undefined) {
+      e.preventDefault();
+      e.stopImmediatePropagation();
       const btn = $choices.children[keyMap[e.code]];
       if (btn && !btn.disabled) btn.click();
     }

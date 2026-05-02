@@ -606,7 +606,9 @@ export function spawnNPC(npcData) {
   const { group, body, head, leftArm, rightArm, leftLeg, rightLeg, upperParts, height } = buildNPCMesh(npcData);
 
   // Posisi & facing
-  group.position.set(npcData.spawn.x, 0, npcData.spawn.z);
+  // Sitting NPCs need a Y offset so they sit ON the bench instead of sinking
+  const spawnY = npcData.activity === 'sitting' ? 0.38 : 0;
+  group.position.set(npcData.spawn.x, spawnY, npcData.spawn.z);
   group.rotation.y = npcData.spawn.facing;
 
   // Mount ke npcGroup (sudah di scene)
@@ -756,7 +758,15 @@ export function updateNPCs(delta, elapsed) {
     if (rec.data.activity === 'sitting') {
       animateNPCSitting(rec, elapsed);
     } else if (rec.data.activity === 'repairing_windmill') {
-      animateNPCRepairing(rec, elapsed);
+      if (isFrozen) {
+        // Opa berdiri normal saat diajak ngomong oleh Lukas
+        resetRepairPose(rec);
+        animateNPCIdle(rec, elapsed);
+        faceTowardPlayer(rec);
+      } else {
+        // Lanjutkan pekerjaan reparasi
+        animateNPCRepairing(rec, elapsed);
+      }
     } else if (isFrozen) {
       // Pemain dekat — NPC berhenti, hadap pemain, idle anim
       animateNPCIdle(rec, elapsed);
@@ -903,24 +913,26 @@ function animateNPCIdle(rec, elapsed) {
 function applySittingPose(rec, breathe = 0) {
   const H = rec.height;
 
+  // Slight upper-body lower for natural seated look (reduced from 0.28 to 0.12)
   rec.upperParts?.forEach(part => {
-    part.position.y = (part.userData.baseY ?? part.position.y) - (0.28 * H) + breathe;
+    part.position.y = (part.userData.baseY ?? part.position.y) - (0.12 * H) + breathe;
     part.rotation.x = part.userData.baseRotationX ?? part.rotation.x;
     part.rotation.z = part.userData.baseRotationZ ?? part.rotation.z;
   });
-  rec.body.rotation.x = 0.08;
-  rec.head.rotation.x = 0.03;
+  rec.body.rotation.x = 0.06;
+  rec.head.rotation.x = 0.02;
   rec.head.rotation.y = 0;
 
-  rec.leftArm.rotation.x = -0.35;
-  rec.rightArm.rotation.x = -0.35;
-  rec.leftArm.rotation.z = -0.12;
-  rec.rightArm.rotation.z = 0.12;
+  rec.leftArm.rotation.x = -0.25;
+  rec.rightArm.rotation.x = -0.25;
+  rec.leftArm.rotation.z = -0.08;
+  rec.rightArm.rotation.z = 0.08;
 
-  rec.leftLeg.position.y = 0.42 * H;
-  rec.rightLeg.position.y = 0.42 * H;
-  rec.leftLeg.rotation.x = -Math.PI / 2.8;
-  rec.rightLeg.rotation.x = -Math.PI / 2.8;
+  // Legs bent at hip, positioned at proper sitting height
+  rec.leftLeg.position.y = 0.48 * H;
+  rec.rightLeg.position.y = 0.48 * H;
+  rec.leftLeg.rotation.x = -Math.PI / 2.2;
+  rec.rightLeg.rotation.x = -Math.PI / 2.2;
 }
 
 function animateNPCSitting(rec, elapsed) {
@@ -962,6 +974,17 @@ function applyRepairPose(rec) {
     rec.rightArm.add(hammer);
     rec.hammer = hammer;
   }
+}
+
+/** Reset repair pose back to standing (when player approaches Opa). */
+function resetRepairPose(rec) {
+  // Reset arm rotations to neutral standing
+  rec.leftArm.rotation.z = 0;
+  rec.rightArm.rotation.z = 0;
+  rec.body.rotation.x = rec.data.body.slouch || 0;
+  rec.head.rotation.x = (rec.data.body.slouch || 0) * 0.6;
+  rec.leftLeg.rotation.x = 0;
+  rec.rightLeg.rotation.x = 0;
 }
 
 function animateNPCRepairing(rec, elapsed) {

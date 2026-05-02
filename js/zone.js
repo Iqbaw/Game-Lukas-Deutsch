@@ -71,6 +71,30 @@ export const ZONE_DEFS = {
         label:  '→ Zur Stadt B',
         labelDE: 'Stadt B',
       },
+      {
+        x: -12, z: -6.5, w: 2, d: 1.5,
+        target: ZONES.SUPERMARKET_INTERIOR,
+        label:  '→ EDEKA betreten',
+        labelDE: 'Eintreten',
+      },
+    ],
+  },
+
+  [ZONES.SUPERMARKET_INTERIOR]: {
+    id:     ZONES.SUPERMARKET_INTERIOR,
+    name:   'EDEKA Innenraum',
+    nameID: 'Interior Supermarket',
+    size:   { w: 15, h: 15 },
+    spawn:  { x: 0, z: 5, facing: Math.PI }, // Facing into the room from the entrance
+    // Entrance/Exit portal to go back out
+    portals: [
+      {
+        x: 0, z: 6.5, w: 2, d: 2,
+        target: ZONES.SUPERMARKT,
+        targetSpawn: { x: -12, z: -5, facing: 0 }, // Spawn outside EDEKA door
+        label:  '← Ausgang',
+        labelDE: 'Ausgang',
+      }
     ],
   },
 
@@ -188,8 +212,12 @@ export async function loadZone(zoneId, customSpawn = null, instant = false) {
     currentZoneId = zoneId;
 
     // Import world builder dan panggil builder zona
-    const worldModule = await import('./world.js');
-    worldModule.buildZone(zoneId, def);
+    try {
+      const worldModule = await import('./world.js');
+      worldModule.buildZone(zoneId, def);
+    } catch (buildErr) {
+      console.error('[zone] buildZone error:', buildErr);
+    }
 
     // Spawn NPC untuk zona ini
     const zoneNPCs = getNPCsInZone(zoneId);
@@ -225,6 +253,13 @@ export async function loadZone(zoneId, customSpawn = null, instant = false) {
 
     if (CONFIG.DEBUG) console.log('[zone] Loaded:', zoneId);
 
+  } catch (err) {
+    console.error('[zone] loadZone fatal error:', err);
+    // Force clear fade overlay on any error
+    if ($fadeOverlay) {
+      $fadeOverlay.style.opacity = '0';
+      $fadeOverlay.style.pointerEvents = 'none';
+    }
   } finally {
     _transitionBusy = false;
   }
@@ -248,6 +283,7 @@ function unloadCurrentZone() {
 
   // Clear colliders
   World.colliders.length = 0;
+  World.walkables.length = 0;
   World.streetLamps.length = 0;
   World.windowLights.length = 0;
 

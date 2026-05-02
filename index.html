@@ -296,12 +296,24 @@
       <div class="reisetagebuch-book">
         <div class="reisetagebuch-page reisetagebuch-page-left">
           <h2>Mein Reisetagebuch</h2>
-          <p class="reisetagebuch-empty">Noch keine Einträge. Erlebe Abenteuer, um diese Seiten zu füllen!</p>
+          <p id="reisetagebuch-desc" class="reisetagebuch-empty">Noch keine Einträge. Erlebe Abenteuer, um diese Seiten zu füllen!</p>
         </div>
         <div class="reisetagebuch-page reisetagebuch-page-right">
           <p class="reisetagebuch-empty-right">Hamburg wartet auf dich…</p>
         </div>
         <button id="reisetagebuch-close" class="reisetagebuch-close" aria-label="Schließen">×</button>
+      </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════
+         REFLECTION UI (Vocabulary Recap)
+         ═══════════════════════════════════════════════════════ -->
+    <div id="reflection-ui" class="reflection-ui hud-hidden">
+      <div class="reflection-card">
+        <h2>Vocabulary Recap</h2>
+        <p>Ergänze den Satz / Fill in the blank:</p>
+        <p class="reflection-sentence">Die <input type="text" id="reflection-input" data-expected="Kartoffel" placeholder="..."> sind im Regal vor der Kasse.</p>
+        <button id="reflection-submit" class="pause-btn pause-btn-primary">Antworten</button>
       </div>
     </div>
 

@@ -236,30 +236,45 @@ function buildLukasMesh() {
 
 function setupInput() {
   const keyMap = {
+    // e.code (Physical location)
     KeyW: 'fwd',       ArrowUp:    'fwd',
     KeyS: 'back',      ArrowDown:  'back',
     KeyA: 'left',      ArrowLeft:  'left',
     KeyD: 'right',     ArrowRight: 'right',
+    
+    // e.key fallback (Case-insensitive)
+    w: 'fwd',          W: 'fwd',
+    s: 'back',         S: 'back',
+    a: 'left',         A: 'left',
+    d: 'right',        D: 'right'
   };
 
   window.addEventListener('keydown', (e) => {
     if (!Player.inputEnabled) return;
     if (Game.isPaused) return;
 
-    if (keyMap[e.code]) {
-      Player.input[keyMap[e.code]] = 1;
-      if (e.code.startsWith('Arrow')) e.preventDefault();
+    const action = keyMap[e.code] || keyMap[e.key];
+    if (action) {
+      Player.input[action] = 1;
+      if (e.code.startsWith('Arrow') || ['w','a','s','d'].includes(e.key.toLowerCase())) {
+        // Only prevent default for arrows to avoid scrolling, 
+        // WASD usually doesn't need it unless it's a specific browser conflict
+        if (e.code.startsWith('Arrow')) e.preventDefault();
+      }
     }
-    if (e.code === 'ShiftLeft' || e.code === 'ShiftRight') {
+
+    if (e.code === 'ShiftLeft' || e.code === 'ShiftRight' || e.key === 'Shift') {
       Player.input.run = true;
     }
   });
 
   window.addEventListener('keyup', (e) => {
-    if (keyMap[e.code]) {
-      Player.input[keyMap[e.code]] = 0;
+    // Always clear input on keyup regardless of inputEnabled
+    const action = keyMap[e.code] || keyMap[e.key];
+    if (action) {
+      Player.input[action] = 0;
     }
-    if (e.code === 'ShiftLeft' || e.code === 'ShiftRight') {
+    if (e.code === 'ShiftLeft' || e.code === 'ShiftRight' || e.key === 'Shift') {
       Player.input.run = false;
     }
   });
@@ -524,6 +539,11 @@ export function setInputEnabled(enabled) {
 
 
 export function teleportPlayer(x, z, facing = 0) {
+  // Safety: prevent NaN from corrupting camera
+  if (!Number.isFinite(x)) x = 0;
+  if (!Number.isFinite(z)) z = 0;
+  if (!Number.isFinite(facing)) facing = 0;
+
   Player.position.set(x, 0, z);
   Player.facing = facing;
   Player.targetFacing = facing;

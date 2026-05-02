@@ -105,6 +105,25 @@ export const DIALOGS = {
   },
 
 
+  hans_hint_quest1: {
+    id:    'hans_hint_quest1',
+    start: 'h1',
+    nodes: {
+      h1: {
+        id:      'h1',
+        speaker: 'nachbar_hans',
+        text:    'Moin Lukas! Du suchst den EDEKA?',
+        next:    'h2',
+      },
+      h2: {
+        id:      'h2',
+        speaker: 'nachbar_hans',
+        text:    'Er liegt in der Hauptstraße, genau zwischen der Bäckerei und der Post!',
+        end:     true,
+      },
+    },
+  },
+
   // ════════════════════════════════════════════════════════════════
   // QUEST 1 — "Oma braucht Hilfe!"
   // ════════════════════════════════════════════════════════════════
@@ -117,37 +136,13 @@ export const DIALOGS = {
       q1_1: {
         id:      'q1_1',
         speaker: 'oma_helga',
-        text:    'Lukas, mein Schatz, du bist gerade rechtzeitig! Ich koche heute <vocab title="Sup khas Hamburg">Eintopf</vocab> zur Begrüßung.',
+        text:    'Liebling, ich brauche deine <vocab title="Bantuan">Hilfe</vocab>! Geh bitte zum Supermarkt und kauf: Kartoffeln, Würstchen, Hähnchen, und Ketchup.',
         next:    'q1_2',
       },
       q1_2: {
         id:      'q1_2',
         speaker: 'oma_helga',
-        text:    'Aber... oh nein, ich habe vergessen, einkaufen zu gehen! <vocab title="Sayang">Liebling</vocab>, ich brauche deine <vocab title="Bantuan">Hilfe</vocab>!',
-        next:    'q1_3',
-      },
-      q1_3: {
-        id:      'q1_3',
-        speaker: 'oma_helga',
-        text:    'Geh bitte zum <vocab title="Supermarket">Supermarkt</vocab> und kauf: <vocab title="Kentang">Kartoffeln</vocab>, <vocab title="Sosis kecil">Würstchen</vocab>, <vocab title="Ayam">Hähnchen</vocab>, und <vocab title="Saus tomat">Ketchup</vocab>.',
-        next:    'q1_4',
-      },
-      q1_4: {
-        id:      'q1_4',
-        speaker: 'lukas',
-        text:    'Klar, Oma! Aber... wo ist der Supermarkt?',
-        next:    'q1_5',
-      },
-      q1_5: {
-        id:      'q1_5',
-        speaker: 'oma_helga',
-        text:    'Oh! Der EDEKA liegt in der <vocab title="Jalan utama">Hauptstraße</vocab>. Schau in dein <vocab title="Buku perjalanan">Reisetagebuch</vocab> — ich habe alles für dich aufgeschrieben.',
-        next:    'q1_6',
-      },
-      q1_6: {
-        id:      'q1_6',
-        speaker: 'oma_helga',
-        text:    'Beeil dich, Liebling! Wenn du etwas vergisst, frag die Nachbarn. Sie helfen dir gerne.',
+        text:    'Der Supermarkt liegt irgendwo in der Nähe... frag die Nachbarn! Ich habe dir die Details im <vocab title="Buku perjalanan">Reisetagebuch</vocab> aufgeschrieben.',
         onEnter: [
           { type: 'progress_quest',  step: 'step1_talk_oma' },
           { type: 'add_journal',     entry: 'oma_quest1_letter' },
@@ -176,11 +171,10 @@ export const DIALOGS = {
         text:    'Ja Oma, hier sind die Kartoffeln, Würstchen, Hähnchen, und Ketchup.',
         next:    'r1_quiz',
       },
-      // Quiz: di mana letak kasir?
       r1_quiz: {
         id:      'r1_quiz',
         speaker: 'oma_helga',
-        text:    'Sehr gut! Eine Frage noch: Wo war die <vocab title="Kasir">Kasse</vocab> im EDEKA?',
+        text:    'Sehr gut! Eine Frage noch: Wo befindet sich die Kasse?',
         choices: [
           {
             text:    'Neben dem Eingang',
@@ -206,20 +200,22 @@ export const DIALOGS = {
         id:      'r1_quiz_correct',
         speaker: 'oma_helga',
         text:    '<vocab title="Sangat baik">Ausgezeichnet</vocab>, mein Schatz! Du hast gut aufgepasst.',
+        onEnter: [
+          { type: 'complete_quest',  questId: 'quest_1' }
+        ],
         next:    'r1_done',
       },
       r1_quiz_wrong: {
         id:      'r1_quiz_wrong',
         speaker: 'oma_helga',
         text:    'Hmm, schau noch einmal in dein Reisetagebuch... die Kasse war am Ausgang.',
-        next:    'r1_done',
+        end:     true,
       },
       r1_done: {
         id:      'r1_done',
         speaker: 'oma_helga',
         text:    '<vocab title="Terima kasih">Danke</vocab>, Lukas. Jetzt kann der Eintopf kochen. Geh dich ausruhen, Liebling!',
         onEnter: [
-          { type: 'complete_quest',  questId: 'quest_1' },
           { type: 'add_score',       delta: 200, label: 'Quest 1 abgeschlossen' },
         ],
         end: true,
@@ -353,11 +349,11 @@ export const JOURNAL_ENTRIES = {
     body: `
 Mein Schatz Lukas,
 
-der EDEKA-Supermarkt liegt in der <vocab title="Jalan utama">Hauptstraße</vocab>. Er befindet sich <vocab title="Di antara">zwischen</vocab> der Bäckerei und der Post.
+Der EDEKA-Supermarkt liegt in der Hauptstraße. Er befindet sich <span class="prep-highlight">ZWISCHEN</span> der Bäckerei und der Post.
 
-<vocab title="Di depan">Vor</vocab> dem Eingang stehen zwei große Einkaufswagen. <vocab title="Sebelah kiri dari">Links vom</vocab> Eingang sind das Obst und das Gemüse.
+<span class="prep-highlight">VOR</span> dem Eingang stehen zwei große Einkaufswagen. <span class="prep-highlight">LINKS VOM</span> Eingang sind das Obst und das Gemüse.
 
-Die Kasse befindet sich <vocab title="Di">am</vocab> Ausgang, <vocab title="Sebelah">neben</vocab> dem Zeitungsregal.
+Die Kasse befindet sich <span class="prep-highlight">AM AUSGANG</span>, <span class="prep-highlight">NEBEN</span> dem Zeitungsregal.
 
 Was ich brauche:
 • Kartoffeln
@@ -386,8 +382,9 @@ export function getJournalEntry(id) {
 
 // Map: NPC id → dialog id default (greeting saat tidak ada quest aktif)
 export const NPC_DEFAULT_DIALOG = {
-  oma_helga:    'oma_helga_greeting',
+  oma_helga:    'oma_quest1_intro',
   opa_klaus:    'opa_klaus_greeting',
   onkel_andre:  'onkel_andre_greeting',
   tante_maria:  'tante_maria_greeting',
+  nachbar_hans: 'hans_hint_quest1',
 };
