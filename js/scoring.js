@@ -111,7 +111,10 @@ export const ScoreSystem = {
       if (saved) {
         const data = JSON.parse(saved);
         if (data.score) this.score = data.score;
-        if (data.questState) window.__questState__ = data.questState;
+        // JANGAN restore questState dari localStorage — setiap sesi game harus mulai fresh.
+        // Quest state hanya dipersist untuk live save, BUKAN antar-sesi.
+        // (Educational game: pemain mulai dari awal tiap kali buka)
+        // Old behavior: if (data.questState) window.__questState__ = data.questState;
       }
     } catch (e) {
       console.warn("Could not load from localStorage", e);

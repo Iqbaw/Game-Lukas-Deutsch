@@ -214,11 +214,11 @@ export const NPC_DATA = [
     id:        'leni',
     name:      'Leni',
     title:     'Cousine',
-    zone:      ZONES.SCHULE,           // di sekolah saat Quest 2
+    zone:      ZONES.SCHULE,           // di sekolah saat Quest 3 (Stage 2)
     spawn:     { x: 0, z: 0, facing: 0 },
     greeting:  'Lukas! Du bist gekommen! Endlich!',
     hasQuest:  true,
-    questId:   'quest_2',
+    questId:   'quest_3',
 
     body: {
       height:      0.7,                 // anak kecil
@@ -271,7 +271,7 @@ export const NPC_DATA = [
 
     body: {
       height:      0.98,
-      bodyColor:   0x7a8aa0,          // mantel abu kebiruan
+      bodyColor:   0x7a8aa0,
       hasApron:    false,
       hairColor:   NPC_COLORS.HAIR_GREY,
       hairStyle:   'short',
@@ -279,6 +279,113 @@ export const NPC_DATA = [
       pantsColor:  NPC_COLORS.PANTS_GREY,
       shoesColor:  NPC_COLORS.SHOES_DARK,
       hasGlasses:  false,
+    },
+  },
+
+
+  // ════════════════════════════════════════════════════════════════
+  // STAGE 2 — PASSANTEN (Orang yang ditanya arah)
+  // Muncul di zona-zona luar untuk quest navigasi
+  // ════════════════════════════════════════════════════════════════
+
+  // ── 8. PASSANT 1 — Tanya arah ke Supermarkt (Quest 4) ─────────
+  {
+    id:        'passant_1',
+    name:      'Herr Bauer',
+    title:     'Passant',
+    zone:      ZONES.HAUS,             // di jalan dekat rumah Oma
+    spawn:     { x: -3, z: 10, facing: Math.PI / 2 },
+    level:     4,                       // muncul saat quest_4 aktif
+    greeting:  'Guten Tag! Kann ich Ihnen helfen?',
+    hasQuest:  true,
+    questId:   'quest_4',
+
+    body: {
+      height:      1.0,
+      bodyColor:   0x3a5a3a,           // jaket hijau tua
+      hasApron:    false,
+      hairColor:   NPC_COLORS.HAIR_BROWN,
+      hairStyle:   'short',
+      skinColor:   NPC_COLORS.SKIN_LIGHT,
+      pantsColor:  NPC_COLORS.PANTS_GREY,
+      shoesColor:  NPC_COLORS.SHOES_DARK,
+      hasGlasses:  true,
+    },
+  },
+
+  // ── 9. PASSANT 2 — Tanya lokasi Eisstand (Quest 5) ────────────
+  {
+    id:        'passant_2',
+    name:      'Frau Schmidt',
+    title:     'Passantin',
+    zone:      ZONES.SUPERMARKT,       // di area supermarket
+    spawn:     { x: 2, z: 8, facing: Math.PI },
+    level:     5,
+    greeting:  'Ja bitte? Wie kann ich helfen?',
+    hasQuest:  true,
+    questId:   'quest_5',
+
+    body: {
+      height:      0.97,
+      bodyColor:   0x9a4a8a,           // baju ungu
+      hasApron:    false,
+      hairColor:   NPC_COLORS.HAIR_BLOND,
+      hairStyle:   'long',
+      skinColor:   NPC_COLORS.SKIN_FAIR,
+      pantsColor:  NPC_COLORS.PANTS_DENIM,
+      shoesColor:  NPC_COLORS.SHOES_DARK,
+      hasGlasses:  false,
+    },
+  },
+
+  // ── 10. PASSANT 3 — Tanya jalan pulang (Quest 6) ──────────────
+  {
+    id:        'passant_3',
+    name:      'Herr Fischer',
+    title:     'Passant',
+    zone:      ZONES.WOCHENMARKT,      // Lukas tersesat sampai ke sini
+    spawn:     { x: 0, z: 5, facing: 0 },
+    level:     6,
+    greeting:  'Hallo! Sie sehen verloren aus...',
+    hasQuest:  true,
+    questId:   'quest_6',
+
+    body: {
+      height:      1.02,
+      bodyColor:   0x5a3a2a,           // jaket coklat
+      hasApron:    false,
+      hairColor:   NPC_COLORS.HAIR_GREY,
+      hairStyle:   'short',
+      skinColor:   NPC_COLORS.SKIN_OLIVE,
+      pantsColor:  NPC_COLORS.PANTS_KHAKI,
+      shoesColor:  NPC_COLORS.SHOES_DARK,
+      hasGlasses:  false,
+      hasMustache: true,
+    },
+  },
+
+  // ── 11. PASSANT 4 — Tanya jalan ke Kino (Quest 7) ─────────────
+  {
+    id:        'passant_4',
+    name:      'Frau Müller',
+    title:     'Passantin',
+    zone:      ZONES.STADTPARK,        // Lukas nyasar di taman
+    spawn:     { x: 0, z: 3, facing: -Math.PI / 2 },
+    level:     7,
+    greeting:  'Hallo! Ich kenne diesen Park sehr gut.',
+    hasQuest:  true,
+    questId:   'quest_7',
+
+    body: {
+      height:      0.96,
+      bodyColor:   0x4a5a8a,           // baju biru dongker
+      hasApron:    false,
+      hairColor:   NPC_COLORS.HAIR_BLACK,
+      hairStyle:   'short',
+      skinColor:   NPC_COLORS.SKIN_FAIR,
+      pantsColor:  NPC_COLORS.PANTS_GREY,
+      shoesColor:  NPC_COLORS.SHOES_DARK,
+      hasGlasses:  true,
     },
   },
 ];

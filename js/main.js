@@ -1,6 +1,6 @@
 // ═══════════════════════════════════════════════════════════════════
 // js/main.js — ENTRY POINT THREE.JS (Isometric Edition)
-// Lukas Adventure — Willkommen in Hamburg!
+// Lukas Abenteuer — Willkommen in Hamburg!
 //
 // Perubahan Isometrik:
 //   - OrthographicCamera menggantikan PerspectiveCamera
@@ -521,7 +521,7 @@ async function bootstrap() {
     initZones();
 
     setLoadingProgress(90, 'Erste Zone wird geladen…');
-    await loadZone(ZONES.HAUS, null, true); // instant, tanpa fade
+    await loadZone(ZONES.HAUS_INTERIOR, null, true); // Spawn di kamar tidur Lukas (Stage 1)
 
     setLoadingProgress(95, 'UI wird eingerichtet…');
     initUI();
@@ -552,11 +552,11 @@ async function bootstrap() {
     window.addEventListener(EVENTS.GAME_START, startGame, { once: true });
 
     if (CONFIG.DEBUG) {
-      console.log('[Lukas Adventure] Init complete.', Game);
+      console.log('[Lukas Abenteuer] Init complete.', Game);
     }
 
   } catch (err) {
-    console.error('[Lukas Adventure] Init error:', err);
+    console.error('[Lukas Abenteuer] Init error:', err);
     setLoadingProgress(0, '⚠️ Fehler: ' + err.message);
   }
 }
@@ -572,10 +572,10 @@ function startGame() {
 
   // Import UI and set initial objective
   import('./ui.js').then(({ UI }) => {
-    UI.updateObjective('Triff Oma Helga');
+    UI.updateObjective('Ich habe Hunger. Wo ist die Pfanne?');
   });
 
-  if (CONFIG.DEBUG) console.log('[Lukas Adventure] Game loop started.');
+  if (CONFIG.DEBUG) console.log('[Lukas Abenteuer] Game loop started.');
 }
 
 

@@ -716,6 +716,40 @@ export function despawnAllNPCs() {
   ids.forEach(id => despawnNPC(id));
 }
 
+/** Set NPC mengikuti Lukas (mis. Leni pulang bersama). */
+export function setNPCFollowing(id, following = true) {
+  const rec = NPCs.get(id);
+  if (!rec) return false;
+  rec._following = following;
+
+  if (following) {
+    // PENTING: hapus collider NPC follower supaya TIDAK menjebak/menghalangi
+    // Lukas. Companion tidak boleh punya collision dengan player.
+    if (rec.collider) {
+      const idx = World.colliders.indexOf(rec.collider);
+      if (idx !== -1) World.colliders.splice(idx, 1);
+      rec._colliderRemoved = true;
+    }
+  } else {
+    // Restore collider saat berhenti mengikuti (mis. Leni berhenti/masuk rumah)
+    if (rec._colliderRemoved && rec.collider) {
+      // Update posisi collider ke posisi sekarang sebelum dipasang lagi
+      rec.collider.x = rec.group.position.x;
+      rec.collider.z = rec.group.position.z;
+      if (World.colliders.indexOf(rec.collider) === -1) {
+        World.colliders.push(rec.collider);
+      }
+      rec._colliderRemoved = false;
+    }
+  }
+  return true;
+}
+// Expose ke window untuk dipanggil dari quest.js tanpa import circular
+if (typeof window !== 'undefined') {
+  window.__setNPCFollowing__ = setNPCFollowing;
+  window.__despawnNPC__ = despawnNPC;
+}
+
 export function initNPCSystem() {
   // Daftar update ke loop
   registerUpdate(updateNPCs);
@@ -754,6 +788,40 @@ export function updateNPCs(delta, elapsed) {
 
   NPCs.forEach((rec, id) => {
     const isFrozen = (id === activeId);
+
+    // ── FOLLOW behavior (mis. Leni mengikuti Lukas pulang) ──
+    if (rec._following && Game.player) {
+      const px = Game.player.position.x;
+      const pz = Game.player.position.z;
+      const gx = rec.group.position.x;
+      const gz = rec.group.position.z;
+      const dx = px - gx;
+      const dz = pz - gz;
+      const dist = Math.hypot(dx, dz);
+      const FOLLOW_GAP = 1.6;       // jaga jarak di belakang Lukas
+      if (dist > FOLLOW_GAP) {
+        const speed = Math.min(3.2, 1.6 + dist * 0.4); // sedikit lebih cepat jika tertinggal
+        const step = speed * delta;
+        const nx = gx + (dx / dist) * step;
+        const nz = gz + (dz / dist) * step;
+        rec.group.position.x = nx;
+        rec.group.position.z = nz;
+        // hadap arah jalan
+        rec.group.rotation.y = Math.atan2(dx, dz);
+        // animasi kaki jalan
+        rec.walkCycle = (rec.walkCycle || 0) + delta * 8;
+        const swing = Math.sin(rec.walkCycle) * 0.5;
+        if (rec.leftLeg)  rec.leftLeg.rotation.x  =  swing;
+        if (rec.rightLeg) rec.rightLeg.rotation.x = -swing;
+        if (rec.leftArm)  rec.leftArm.rotation.x  = -swing * 0.6;
+        if (rec.rightArm) rec.rightArm.rotation.x =  swing * 0.6;
+        // update collider posisi
+        if (rec.collider) { rec.collider.x = nx; rec.collider.z = nz; }
+      } else {
+        animateNPCIdle(rec, elapsed);
+      }
+      return; // skip state machine normal saat following
+    }
 
     if (rec.data.activity === 'sitting') {
       animateNPCSitting(rec, elapsed);

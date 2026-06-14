@@ -41,13 +41,46 @@ export const ZONE_DEFS = {
     name:   'Haus der Großeltern',
     nameID: 'Rumah Kakek-Nenek',
     size:   { w: 28, h: 28 },
-    spawn:  { x: 0, z: 5, facing: Math.PI },
+    // Default spawn 1.5m selatan pintu rumah, di luar trigger zone portal masuk
+    spawn:  { x: 0, z: 4.8, facing: 0 },
     portals: [
       {
         x: -10, z: 2, w: 2, d: 2, rotY: -0.3, // Match bridge diagonal
         target: ZONES.SUPERMARKT,
         label:  '→ Zur Stadt A',
         labelDE: 'Stadt A',
+      },
+      {
+        // PORTAL MASUK rumah — tepat di DEPAN pintu kayu cabin (door world pos = 0, 2.06)
+        // Trigger zone: x=[-1.5..1.5], z=[1.5..3.7]. Spawn jauh di selatan (z=4.8) supaya
+        // player tidak langsung terjebak loop di portal.
+        x: 0, z: 2.6, w: 2.0, d: 1.4,
+        target: ZONES.HAUS_INTERIOR,
+        // Spawn di Wohnzimmer, JAUH dari pintu exit (z<11.4) supaya tidak loop
+        targetSpawn: { x: 3, z: 9, facing: 0 },
+        label:  '↑ Haus betreten',
+        labelDE: 'Haus betreten',
+      },
+    ],
+  },
+
+  [ZONES.HAUS_INTERIOR]: {
+    id:     ZONES.HAUS_INTERIOR,
+    name:   'Omas Haus — Innen',
+    nameID: 'Interior Rumah Oma',
+    size:   { w: 40, h: 32 },
+    // Spawn di samping kasur Lukas (kamar pojok kiri-atas)
+    spawn:  { x: -11, z: -9, facing: Math.PI/2 },
+    portals: [
+      {
+        // Pintu depan rumah ada di Wohnzimmer (south wall, gap x=1..5)
+        x: 3, z: 13.2, w: 3.8, d: 2.6,
+        target: ZONES.HAUS,
+        // Spawn JAUH di selatan pintu masuk (z=4.8 > portal masuk z=3.3 max),
+        // supaya player tidak langsung re-enter portal masuk
+        targetSpawn: { x: 0, z: 4.8, facing: 0 },
+        label:  '↓ Haus verlassen',
+        labelDE: 'Hinausgehen',
       },
     ],
   },
@@ -210,6 +243,8 @@ export async function loadZone(zoneId, customSpawn = null, instant = false) {
 
     // Set zona baru
     currentZoneId = zoneId;
+    // Expose ke window untuk quest.js reach_zone step detection
+    window.__currentZoneId__ = zoneId;
 
     // Import world builder dan panggil builder zona
     try {
@@ -276,6 +311,15 @@ function unloadCurrentZone() {
     const child = Game.worldGroup.children[0];
     Game.worldGroup.remove(child);
     disposeObject(child);
+  }
+
+  // Hapus semua quest items dari itemsGroup (cegah duplikasi antar zona)
+  if (Game.itemsGroup) {
+    while (Game.itemsGroup.children.length > 0) {
+      const child = Game.itemsGroup.children[0];
+      Game.itemsGroup.remove(child);
+      disposeObject(child);
+    }
   }
 
   // Hapus semua NPC
