@@ -46,9 +46,10 @@ export const ZONE_DEFS = {
     portals: [
       {
         x: -10, z: 2, w: 2, d: 2, rotY: -0.3, // Match bridge diagonal
-        target: ZONES.SUPERMARKT,
-        label:  '→ Zur Stadt A',
-        labelDE: 'Stadt A',
+        target: ZONES.STADT,                  // → Kota terpadu (Stage 2)
+        targetSpawn: { x: -24, z: 26, facing: Math.PI }, // masuk di ujung Schillerstraße
+        label:  '→ In die Stadt',
+        labelDE: 'Zur Stadt',
       },
       {
         // PORTAL MASUK rumah — tepat di DEPAN pintu kayu cabin (door world pos = 0, 2.06)
@@ -81,6 +82,39 @@ export const ZONE_DEFS = {
         targetSpawn: { x: 0, z: 4.8, facing: 0 },
         label:  '↓ Haus verlassen',
         labelDE: 'Hinausgehen',
+      },
+    ],
+  },
+
+  // ═══════════════════════════════════════════════════════════════
+  // STADT — Kota terpadu (Stage 2). Satu peta besar, hanya 1 portal
+  // navigasi (kembali ke rumah Oma) + pintu masuk EDEKA (interior).
+  // ═══════════════════════════════════════════════════════════════
+  [ZONES.STADT]: {
+    id:     ZONES.STADT,
+    name:   'Die Stadt',
+    nameID: 'Kota',
+    size:   { w: 84, h: 64 },
+    // Masuk dari ujung selatan Schillerstraße (di jalan, bukan di taman)
+    spawn:  { x: -24, z: 26, facing: Math.PI },
+    portals: [
+      {
+        // SATU-SATUNYA portal navigasi: kembali ke rumah Oma
+        // Ditaruh di UJUNG JALAN Schillerstraße (x=-24), bukan di Stadtpark
+        x: -24, z: 29.5, w: 4, d: 2,
+        target: ZONES.HAUS,
+        // Spawn di UJUNG TIMUR jembatan (sisi rumah) — BUKAN di sungai (x -9..-5)!
+        targetSpawn: { x: -3.5, z: 2.2, facing: Math.PI / 2 },
+        label:  '↓ Nach Hause',
+        labelDE: 'Nach Hause',
+      },
+      {
+        // Pintu masuk EDEKA → interior (bukan navigasi kota)
+        x: -2, z: 6.5, w: 2, d: 1.5,
+        target: ZONES.SUPERMARKET_INTERIOR,
+        targetSpawn: { x: 0, z: 5, facing: Math.PI },
+        label:  '→ EDEKA betreten',
+        labelDE: 'Eintreten',
       },
     ],
   },
@@ -123,8 +157,8 @@ export const ZONE_DEFS = {
     portals: [
       {
         x: 0, z: 6.5, w: 2, d: 2,
-        target: ZONES.SUPERMARKT,
-        targetSpawn: { x: -12, z: -5, facing: 0 }, // Spawn outside EDEKA door
+        target: ZONES.STADT,
+        targetSpawn: { x: -2, z: 4, facing: Math.PI }, // Keluar di depan pintu EDEKA (STADT)
         label:  '← Ausgang',
         labelDE: 'Ausgang',
       }
@@ -245,6 +279,14 @@ export async function loadZone(zoneId, customSpawn = null, instant = false) {
     currentZoneId = zoneId;
     // Expose ke window untuk quest.js reach_zone step detection
     window.__currentZoneId__ = zoneId;
+    // Expose batas zona untuk clamp player per-zona (kota besar butuh ini)
+    if (def.size) {
+      window.__zoneBounds__ = { halfW: def.size.w / 2, halfH: def.size.h / 2 };
+    } else {
+      window.__zoneBounds__ = null;
+    }
+    // Reset registry gedung kota (diisi ulang oleh buildStadt bila zona STADT)
+    if (zoneId !== ZONES.STADT) window.__stadtBuildings__ = null;
 
     // Import world builder dan panggil builder zona
     try {

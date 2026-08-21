@@ -449,10 +449,12 @@ function updatePlayer(delta) {
 
     moveWithCollision(_tmpMove.x * moveDist, _tmpMove.z * moveDist);
 
-    // Clamp ke batas zona
-    const halfW = (CONFIG.ZONE_SIZE / 2) - 0.5;
-    Player.position.x = THREE.MathUtils.clamp(Player.position.x, -halfW, halfW);
-    Player.position.z = THREE.MathUtils.clamp(Player.position.z, -halfW, halfW);
+    // Clamp ke batas zona (per-zona bila tersedia, else global ZONE_SIZE)
+    const zb = (typeof window !== 'undefined') ? window.__zoneBounds__ : null;
+    const halfX = (zb ? zb.halfW : CONFIG.ZONE_SIZE / 2) - 0.5;
+    const halfZ = (zb ? zb.halfH : CONFIG.ZONE_SIZE / 2) - 0.5;
+    Player.position.x = THREE.MathUtils.clamp(Player.position.x, -halfX, halfX);
+    Player.position.z = THREE.MathUtils.clamp(Player.position.z, -halfZ, halfZ);
   }
 
   // ── 5.4 Smooth rotate ──

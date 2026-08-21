@@ -176,19 +176,27 @@ export const QuestSystem = {
           }
         }, 3000);
       }
-      // Q3 selesai: Leni masuk rumah nenek SENDIRI (tidak bersama Lukas)
+      // Q3 selesai: Leni otomatis langsung MASUK ke rumah Oma.
+      // Saat pindah zona STADT→HAUS, loadZone men-despawn semua NPC (termasuk
+      // Leni yang mengikuti). Jadi: spawn ulang Leni di halaman HAUS di samping
+      // Lukas, lalu scripted walk menuju pintu rumah → despawn (masuk rumah).
       if (qid === 'quest_3') {
-        // Stop following, lalu Leni "berlari masuk rumah" → despawn
-        if (window.__setNPCFollowing__) window.__setNPCFollowing__('leni', false);
-        showToast({
-          title: '👧 Leni läuft ins Haus!',
-          body: 'Leni geht alleine zu Oma hinein. Tschüss, Leni!',
-          type: 'success', icon: '🏡', duration: 5000
-        });
-        // Despawn Leni setelah jeda singkat (seolah masuk pintu)
         setTimeout(() => {
-          if (window.__despawnNPC__) window.__despawnNPC__('leni');
-        }, 1500);
+          if (window.__spawnNPCAt__ && window.__walkNPCTo__) {
+            // Spawn Leni di ujung jembatan (di belakang posisi masuk Lukas)
+            window.__spawnNPCAt__('leni', -5.5, 2.2, Math.PI / 2).then(() => {
+              showToast({
+                title: '👧 Leni läuft ins Haus!',
+                body: 'Leni geht direkt zu Oma hinein. Tschüss, Leni!',
+                type: 'success', icon: '🏡', duration: 5000
+              });
+              // Pintu rumah = portal interior di (0, 2.6)
+              window.__walkNPCTo__('leni', 0, 2.6, () => {
+                if (window.__despawnNPC__) window.__despawnNPC__('leni');
+              });
+            });
+          }
+        }, 600);
       }
       // CHAIN: Quest 3 done → Quest 4 starts (Stage 2 — Oma minta belanja)
       if (qid === 'quest_3') {
@@ -204,9 +212,33 @@ export const QuestSystem = {
           }
         }, 3000);
       }
-      // CHAIN: Q4→Q5→Q6→Q7 (Stage 2 lanjutan, data-driven)
+      // Q4 (Ein Brief von Oma) selesai: setelah 7 detik Lukas langsung
+      // spawn kembali DI DALAM rumah Oma (bawa belanjaan pulang).
+      if (qid === 'quest_4') {
+        setTimeout(() => {
+          import('./zone.js').then(z => {
+            z.loadZone('haus_interior', null, true);
+            showToast({
+              title: '🏡 Wieder zu Hause!',
+              body: 'Lukas bringt die Einkäufe zu Oma.',
+              type: 'success', icon: '🛒', duration: 5000
+            });
+          });
+        }, 7000);
+      }
+      // Q5 (Weg nach Tantes Haus) selesai: Tante menerima kadonya
+      if (qid === 'quest_5') {
+        setTimeout(() => {
+          showToast({
+            title: '🎁 Angekommen!',
+            body: 'Tante Maria freut sich über das Geschenk!',
+            type: 'success', icon: '🏠', duration: 5000
+          });
+        }, 800);
+      }
+      // CHAIN: Q4→Q5→Q6→Q7 (lanjutan, data-driven)
       const STAGE2_CHAIN = {
-        quest_4: { next: 'quest_5', icon: '🍦', title: 'Eis kaufen!',  body: 'Lukas möchte ein Eis. Wo ist der Eisstand?' },
+        quest_4: { next: 'quest_5', icon: '🎁', title: 'Zu Tantes Haus!', body: 'Lukas möchte Tante etwas bringen — aber wo wohnt sie?', delay: 9500 },
         quest_5: { next: 'quest_6', icon: '🧭', title: 'Wo bin ich?',  body: 'Lukas hat sich verlaufen! Frag nach dem Weg.' },
         quest_6: { next: 'quest_7', icon: '🎬', title: 'Ins Kino!',    body: 'Nach dem Essen — schnell zum Kino!' },
       };
@@ -218,7 +250,7 @@ export const QuestSystem = {
             // (Center popup DIHILANGKAN — cukup toast di atas, konsisten dengan Q1→Q2)
             this.startQuest(chain.next);
           }
-        }, 3000);
+        }, chain.delay || 3000);
       }
       // STAGE 2 FINALE: Q7 selesai → seluruh Stage 2 tamat
       if (qid === 'quest_7') {
@@ -303,6 +335,40 @@ export const QuestSystem = {
     window.__questState__[questId] = 'active';
     this.questTimer = 0;
     this.interactionAttempts = 0;
+
+    // ── VARIAN LAYOUT KOTA per quest Stage 3 ──
+    // Setiap quest kota pakai tata letak berbeda supaya siswa membaca teks
+    // deskriptif, bukan menghafal peta. Dibaca oleh buildStadt() saat loadZone.
+    const STADT_VARIANTS = { quest_3: 'A', quest_4: 'B', quest_5: 'C' };
+    if (STADT_VARIANTS[questId]) {
+      window.__stadtVariant__ = STADT_VARIANTS[questId];
+    }
+
+    // Q4 (Ein Brief von Oma): panel instruksi kiri — masuk rumah, cari Brief
+    if (questId === 'quest_4') {
+      this.showSummaryPanel(
+        `Geh <span class="kw">ins Haus</span> hinein. Auf dem <span class="kw">Esstisch</span> ` +
+        `liegt ein <span class="kw">Brief von Oma</span> ✉️ — finde und lies ihn!`,
+        '📜 Aufgabe:'
+      );
+    }
+
+    // Q5 (Weg nach Tantes Haus): Lukas spawn di TENGAH KOTA (varian C),
+    // lalu harus bertanya kepada orang asing (Frau Weber).
+    if (questId === 'quest_5') {
+      this.showSummaryPanel(
+        `Du möchtest <span class="kw">Tante Maria</span> etwas bringen 🎁 — aber du hast ` +
+        `dich <span class="kw">verlaufen</span>! Frag eine <span class="kw">Passantin</span> ` +
+        `nach dem Weg (E drücken).`,
+        '📜 Aufgabe:'
+      );
+      setTimeout(() => {
+        import('./zone.js').then(z => {
+          // Tengah kota, di Hauptstraße; Frau Weber berdiri di dekatnya
+          z.loadZone('stadt', { x: 36, z: 0, facing: -Math.PI / 2 }, true);
+        });
+      }, 900);
+    }
 
     showToast({ title: 'Neue Aufgabe!', body: quest.title, type: 'info', icon: '📜' });
     this.updateHUD(quest.title);
@@ -402,12 +468,17 @@ export const QuestSystem = {
       step2_phone_call2:     { title: '☎️ Tante spricht...',       body: 'Hör genau zu — sie braucht deine Hilfe!',         icon: '☎️' },
       step3_find_3_items:    { title: '🔎 Such die 3 Sachen!',     body: 'Socken, Papier, Spielzeug — KEINE Hinweise! Such im ganzen Haus.', icon: '🔎' },
       step4_send_message:    { title: '📱 Schreib Tante!',         body: 'Sag ihr, WO du jede Sache gefunden hast.',        icon: '📱' },
-      // Quest 3 (Stage 2 — Leni abholen)
+      // Quest 3 (Stage 3 — Der Weg zur Schule von Leni)
       step1_reach_phone3:    { title: '📞 Tante ruft an!',         body: 'Geh zum Telefon — neue Aufgabe wartet!',           icon: '📞' },
-      step2_get_directions3: { title: '☎️ Tante erklärt den Weg',  body: 'Hör genau zu: links, rechts, geradeaus?',          icon: '☎️' },
-      step3_go_schule:       { title: '🏫 Geh zur Schule!',         body: 'Verlasse das Haus und folge Tantes Anweisungen.',  icon: '🏫' },
+      step2_get_directions3: { title: '☎️ Tante erklärt den Weg',  body: 'Hör genau zu: Ampel, rechts, gegenüber?',          icon: '☎️' },
+      step3_go_schule:       { title: '🏫 Geh zur Schule!',         body: 'Folge Tantes Weg zum großen gelben Gebäude!',      icon: '🏫' },
       step4_meet_leni:       { title: '👧 Triff Leni!',             body: 'Sprich mit Leni vor der Schule (E drücken).',      icon: '👧' },
       step5_return_home:     { title: '🏡 Bring Leni nach Hause!',  body: 'Geh zurück zu Omas Haus.',                         icon: '🏡' },
+      // Quest 4 (Stage 3 — Ein Brief von Oma)
+      step2_find_brief:      { title: '✉️ Ein Brief von Oma!',      body: 'Auf dem Esstisch in der Küche liegt ein Brief.',   icon: '✉️' },
+      step4_go_edeka:        { title: '🛒 Geh zum EDEKA!',          body: 'Folge dem Weg aus Omas Brief in die Stadt!',       icon: '🛒' },
+      // Quest 5 (Stage 3 — Weg nach Tantes Haus)
+      step2_go_tantes_haus:  { title: '🏠 Zu Tantes Haus!',         body: 'Kreuzung → rechts → Brücke → Park → Bibliothek!',  icon: '🏠' },
     };
     const guide = STEP_GUIDE[next.id];
     if (guide) {
@@ -420,6 +491,49 @@ export const QuestSystem = {
       // Tampilkan Summary Panel + Quest List Panel
       this.collectedItems = new Set();
       this.onCollectStepStart();
+    }
+
+    // Q3: saat mulai jalan ke sekolah → panel kiri dengan rute deskriptif Tante
+    if (next.id === 'step3_go_schule') {
+      this.showSummaryPanel(
+        `Geh zuerst <span class="kw">geradeaus</span> bis zur <span class="kw">Ampel</span>. ` +
+        `Dort siehst du eine große <span class="kw">Apotheke</span> — nimm <span class="kw">nach rechts</span> ` +
+        `in die <span class="kw">Gutenbergstraße</span>.<br><br>` +
+        `Geh weiter geradeaus bis zum <span class="kw">Supermarkt</span>. ` +
+        `Direkt <span class="kw">gegenüber</span> liegt die Schule: ein großes ` +
+        `<span class="kw">gelbes Gebäude</span> <span class="kw">neben</span> einer kleinen Bäckerei.`,
+        '📞 Tante sagt:'
+      );
+    }
+
+    // Q4: setelah kuis Brief selesai → panel kiri berisi isi Brief von Oma
+    if (next.id === 'step4_go_edeka') {
+      this.showSummaryPanel(
+        `<i>Lieber Lukas,</i><br>` +
+        `geh aus dem Haus <span class="kw">nach rechts</span> in die ` +
+        `<span class="kw">Blumenstraße</span>. Dann <span class="kw">geradeaus</span> ` +
+        `bis zur <span class="kw">Kreuzung</span> — dort siehst du eine ` +
+        `<span class="kw">Bank</span>. Nimm <span class="kw">nach rechts</span> in die ` +
+        `<span class="kw">Wolfgangstraße</span>. Der Supermarkt liegt ` +
+        `<span class="kw">gegenüber</span> dem <span class="kw">Mall</span>.<br><br>` +
+        `Kauf: <span class="kw">Kartoffeln</span>, <span class="kw">Fleisch</span>, ` +
+        `<span class="kw">Salat</span> und <span class="kw">Butter</span>.<br>` +
+        `<i>Deine Oma</i>`,
+        '✉️ Omas Brief:'
+      );
+    }
+
+    // Q5: setelah bicara dengan Frau Weber → panel kiri berisi rutenya
+    if (next.id === 'step2_go_tantes_haus') {
+      this.showSummaryPanel(
+        `Geh diese Straße <span class="kw">geradeaus</span> bis zur großen ` +
+        `<span class="kw">Kreuzung</span>. Dann biegst du <span class="kw">nach rechts</span> ab ` +
+        `und gehst immer weiter. Nach der <span class="kw">Brücke</span> siehst du einen ` +
+        `<span class="kw">Park</span>. Geh <span class="kw">durch</span> den Park hindurch. ` +
+        `Auf der anderen Seite steht die alte <span class="kw">Bibliothek</span>. ` +
+        `Das Haus deiner Tante ist gleich <span class="kw">daneben</span>.`,
+        '🗣️ Die Frau sagt:'
+      );
     }
 
     // Q3: setelah bicara dengan Leni → Leni mengikuti Lukas pulang
@@ -441,6 +555,11 @@ export const QuestSystem = {
       setTimeout(() => this.showSmsModal(), 800);
       return;
     }
+    // Quest 4 step3_read_brief: tampilkan panel besar Brief von Oma di tengah layar
+    if (step.id === 'step3_read_brief') {
+      setTimeout(() => this.showBriefModal(), 600);
+      return;
+    }
     // Map step.id → dialog (untuk step lain)
     const dialogMap = {
       // Quest 1
@@ -450,6 +569,8 @@ export const QuestSystem = {
       step2_phone_call2: { dialog: 'tante_quest2_intro',     speaker: 'tante_maria' },
       // Quest 3 — phone_call3 setelah player reach phone (Stage 2)
       step2_get_directions3: { dialog: 'tante_quest3_intro', speaker: 'tante_maria' },
+      // Quest 4 — dialog belanja saat sampai di EDEKA
+      step5_shopping:    { dialog: 'lukas_einkaufen',        speaker: 'lukas' },
     };
     const entry = dialogMap[step.id];
     if (!entry) return;
@@ -646,6 +767,47 @@ export const QuestSystem = {
    * 3 SMS cards untuk Quest 2 endgame.
    * Player pilih card yang BENAR. 2 wrong dengan subtle preposition error.
    */
+  /**
+   * Q4: Panel besar di tengah layar berisi Brief von Oma (gaya surat).
+   * Klik di mana saja → tutup → buka dialog kuis (lukas_brief_quiz).
+   */
+  showBriefModal() {
+    // Jangan dobel
+    if (document.getElementById('brief-modal')) return;
+    const overlay = document.createElement('div');
+    overlay.id = 'brief-modal';
+    overlay.style.cssText =
+      'position:fixed;inset:0;z-index:960;display:flex;align-items:center;justify-content:center;' +
+      'background:rgba(10,8,4,0.6);backdrop-filter:blur(3px);cursor:pointer;';
+    overlay.innerHTML = `
+      <div style="max-width:460px;width:88%;background:#fdf3dc;color:#3a2f1e;
+                  border:2px solid #c9a85c;border-radius:10px;padding:26px 30px;
+                  font-family:Georgia,'Times New Roman',serif;font-size:15px;line-height:1.65;
+                  box-shadow:0 18px 60px rgba(0,0,0,0.55);">
+        <div style="text-align:center;font-size:30px;margin-bottom:8px;">✉️</div>
+        <p style="margin:0 0 10px;"><i>Lieber Lukas,</i></p>
+        <p style="margin:0 0 10px;">heute Abend kochen wir zusammen. Bitte geh zum Supermarkt
+          „EDEKA“ und kauf die Zutaten ein. Der Supermarkt ist nicht weit.
+          Geh aus dem Haus nach rechts in die Blumenstraße. Dann geh geradeaus bis zur
+          Kreuzung. An der Kreuzung siehst du eine Bank. Nimmt dort nach rechts in die
+          Wolfgangstraße. Der Supermarkt liegt gegenüber dem Mall.</p>
+        <p style="margin:0 0 10px;">Bitte kauf: Kartoffeln, Fleisch, Salat und Butter.</p>
+        <p style="margin:0;">Bis später!<br><i>Deine Oma</i></p>
+        <div style="margin-top:16px;text-align:center;font-size:11px;color:#8a744a;
+                    font-family:sans-serif;">— Klick irgendwo, um weiterzulesen —</div>
+      </div>`;
+    document.body.appendChild(overlay);
+    // Klik sembarang → tutup → buka kuis
+    overlay.addEventListener('click', () => {
+      overlay.remove();
+      setTimeout(() => {
+        this.currentState = STATE.DIALOG;
+        const dlg = getDialog('lukas_brief_quiz');
+        if (dlg) openDialog(dlg, { id: 'lukas', name: 'Lukas', avatarUrl: '' });
+      }, 400);
+    }, { once: true });
+  },
+
   showSmsModal() {
     // Hide quest list + summary panels supaya fokus ke SMS modal
     this.hideQuestListPanel();
@@ -1009,6 +1171,7 @@ export const QuestSystem = {
       quest_2: 'wohnzimmer_notiz',
       quest_3: 'leni_abholen_notiz',
       quest_4: 'einkaufen_notiz',
+      quest_5: 'tantes_haus_notiz',
       quest_6: 'verloren_notiz',
       quest_7: 'kino_notiz',
     };
@@ -1092,6 +1255,13 @@ export const QuestSystem = {
       if (currentZone === step.target) {
         this.progressStep(step.id);
       }
+    } else if (step.kind === 'reach_building') {
+      // Step advances saat player dekat gedung target di kota STADT.
+      // Registry: window.__stadtBuildings__[name] = {x, z, r}
+      const b = window.__stadtBuildings__ && window.__stadtBuildings__[step.target];
+      if (b && Math.hypot(px - b.x, pz - b.z) <= (b.r || 3.5)) {
+        this.progressStep(step.id);
+      }
     } else if (step.kind === 'talk_npc') {
       // NPC dialog progresses step via onEnter actions in dialog tree (no proximity check)
       // Just no-op here — dialog system handles step advance
@@ -1163,11 +1333,13 @@ export const QuestSystem = {
 
   /* ─── UI PANEL HELPERS ─────────────────────────────────────────── */
 
-  showSummaryPanel(html) {
+  showSummaryPanel(html, title = null) {
     const panel = document.getElementById('summary-panel');
     const body = document.getElementById('summary-content');
     if (!panel || !body) return;
     body.innerHTML = html;
+    const titleEl = panel.querySelector('.summary-title');
+    if (titleEl) titleEl.textContent = title || 'Oma sagt:';
     panel.classList.remove('hud-hidden');
   },
   hideSummaryPanel() {

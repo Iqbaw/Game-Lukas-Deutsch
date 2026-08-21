@@ -571,60 +571,85 @@ export const DIALOGS = {
     },
   },
 
+  // Stage 3 Quest 1 — "Der Weg zur Schule von Leni"
+  // 7 panel dialog persis sesuai naskah + 2 kuis pilihan ganda (retry bila salah)
   tante_quest3_intro: {
     id:      'tante_quest3_intro',
     start:   't3_1',
     questId: 'quest_3',
     nodes: {
+      // Panel 1
       t3_1: {
         id:      't3_1',
         speaker: 'tante_maria',
         text:    'Lukas, kannst du bitte Leni von der <vocab title="Sekolah">Schule</vocab> <vocab title="menjemput">abholen</vocab>? Sie wartet schon!',
         next:    't3_2',
       },
+      // Panel 2
       t3_2: {
         id:      't3_2',
         speaker: 'tante_maria',
-        text:    'Hör gut zu: Geh <vocab title="lurus">geradeaus</vocab> diese Straße entlang. <vocab title="Di lampu merah">An der Ampel</vocab> biegst du <vocab title="kiri">links</vocab> ab.',
+        text:    'Hör gut zu: Geh zuerst <vocab title="lurus">geradeaus</vocab> bis zur <vocab title="lampu lalu lintas">Ampel</vocab>. An der Ampel siehst du eine große <vocab title="Apotek">Apotheke</vocab>. Dort nimmst du <vocab title="ke kanan">nach rechts</vocab> in die Gutenbergstraße.',
         next:    't3_3',
       },
+      // Panel 3
       t3_3: {
         id:      't3_3',
         speaker: 'tante_maria',
-        text:    'Dann gehst du noch zwei Straßen weiter. Die Grundschule ist das große rote <vocab title="Gedung">Gebäude</vocab> auf der <vocab title="kanan">rechten</vocab> Seite, neben dem <vocab title="Taman">Park</vocab>.',
-        next:    't3_quiz',
+        text:    'Geh weiter geradeaus, bis du einen <vocab title="Supermarket">Supermarkt</vocab> siehst. Direkt <vocab title="di seberang">gegenüber</vocab> dem Supermarkt liegt die Schule von Leni. Die Schule ist ein großes gelbes <vocab title="Gedung">Gebäude</vocab> <vocab title="di samping">neben</vocab> einer kleinen Bäckerei.',
+        next:    't3_q1',
       },
-      t3_quiz: {
-        id:      't3_quiz',
+      // Panel 4 — Kuis 1 (benar = 100 poin; salah boleh coba lagi)
+      t3_q1: {
+        id:      't3_q1',
         speaker: 'lukas',
         text:    'Okay, ich habe es! An der Ampel soll ich...',
         choices: [
-          { text: 'Rechts abbiegen',           correct: false, score: -10, next: 't3_wrong' },
-          { text: 'Links abbiegen',            correct: true,  score: 100, next: 't3_correct' },
-          { text: 'Geradeaus weitergehen',      correct: false, score: -10, next: 't3_wrong' },
+          { text: 'Geradeaus.',           correct: false, score: -10, next: 't3_q1_wrong' },
+          { text: 'Nach rechts nehmen.',  correct: true,  score: 100, next: 't3_q2' },
+          { text: 'Nach links nehmen.',   correct: false, score: -10, next: 't3_q1_wrong' },
         ],
       },
-      t3_correct: {
-        id:      't3_correct',
+      t3_q1_wrong: {
+        id:      't3_q1_wrong',
         speaker: 'tante_maria',
-        text:    'Genau! <vocab title="Kiri">Links</vocab> abbiegen! Du hast selektiv gut verstanden.',
+        text:    'Nein, Lukas! Hör nochmal gut zu: An der Ampel, bei der Apotheke, nimmst du nach rechts. Versuch es noch einmal!',
+        next:    't3_q1',
+      },
+      // Panel 5 — Kuis 2 (benar = 100 poin; salah boleh coba lagi)
+      t3_q2: {
+        id:      't3_q2',
+        speaker: 'lukas',
+        text:    'Die Schule von Leni ist ...',
+        choices: [
+          { text: 'Neben der Bäckerei.',    correct: true,  score: 100, next: 't3_6' },
+          { text: 'Neben dem Supermarkt.',  correct: false, score: -10, next: 't3_q2_wrong' },
+          { text: 'Neben der Apotheke.',    correct: false, score: -10, next: 't3_q2_wrong' },
+        ],
+      },
+      t3_q2_wrong: {
+        id:      't3_q2_wrong',
+        speaker: 'tante_maria',
+        text:    'Nicht ganz! Die Schule liegt gegenüber dem Supermarkt — und direkt neben der kleinen Bäckerei. Noch einmal!',
+        next:    't3_q2',
+      },
+      // Panel 6
+      t3_6: {
+        id:      't3_6',
+        speaker: 'tante_maria',
+        text:    'Genau! Du hast <vocab title="selektif">selektiv</vocab> gut verstanden.',
+        next:    't3_7',
+      },
+      // Panel 7
+      t3_7: {
+        id:      't3_7',
+        speaker: 'tante_maria',
+        text:    'Beeil dich! Leni wartet schon seit einer Stunde.',
         onEnter: [
           { type: 'progress_quest', step: 'step2_get_directions3' },
           { type: 'add_journal',    entry: 'leni_abholen_notiz' },
           { type: 'show_quest',     questId: 'quest_3' },
         ],
-        next: 't3_done',
-      },
-      t3_wrong: {
-        id:      't3_wrong',
-        speaker: 'tante_maria',
-        text:    'Nein! Hör nochmal: An der Ampel LINKS abbiegen! Verstanden?',
-        next:    't3_quiz',
-      },
-      t3_done: {
-        id:      't3_done',
-        speaker: 'tante_maria',
-        text:    'Beeil dich! Leni wartet schon seit einer Stunde.',
         end:     true,
       },
     },
@@ -635,6 +660,142 @@ export const DIALOGS = {
   // STAGE 2, QUEST 4 — "Einkaufen für Oma!" (Selektives Verstehen 2)
   // Materi: arah ke Supermarkt (entlang, rechts, gegenüber)
   // ════════════════════════════════════════════════════════════════
+
+  // ════════════════════════════════════════════════════════════════
+  // STAGE 3, QUEST 2 — "Ein Brief von Oma"
+  // Kuis setelah membaca Brief (2 pertanyaan, retry bila salah)
+  // ════════════════════════════════════════════════════════════════
+  lukas_brief_quiz: {
+    id:      'lukas_brief_quiz',
+    start:   'bq1',
+    questId: 'quest_4',
+    nodes: {
+      // Kuis 1 (benar = 100 poin)
+      bq1: {
+        id:      'bq1',
+        speaker: 'lukas',
+        text:    'Der Supermarkt EDEKA liegt ...',
+        choices: [
+          { text: 'In der Blumenstraße.',   correct: false, score: -10, next: 'bq1_wrong' },
+          { text: 'Gegenüber dem Mall.',    correct: true,  score: 100, next: 'bq2' },
+          { text: 'Neben der Bank.',        correct: false, score: -10, next: 'bq1_wrong' },
+        ],
+      },
+      bq1_wrong: {
+        id:      'bq1_wrong',
+        speaker: 'lukas',
+        text:    'Hmm, das steht anders im Brief... Ich lese noch einmal genau.',
+        next:    'bq1',
+      },
+      // Kuis 2 (benar = 100 poin)
+      bq2: {
+        id:      'bq2',
+        speaker: 'lukas',
+        text:    'An der Kreuzung siehst du ...',
+        choices: [
+          { text: 'Ein Supermarkt.',  correct: false, score: -10, next: 'bq2_wrong' },
+          { text: 'Ein Mall.',        correct: false, score: -10, next: 'bq2_wrong' },
+          { text: 'Eine Bank.',       correct: true,  score: 100, next: 'bq_done' },
+        ],
+      },
+      bq2_wrong: {
+        id:      'bq2_wrong',
+        speaker: 'lukas',
+        text:    'Moment... das war nicht richtig. Was steht im Brief an der Kreuzung?',
+        next:    'bq2',
+      },
+      bq_done: {
+        id:      'bq_done',
+        speaker: 'lukas',
+        text:    'Alles klar! Ich habe den Weg verstanden. Los geht\'s zum EDEKA!',
+        onEnter: [
+          { type: 'progress_quest', step: 'step3_read_brief' },
+          { type: 'add_journal',    entry: 'einkaufen_notiz' },
+          { type: 'show_quest',     questId: 'quest_4' },
+        ],
+        end:     true,
+      },
+    },
+  },
+
+  // ════════════════════════════════════════════════════════════════
+  // STAGE 3, QUEST 3 — "Lukas fragt nach dem Weg nach Tantes Haus"
+  // Lukas tersesat di tengah kota, bertanya arah kepada Frau Weber.
+  // Rumah TANTE ada di sebelah perpustakaan tua (alte Bibliothek).
+  // ════════════════════════════════════════════════════════════════
+  frau_weber_weg: {
+    id:      'frau_weber_weg',
+    start:   'fw1',
+    questId: 'quest_5',
+    nodes: {
+      fw1: {
+        id:      'fw1',
+        speaker: 'lukas',
+        text:    'Entschuldigung, können Sie mir helfen? Ich habe mich <vocab title="tersesat">verlaufen</vocab> und finde den Weg nicht mehr.',
+        next:    'fw2',
+      },
+      fw2: {
+        id:      'fw2',
+        speaker: 'frau_weber',
+        text:    'Natürlich. Wohin möchtest du denn?',
+        next:    'fw3',
+      },
+      fw3: {
+        id:      'fw3',
+        speaker: 'lukas',
+        text:    'Ich möchte zu meiner Tante. Ihr Haus ist direkt <vocab title="di samping">neben</vocab> der alten <vocab title="perpustakaan">Bibliothek</vocab>.',
+        next:    'fw4',
+      },
+      fw4: {
+        id:      'fw4',
+        speaker: 'frau_weber',
+        text:    'Ah, die Bibliothek kenne ich gut! Also, geh diese Straße <vocab title="lurus">geradeaus</vocab> bis zur großen <vocab title="perempatan">Kreuzung</vocab>. Dann biegst du <vocab title="ke kanan">nach rechts</vocab> ab und gehst immer weiter. Nach der <vocab title="jembatan">Brücke</vocab> siehst du einen Park. Geh <vocab title="menembus">durch</vocab> den Park hindurch. Auf der anderen Seite steht die alte Bibliothek. Das Haus deiner Tante ist gleich <vocab title="di sebelahnya">daneben</vocab>.',
+        next:    'fw5',
+      },
+      fw5: {
+        id:      'fw5',
+        speaker: 'lukas',
+        text:    'Vielen Dank, jetzt weiß ich wieder, wo ich bin!',
+        next:    'fw6',
+      },
+      fw6: {
+        id:      'fw6',
+        speaker: 'frau_weber',
+        text:    'Kein Problem. Gute Heimreise!',
+        onEnter: [
+          { type: 'progress_quest', step: 'step1_ask_frau' },
+          { type: 'add_journal',    entry: 'tantes_haus_notiz' },
+          { type: 'show_quest',     questId: 'quest_5' },
+          { type: 'add_score',      delta: 100, label: 'Nach dem Weg gefragt!' },
+        ],
+        end:     true,
+      },
+    },
+  },
+
+  // Dialog belanja di EDEKA (step5_shopping)
+  lukas_einkaufen: {
+    id:      'lukas_einkaufen',
+    start:   'ek1',
+    questId: 'quest_4',
+    nodes: {
+      ek1: {
+        id:      'ek1',
+        speaker: 'lukas',
+        text:    'Da ist der EDEKA — genau gegenüber dem Mall! Ich gehe hinein und kaufe ein: <vocab title="kentang">Kartoffeln</vocab>, <vocab title="daging">Fleisch</vocab>, <vocab title="selada">Salat</vocab> und <vocab title="mentega">Butter</vocab>...',
+        next:    'ek2',
+      },
+      ek2: {
+        id:      'ek2',
+        speaker: 'lukas',
+        text:    'Fertig! Ich habe alles eingekauft. Jetzt schnell zurück zu Oma — heute Abend kochen wir zusammen! 🛒',
+        onEnter: [
+          { type: 'progress_quest', step: 'step5_shopping' },
+        ],
+        end:     true,
+      },
+    },
+  },
 
   oma_quest4_intro: {
     id:      'oma_quest4_intro',
@@ -997,18 +1158,18 @@ Wichtige Wörter:
     body: `
 So komme ich zur Schule:
 
-1. Diese Straße <span class="prep-highlight">GERADEAUS</span> entlang gehen
-2. <span class="prep-highlight">AN DER AMPEL</span> links abbiegen
-3. Noch zwei Straßen weiter
-4. Die Grundschule ist auf der <span class="prep-highlight">RECHTEN</span> Seite
+1. Zuerst <span class="prep-highlight">geradeaus</span> bis zur Ampel
+2. <span class="prep-highlight">An der Ampel</span> (große Apotheke!) <span class="prep-highlight">nach rechts</span> in die Gutenbergstraße
+3. Weiter geradeaus bis zum Supermarkt
+4. Die Schule liegt <span class="prep-highlight">gegenüber</span> dem Supermarkt
 
-🏫 Das große ROTE Gebäude — neben dem Park!
+🏫 Das große gelbe Gebäude — neben einer kleinen Bäckerei!
 
 Nützliche Wörter:
 • geradeaus = lurus
-• links abbiegen = belok kiri
-• rechts abbiegen = belok kanan
-• an der Ecke = di tikungan
+• nach rechts = ke kanan
+• gegenüber = di seberang
+• neben = di samping
     `.trim(),
   },
 
@@ -1017,16 +1178,39 @@ Nützliche Wörter:
     subtitle: 'Für das Abendessen',
     body: `
 Was Oma braucht:
+• Kartoffeln (kentang)
 • Fleisch (daging)
-• Gemüse (sayuran)
-• Brot (roti)
+• Salat (selada)
+• Butter (mentega)
 
-Wo ist der Supermarkt?
-→ Diese Straße <span class="prep-highlight">ENTLANG</span> gehen
-→ Dann <span class="prep-highlight">RECHTS</span> an der Kirche
-→ <span class="prep-highlight">GEGENÜBER</span> dem Parkhaus
+Wo ist der Supermarkt EDEKA?
+→ Aus dem Haus <span class="prep-highlight">nach rechts</span> in die Blumenstraße
+→ <span class="prep-highlight">Geradeaus</span> bis zur Kreuzung (dort: eine Bank!)
+→ <span class="prep-highlight">Nach rechts</span> in die Wolfgangstraße
+→ EDEKA liegt <span class="prep-highlight">gegenüber</span> dem Mall
 
 Tipp: Frag einen Passanten wenn du nicht weißt wo!
+    `.trim(),
+  },
+
+  tantes_haus_notiz: {
+    title:    'Der Weg zu Tantes Haus',
+    subtitle: 'Frau Webers Wegbeschreibung',
+    body: `
+So komme ich zu Tantes Haus:
+
+1. Diese Straße <span class="prep-highlight">geradeaus</span> bis zur großen Kreuzung
+2. Dort <span class="prep-highlight">nach rechts</span> abbiegen und immer weiter
+3. Nach der <span class="prep-highlight">Brücke</span> kommt ein Park
+4. <span class="prep-highlight">Durch</span> den Park hindurch
+5. Auf der anderen Seite: die alte <span class="prep-highlight">Bibliothek</span>
+
+🏠 Tantes Haus ist gleich <span class="prep-highlight">daneben</span>!
+
+Nützliche Wörter:
+• die Brücke = jembatan
+• hindurch = menembus / melewati
+• daneben = di sebelahnya
     `.trim(),
   },
 
@@ -1092,6 +1276,7 @@ export const NPC_DEFAULT_DIALOG = {
   nachbar_hans: 'hans_hint_quest1',
   // Stage 2 NPCs
   leni:         'leni_quest3_greeting',
+  frau_weber:   'frau_weber_weg',
   passant_1:    'passant1_directions',
   passant_2:    'passant2_quest5_intro',
   passant_3:    'passant3_quest6_intro',

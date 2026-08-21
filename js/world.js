@@ -112,6 +112,15 @@ function buildGround(zoneId) {
     Game.worldGroup.add(g);
     World.ground = g;
     World.walkables = [g];
+  } else if (zoneId === ZONES.STADT) {
+    // Kota terpadu — ground rumput besar (84×64)
+    const g = new THREE.Mesh(
+      new THREE.PlaneGeometry(88, 68),
+      lpMat(MODERN_COLORS.GRASS)
+    );
+    g.rotation.x = -Math.PI/2; g.receiveShadow = true; g.name = 'ground_stadt';
+    Game.worldGroup.add(g); World.ground = g;
+    World.walkables = [g];
   } else {
     // Flat vibrant grass ground for modern city
     const g = new THREE.Mesh(
@@ -254,9 +263,9 @@ function bldg(o) {
 const _gM=new THREE.MeshStandardMaterial({color:0x88ccff,roughness:0.15,metalness:0.8});
 const _gW=new THREE.MeshStandardMaterial({color:0xffeecc,emissive:0xffcc88,emissiveIntensity:0.15,roughness:0.2,transparent:true,opacity:0.85});
 
-function makeGrundschule(x,z,r){const g=bldg({x,z,w:12,h:5,d:8,color:0xcc5533,rotY:r,name:'grundschule'});addWin(g,12,8,2,5,_gM);
+function makeGrundschule(x,z,r,color=0xcc5533,roof=0x993322){const g=bldg({x,z,w:12,h:5,d:8,color,rotY:r,name:'grundschule'});addWin(g,12,8,2,5,_gM);
   g.add(mP(new THREE.BoxGeometry(4,3,0.15),lpMat(0x222222),0,1.5,4.2));
-  g.add(mP(new THREE.BoxGeometry(12.4,0.3,8.4),lpMat(0x993322),0,5.15,0));
+  g.add(mP(new THREE.BoxGeometry(12.4,0.3,8.4),lpMat(roof),0,5.15,0));
   const s=makeSign('GRUNDSCHULE','#cc3311','#fff');s.position.set(0,4.2,4.1);g.add(s);return g;}
 
 function makeBuecherei(x,z,r){const g=bldg({x,z,w:10,h:7,d:8,color:0x4488aa,rotY:r,name:'buecherei'});addWin(g,10,8,3,4,_gM);
@@ -1060,6 +1069,18 @@ function buildHausDiorama() {
   farBridgeLanding.receiveShadow = true;
   Game.worldGroup.add(farBridgeLanding);
   World.walkables.push(farBridgeLanding);
+
+  // ── 4b. JALAN SISI KIRI RUMAH (cermin dari jalan sisi kanan/jembatan) ──
+  // Cobblestone path yang sama di sisi satunya rumah nenek, supaya kedua
+  // sisi rumah punya jalan (sesuai instruksi "nach links / nach rechts").
+  const leftPathNS = new THREE.Mesh(new THREE.BoxGeometry(2, 0.04, 8), pathMat);
+  leftPathNS.position.set(2, 0.03, 2); leftPathNS.receiveShadow = true;
+  Game.worldGroup.add(leftPathNS);
+  World.walkables.push(leftPathNS);
+  const leftPathEW = new THREE.Mesh(new THREE.BoxGeometry(8, 0.04, 2), pathMat);
+  leftPathEW.position.set(7, 0.03, 2); leftPathEW.receiveShadow = true;
+  Game.worldGroup.add(leftPathEW);
+  World.walkables.push(leftPathEW);
 
   // ── 5. WINDMILL (behind-right of house, like reference) ──
   const wmGrp = new THREE.Group();
@@ -3305,6 +3326,33 @@ function buildHausInterior() {
     });
   });
 
+  // ── BRIEF VON OMA (Stage 3 Quest 2) — surat di atas Küchentisch ──
+  // Muncul hanya SETELAH quest_3 selesai dan SEBELUM quest_4 selesai.
+  const qs = (typeof window !== 'undefined' && window.__questState__) || {};
+  if (qs['quest_3'] === 'completed' && qs['quest_4'] !== 'completed') {
+    const briefGrp = new THREE.Group();
+    // Kertas surat (putih krem) di atas meja
+    const paper = new THREE.Mesh(new THREE.BoxGeometry(0.55, 0.02, 0.4), lpMat(0xfff6e0));
+    paper.position.y = 0.92; briefGrp.add(paper);
+    // Garis tulisan halus
+    for (let i = 0; i < 3; i++) {
+      const line = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.005, 0.03), lpMat(0x8a7a5a));
+      line.position.set(0, 0.935, -0.1 + i * 0.1); briefGrp.add(line);
+    }
+    // Sprite ✉️ melayang
+    const bc = document.createElement('canvas'); bc.width = 64; bc.height = 64;
+    const bctx = bc.getContext('2d'); bctx.font = '48px serif';
+    bctx.textAlign = 'center'; bctx.textBaseline = 'middle'; bctx.fillText('✉️', 32, 32);
+    const bspr = new THREE.Sprite(new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(bc), transparent: true }));
+    bspr.scale.set(0.6, 0.6, 1); bspr.position.set(0, 1.6, 0); briefGrp.add(bspr);
+    briefGrp.position.set(-10, 0, 8.5); // di atas Küchentisch (-10, 9)
+    Game.worldGroup.add(briefGrp);
+    if (!window.__sceneTriggers__) window.__sceneTriggers__ = {};
+    window.__sceneTriggers__.brief_oma = {
+      x: -10, z: 8.5, radius: 2.0, mesh: briefGrp, triggered: false,
+    };
+  }
+
   // ═══════════════════════════════════════════════════════════════
   // DECOY/CLUTTER — Detail benda di setiap ruangan untuk MENGKECOH Lukas
   // (semua decorative, no questTarget, simple visual representations)
@@ -3619,6 +3667,377 @@ function buildHausInterior() {
 
 
 // ═══════════════════════════════════════════════════════════════════
+// 15.9  STADT — Kota terpadu (Stage 2). Satu peta besar dengan jaringan
+//       jalan ber-perempatan, ~18 gedung berpapan nama, Stadtpark,
+//       Kirche landmark, nama jalan tokoh Jerman. Hanya 1 portal.
+// ═══════════════════════════════════════════════════════════════════
+
+function buildStadt() {
+  const roadMat = lpMat(MODERN_COLORS.ASPHALT);
+  const lineMat = lpMat(MODERN_COLORS.LINE);
+  const sideMat = lpMat(MODERN_COLORS.SIDEWALK);
+
+  // Registry gedung untuk quest reach_building (diisi saat gedung dibuat)
+  window.__stadtBuildings__ = {};
+  const reg = (name, x, z, r) => { window.__stadtBuildings__[name] = { x, z, r }; };
+
+  // ── VARIAN LAYOUT PER-QUEST (Stage 3) ──
+  // Setiap quest kota punya tata letak berbeda supaya siswa TIDAK menghafal
+  // peta, melainkan membaca teks deskriptif dengan teliti.
+  //   'A' = Quest 1 (Der Weg zur Schule): Ampel, Apotheke, Gutenbergstraße,
+  //         Schule kuning gegenüber EDEKA, neben Bäckerei.
+  //   'B' = Quest 2 (Ein Brief von Oma): Blumenstraße, Wolfgangstraße,
+  //         Bank an der Kreuzung, EDEKA gegenüber dem Mall.
+  //   'C' = Quest 3 (Weg nach Tantes Haus): Kreuzung → rechts → Brücke →
+  //         Park → alte Bibliothek → Tantes Haus daneben.
+  const variant = (typeof window !== 'undefined' && window.__stadtVariant__) || 'A';
+
+  // ── HELPER: segmen jalan aspal E-W atau N-S ──
+  const roadEW = (cx, cz, len, w = 6) => {
+    const r = mP(new THREE.PlaneGeometry(len, w), roadMat, cx, 0.02, cz);
+    r.rotation.x = -Math.PI/2; r.receiveShadow = true; Game.worldGroup.add(r); World.walkables.push(r);
+    // garis tengah putus-putus
+    for (let i = -len/2 + 2; i <= len/2 - 2; i += 4) {
+      const d = mP(new THREE.PlaneGeometry(2, 0.18), lineMat, cx + i, 0.03, cz);
+      d.rotation.x = -Math.PI/2; Game.worldGroup.add(d);
+    }
+  };
+  const roadNS = (cx, cz, len, w = 6) => {
+    const r = mP(new THREE.PlaneGeometry(w, len), roadMat, cx, 0.02, cz);
+    r.rotation.x = -Math.PI/2; r.receiveShadow = true; Game.worldGroup.add(r); World.walkables.push(r);
+    for (let i = -len/2 + 2; i <= len/2 - 2; i += 4) {
+      const d = mP(new THREE.PlaneGeometry(0.18, 2), lineMat, cx, 0.03, cz + i);
+      d.rotation.x = -Math.PI/2; Game.worldGroup.add(d);
+    }
+  };
+
+  // ── HELPER: papan nama jalan (Straßenschild biru) ──
+  const streetSign = (x, z, text, rotY = 0) => {
+    const g = new THREE.Group();
+    const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 2.6, 8), lpMat(0x777777));
+    pole.position.y = 1.3; pole.castShadow = true; g.add(pole);
+    const sign = makeSign(text, '#2a5a9a', '#ffffff', 2.6, 0.55);
+    sign.position.set(0, 2.4, 0); g.add(sign);
+    const sign2 = makeSign(text, '#2a5a9a', '#ffffff', 2.6, 0.55);
+    sign2.position.set(0, 2.4, 0); sign2.rotation.y = Math.PI; g.add(sign2);
+    g.position.set(x, 0, z); g.rotation.y = rotY;
+    Game.worldGroup.add(g);
+    World.colliders.push({ type:'cylinder', x, z, radius:0.2 });
+  };
+
+  // ── HELPER: gedung generic + papan nama (untuk gedung tanpa maker) ──
+  const namedBldg = (name, x, z, w, h, d, color, rotY, signText, signBg) => {
+    const g = bldg({ x, z, w, h, d, color, rotY, name });
+    addWin(g, w, d, Math.max(1, Math.floor(h / 2.5)), Math.max(2, Math.floor(w / 2.5)), _gM);
+    // atap trim
+    g.add(mP(new THREE.BoxGeometry(w + 0.3, 0.3, d + 0.3), lpMat((color * 0.7) & 0xffffff), 0, h + 0.15, 0));
+    // papan nama di depan (+z lokal)
+    const s = makeSign(signText, signBg || '#333333', '#ffffff', Math.min(w - 0.5, 5), 0.9);
+    s.position.set(0, h - 0.8, d / 2 + 0.12); g.add(s);
+    return g;
+  };
+
+  // ═══════════════════════════════════════════════════════════════
+  // JARINGAN JALAN — 1 utama E-W + 2 vertikal (perempatan)
+  // ═══════════════════════════════════════════════════════════════
+  roadEW(0, 0, 84);        // Jalan utama E-W
+  roadNS(-24, 0, 58);      // Jalan vertikal barat (rute dari rumah Oma)
+  if (variant === 'C') {
+    // Varian C: Bachstraße berhenti di tepi kanal (jembatan menyambungnya)
+    roadNS(18, 9, 40);     // z -11..29
+  } else {
+    roadNS(18, 0, 58);     // Bachstraße penuh
+  }
+  // Jalan ke KIRI (barat) di samping gerbang rumah Oma — supaya di pintu masuk
+  // kota ada dua arah (kiri & kanan) dan instruksi "nach links/rechts" bermakna.
+  // Pendek saja (berhenti sebelum Kino di x=-31), tidak mengubah peta lain.
+  roadEW(-25, 26, 8);
+  // Trotoar sepanjang jalan utama (dipotong di perempatan)
+  for (const seg of [[-40, -25], [-23, 17], [19, 40]]) {
+    const len = seg[1] - seg[0], cx = (seg[0] + seg[1]) / 2;
+    for (const dz of [-1, 1]) {
+      const sw = mP(new THREE.BoxGeometry(len, 0.12, 1.6), sideMat, cx, 0.06, (3 + 0.8) * dz);
+      sw.receiveShadow = true; Game.worldGroup.add(sw); World.walkables.push(sw);
+    }
+  }
+  // Zebra cross di 2 perempatan
+  const zebra = (cx, cz) => {
+    for (let i = -2; i <= 2; i++) {
+      const zb = mP(new THREE.PlaneGeometry(0.5, 3), lpMat(MODERN_COLORS.CROSSWALK), cx + i * 0.9, 0.04, cz - 4.2);
+      zb.rotation.x = -Math.PI/2; Game.worldGroup.add(zb);
+      const zb2 = mP(new THREE.PlaneGeometry(0.5, 3), lpMat(MODERN_COLORS.CROSSWALK), cx + i * 0.9, 0.04, cz + 4.2);
+      zb2.rotation.x = -Math.PI/2; Game.worldGroup.add(zb2);
+    }
+  };
+  zebra(-24, 0); zebra(18, 0);
+
+  // ── HELPER: Ampel (lampu lalu lintas) ──
+  const makeAmpel = (x, z, rotY = 0) => {
+    const g = new THREE.Group();
+    const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.11, 3.6, 8), lpMat(0x444444));
+    pole.position.y = 1.8; pole.castShadow = true; g.add(pole);
+    const box = new THREE.Mesh(new THREE.BoxGeometry(0.55, 1.4, 0.35), lpMat(0x222222));
+    box.position.set(0, 3.6, 0); box.castShadow = true; g.add(box);
+    // 3 lampu: merah, kuning, hijau (hijau menyala)
+    const lamps = [[0xaa2222, 0.45, 0.12], [0xaaaa22, 0, 0.12], [0x22ff44, -0.45, 0.9]];
+    for (const [col, dy, glow] of lamps) {
+      const lamp = new THREE.Mesh(new THREE.CylinderGeometry(0.14, 0.14, 0.08, 12),
+        new THREE.MeshStandardMaterial({ color: col, emissive: col, emissiveIntensity: glow }));
+      lamp.rotation.x = Math.PI / 2; lamp.position.set(0, 3.6 + dy, 0.2); g.add(lamp);
+    }
+    g.position.set(x, 0, z); g.rotation.y = rotY;
+    Game.worldGroup.add(g);
+    World.colliders.push({ type:'cylinder', x, z, radius:0.25 });
+    return g;
+  };
+  if (variant === 'A') {
+    // Ampel di perempatan Schillerstraße × Gutenbergstraße (hanya varian A)
+    makeAmpel(-20, 4, Math.PI);   // sudut tenggara, menghadap jalan
+    makeAmpel(-28, -4, 0);        // sudut barat-laut
+    window.__stadtBuildings__['ampel'] = { x: -24, z: 0, r: 6 };
+  }
+
+  // Papan nama jalan di sudut-sudut (nama berbeda per varian)
+  const ewName = variant === 'B' ? 'Wolfgangstr.' : (variant === 'C' ? 'Hauptstr.' : 'Gutenbergstr.');
+  const nsName = variant === 'B' ? 'Blumenstr.'   : 'Schillerstr.';
+  streetSign(-30, 4, ewName, 0);
+  streetSign(6,   4, ewName, 0);
+  streetSign(-27, -8, nsName, Math.PI/2);
+  streetSign(15, -8, 'Bachstr.', Math.PI/2);
+  streetSign(-27, 10, variant === 'B' ? 'Blumenstr.' : 'Kantstr.', Math.PI/2);
+  streetSign(15, 10, 'Dürergasse', Math.PI/2);
+  streetSign(-40, -6, 'Humboldtallee', 0);
+
+  // ═══════════════════════════════════════════════════════════════
+  // GEDUNG — UTARA jalan (rotY=0, depan menghadap selatan/jalan)
+  // ═══════════════════════════════════════════════════════════════
+  namedBldg('bahnhof', -36, -16, 14, 6, 8, 0xb0857a, 0, 'BAHNHOF', '#884433');
+  reg('bahnhof', -36, -16, 8);
+  if (variant === 'A') {
+    // GRUNDSCHULE — gedung KUNING besar, tepat di seberang EDEKA
+    // ("Direkt gegenüber dem Supermarkt ... ein großes gelbes Gebäude")
+    makeGrundschule(-7, -16, 0, 0xf2c94c, 0xd4a017); reg('grundschule', -7, -16, 6);
+    // BÄCKEREI kecil — persis di samping sekolah ("neben einer kleinen Bäckerei")
+    makeBaeckerei(-17, -16, 0); reg('baeckerei', -17, -16, 5);
+    // APOTHEKE besar — di perempatan dekat Ampel
+    makeApotheke(-31, -8, 0); reg('apotheke', -31, -8, 6);
+  } else if (variant === 'B') {
+    // ── VARIAN B (Quest 2: Ein Brief von Oma) ──
+    // MALL besar — TEPAT di seberang EDEKA (-2,14), bebas dari semua jalan
+    // ("Der Supermarkt liegt gegenüber dem Mall")
+    namedBldg('mall', -7, -16, 12, 8, 10, 0xcc7788, 0, 'MALL', '#993355');
+    reg('mall', -7, -16, 7);
+    // BANK — terlihat dari Kreuzung ("An der Kreuzung siehst du eine Bank")
+    namedBldg('bank', -31, -8, 8, 6, 6, 0xaabbcc, 0, 'BANK', '#335577');
+    reg('bank', -31, -8, 6);
+    // Apotheke kembali ke timur (jauh dari rute)
+    makeApotheke(37, -13, 0); reg('apotheke', 37, -13, 6);
+  } else {
+    // ── VARIAN C (Quest 3: Weg nach Tantes Haus) ──
+    // Apotheke di barat (netral, bukan bagian rute)
+    makeApotheke(-31, -8, 0); reg('apotheke', -31, -8, 6);
+  }
+  namedBldg('rathaus', 6, -16, 12, 7, 8, 0xd8c8a8, 0, 'RATHAUS', '#8a6a2a');
+  reg('rathaus', 6, -16, 8);
+  if (variant !== 'C') {
+    // Hotel & bank timur hanya varian A/B — di varian C area ini jadi kanal+taman
+    namedBldg('hotel', 26, -17, 10, 8, 8, 0xccaa88, 0, 'HOTEL', '#775533');
+    reg('hotel', 26, -17, 7);
+  }
+  if (variant === 'A') {
+    namedBldg('bank', 37, -24, 8, 6, 7, 0xaabbcc, 0, 'BANK', '#335577');
+    reg('bank', 37, -24, 6);
+  }
+  if (variant !== 'C') {
+    // Bücherei barat-laut hanya A/B — di varian C, Bibliothek tua ada di
+    // seberang taman (bagian dari rute Quest 3)
+    makeBuecherei(-36, -25, 0); reg('buecherei', -36, -25, 7);
+  }
+
+  // ═══════════════════════════════════════════════════════════════
+  // VARIAN C — KANAL + BRÜCKE + PARK + ALTE BIBLIOTHEK + TANTES HAUS
+  // Rute: Hauptstr. → große Kreuzung (18,0) → rechts (nach Norden) →
+  // Brücke über den Kanal → Park → hindurch → Bibliothek → Tantes Haus
+  // ═══════════════════════════════════════════════════════════════
+  if (variant === 'C') {
+    // ── KANAL (air) melintang timur, z -16..-12, x 13..43 ──
+    const water = mP(new THREE.PlaneGeometry(30, 4), new THREE.MeshStandardMaterial({
+      color: 0x35b7ef, emissive: 0x0b6fa8, emissiveIntensity: 0.3, roughness: 0.2,
+    }), 28, 0.05, -14);
+    water.rotation.x = -Math.PI/2; Game.worldGroup.add(water);
+    // Tepian kanal
+    for (const dz of [-2.3, 2.3]) {
+      const bank = mP(new THREE.BoxGeometry(30, 0.25, 0.5), lpMat(0x9a9a8a), 28, 0.12, -14 + dz);
+      Game.worldGroup.add(bank);
+    }
+    // Collider air: blokir masuk kanal KECUALI celah jembatan (x 16..20)
+    World.colliders.push({ type:'box', box:new THREE.Box3(new THREE.Vector3(13, 0, -16.3), new THREE.Vector3(16.2, 2, -11.7)), name:'kanal-west' });
+    World.colliders.push({ type:'box', box:new THREE.Box3(new THREE.Vector3(19.8, 0, -16.3), new THREE.Vector3(43, 2, -11.7)), name:'kanal-ost' });
+
+    // ── BRÜCKE (jembatan kayu) di Bachstraße, melintasi kanal ──
+    const deck = mP(new THREE.BoxGeometry(3.6, 0.22, 8), lpMat(0xb08a5a), 18, 0.14, -14);
+    deck.receiveShadow = true; Game.worldGroup.add(deck); World.walkables.push(deck);
+    for (const dx of [-1.7, 1.7]) {
+      const rail = mP(new THREE.BoxGeometry(0.14, 0.5, 8), lpMat(0x8a6a42), 18 + dx, 0.62, -14);
+      Game.worldGroup.add(rail);
+      for (let pz = -17.5; pz <= -10.5; pz += 1.75) {
+        const post = mP(new THREE.BoxGeometry(0.16, 0.9, 0.16), lpMat(0x7a5a38), 18 + dx, 0.45, pz);
+        Game.worldGroup.add(post);
+      }
+    }
+    // Jalur pendek dari jembatan ke taman
+    const walk = mP(new THREE.BoxGeometry(3, 0.05, 3), lpMat(0xd4c4a0), 18, 0.03, -17.5);
+    walk.receiveShadow = true; Game.worldGroup.add(walk); World.walkables.push(walk);
+
+    // ── PARK — setelah jembatan ("Nach der Brücke siehst du einen Park") ──
+    buildStadtpark(18, -22.5, 12, 7);
+
+    // ── ALTE BIBLIOTHEK — di seberang taman ("auf der anderen Seite") ──
+    makeBuecherei(12, -30, 0); reg('buecherei', 12, -30, 6);
+    // ── TANTES HAUS — persis di sebelah Bibliothek ("gleich daneben") ──
+    const th = namedBldg('tantes_haus', 22, -30, 7, 4.5, 6, 0xe8b4b8, 0, 'TANTES HAUS', '#aa5566');
+    // atap pelana kecil supaya tampak seperti rumah
+    const roof = new THREE.Mesh(new THREE.ConeGeometry(5.2, 2.2, 4), lpMat(0x8a4533));
+    roof.rotation.y = Math.PI/4; roof.position.set(0, 5.6, 0); th.add(roof);
+    reg('tantes_haus', 22, -30, 6.5);
+  }
+
+  // ═══════════════════════════════════════════════════════════════
+  // GEDUNG — SELATAN jalan (rotY=π, depan menghadap utara/jalan)
+  // ═══════════════════════════════════════════════════════════════
+  // KIRCHE — landmark menara tinggi (pindah ke barat-daya, bekas lokasi sekolah)
+  const kirche = makeKirche(-36, 15, Math.PI);
+  { const spire = new THREE.Mesh(new THREE.ConeGeometry(1.6, 6, 6), lpMat(0x8a6a4a));
+    spire.position.set(0, 11, 4); kirche.add(spire);
+    const tower = new THREE.Mesh(new THREE.BoxGeometry(3, 6, 3), lpMat(0xbbaa88));
+    tower.position.set(0, 8, 4); kirche.add(tower);
+    const cross = new THREE.Mesh(new THREE.BoxGeometry(0.2, 1.2, 0.2), lpMat(0xffd700));
+    cross.position.set(0, 14.5, 4); kirche.add(cross);
+    const s = makeSign('KIRCHE', '#665544', '#fff'); s.position.set(0, 6, 6.1); kirche.add(s); }
+  reg('kirche', -36, 15, 7);
+  namedBldg('kino', -36, 27, 10, 6, 7, 0x554466, Math.PI, 'KINO', '#332244');
+  reg('kino', -36, 27, 5);
+  // EDEKA — JAUH dari perempatan (22 unit ke timur), bebas dari semua jalan.
+  // r=10 supaya reach_building terpicu SEBELUM player masuk portal interior
+  makeEdeka(-2, 14, Math.PI); reg('edeka', -2, 14, 10);
+  makeCafe(10, 14, Math.PI); reg('cafe', 10, 14, 5);
+  makeRestaurant(32, 16, Math.PI); reg('restaurant', 32, 16, 7);
+  makeBlumenladen(24, 15, Math.PI); reg('blumenladen', 24, 15, 5);
+  makePost(24, 26, Math.PI); reg('post', 24, 26, 6);
+  namedBldg('tourismusbuero', 34, 26, 8, 4.5, 6, 0x66aacc, Math.PI, 'TOURISMUS', '#2266aa');
+  reg('tourismusbuero', 34, 26, 6);
+
+  // ── EISSTAND (kios kecil, "neben dem Café") ──
+  {
+    const g = new THREE.Group();
+    const body = new THREE.Mesh(new THREE.BoxGeometry(2.4, 2.2, 2.0), lpMat(0xffd0e0));
+    body.position.y = 1.1; body.castShadow = true; g.add(body);
+    const roof = new THREE.Mesh(new THREE.CylinderGeometry(1.7, 1.7, 0.3, 8, 1, false, 0, Math.PI), lpMat(0xdd4477));
+    roof.rotation.z = Math.PI/2; roof.position.set(0, 2.4, 1.0); g.add(roof);
+    // payung
+    const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 3, 6), lpMat(0x8a8a8a));
+    pole.position.set(1.6, 1.5, 0); g.add(pole);
+    const umbrella = new THREE.Mesh(new THREE.ConeGeometry(1.5, 0.8, 8), lpMat(0xff6688));
+    umbrella.position.set(1.6, 3.1, 0); g.add(umbrella);
+    const s = makeSign('EIS', '#ff4488', '#fff', 1.6, 0.7); s.position.set(0, 2.0, 1.02); g.add(s);
+    g.position.set(12, 20, 0);
+    Game.worldGroup.add(g);
+    World.colliders.push({ type:'box', box:new THREE.Box3(new THREE.Vector3(11, 0, 19), new THREE.Vector3(13, 2.4, 21)), name:'eisstand' });
+    reg('eisstand', 12, 20, 4);
+    // (Item Eis lama DIHAPUS — Quest 5 sekarang "Weg nach Tantes Haus",
+    //  Eisstand tinggal sebagai dekorasi kota.)
+  }
+
+  // ═══════════════════════════════════════════════════════════════
+  // STADTPARK + MARKTPLATZ — pusat kota (dekat pintu masuk selatan)
+  // ═══════════════════════════════════════════════════════════════
+  buildStadtpark(0, 24, 16, 9);
+  reg('stadtpark', 0, 24, 8);
+  reg('marktplatz', 0, 24, 8);
+
+  // ── Pohon jalanan (sedikit, di trotoar; hindari jalan) ──
+  const trunkMat = lpMat(0x5a3a1f), leafMat = lpMat(0x3a7a2c);
+  const treeSpots = [[-30,6],[6,6],[30,6],[34,-6],[8,-6],[30,-6],[-10,10],[40,-14]]
+    .filter(([tx,tz]) => !(variant === 'C' && tz < -10 && tx > 12)); // hindari kanal/taman C
+  treeSpots.forEach(([tx,tz]) => {
+    const t = new THREE.Group();
+    const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.16,0.22,2.2,6), trunkMat);
+    trunk.position.y = 1.1; trunk.castShadow = true; t.add(trunk);
+    const leaf = new THREE.Mesh(new THREE.IcosahedronGeometry(1.1,1), leafMat);
+    leaf.position.y = 2.6; leaf.castShadow = true; t.add(leaf);
+    t.position.set(tx, 0, tz); Game.worldGroup.add(t);
+    World.colliders.push({ type:'cylinder', x:tx, z:tz, radius:0.35 });
+  });
+
+  // ── Pintu EDEKA glow + tanda masuk ──
+  {
+    const glow = mP(new THREE.PlaneGeometry(2.4, 0.5), new THREE.MeshStandardMaterial({
+      color:0x44cc44, emissive:0x22aa22, emissiveIntensity:0.7, transparent:true, opacity:0.85
+    }), -2, 0.05, 7.5);
+    glow.rotation.x = -Math.PI/2; Game.worldGroup.add(glow);
+  }
+
+  if (CONFIG.DEBUG) console.log('[world] buildStadt done — buildings:', Object.keys(window.__stadtBuildings__).length);
+}
+
+// Stadtpark — taman kota: rumput, air mancur, bangku, pohon, bunga, jalur
+function buildStadtpark(cx, cz, w, d) {
+  const lp = (c) => lpMat(c);
+  // rumput
+  const grass = mP(new THREE.PlaneGeometry(w, d), new THREE.MeshStandardMaterial({ color:0x6ab04a, roughness:0.95 }), cx, 0.03, cz);
+  grass.rotation.x = -Math.PI/2; grass.receiveShadow = true; Game.worldGroup.add(grass); World.walkables.push(grass);
+  // jalur setapak salib (beige)
+  const pathH = mP(new THREE.PlaneGeometry(w, 1.6), lp(0xd4c4a0), cx, 0.04, cz); pathH.rotation.x = -Math.PI/2; Game.worldGroup.add(pathH);
+  const pathV = mP(new THREE.PlaneGeometry(1.6, d), lp(0xd4c4a0), cx, 0.04, cz); pathV.rotation.x = -Math.PI/2; Game.worldGroup.add(pathV);
+  // air mancur (Brunnen)
+  const basin = new THREE.Mesh(new THREE.CylinderGeometry(1.5, 1.7, 0.5, 16), lp(0xbbbbbb));
+  basin.position.set(cx, 0.25, cz); basin.castShadow = true; Game.worldGroup.add(basin);
+  const water = new THREE.Mesh(new THREE.CylinderGeometry(1.25, 1.25, 0.1, 16), new THREE.MeshStandardMaterial({ color:0x44aadd, emissive:0x2288bb, emissiveIntensity:0.3 }));
+  water.position.set(cx, 0.5, cz); Game.worldGroup.add(water);
+  const spout = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.15, 1.2, 8), lp(0xcccccc));
+  spout.position.set(cx, 1.1, cz); Game.worldGroup.add(spout);
+  const drop = new THREE.Mesh(new THREE.SphereGeometry(0.35, 8, 6), new THREE.MeshStandardMaterial({ color:0x66ccee, emissive:0x3399cc, emissiveIntensity:0.4, transparent:true, opacity:0.8 }));
+  drop.position.set(cx, 1.9, cz); Game.worldGroup.add(drop);
+  World.colliders.push({ type:'cylinder', x:cx, z:cz, radius:1.7 });
+  // 4 bangku mengelilingi
+  [[cx, cz - 3, 0], [cx, cz + 3, 0], [cx - 4, cz, Math.PI/2], [cx + 4, cz, Math.PI/2]].forEach(([bx, bz, rot]) => {
+    const b = new THREE.Group();
+    const seat = new THREE.Mesh(new THREE.BoxGeometry(1.8, 0.12, 0.5), lp(0x8a5a2a)); seat.position.y = 0.45; b.add(seat);
+    const back = new THREE.Mesh(new THREE.BoxGeometry(1.8, 0.5, 0.1), lp(0x8a5a2a)); back.position.set(0, 0.7, -0.2); b.add(back);
+    b.position.set(bx, 0, bz); b.rotation.y = rot; Game.worldGroup.add(b);
+    World.colliders.push({ type:'cylinder', x:bx, z:bz, radius:0.5 });
+  });
+  // pohon di 4 sudut taman
+  const trunkMat = lp(0x5a3a1f), leafMat = lp(0x3a8a3a);
+  [[-1, -1], [1, -1], [-1, 1], [1, 1]].forEach(([sx, sz]) => {
+    const tx = cx + sx * (w/2 - 1.2), tz = cz + sz * (d/2 - 1.2);
+    const t = new THREE.Group();
+    const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.14, 0.2, 2, 6), trunkMat); trunk.position.y = 1; t.add(trunk);
+    for (let l = 0; l < 3; l++) {
+      const cone = new THREE.Mesh(new THREE.ConeGeometry(1.1 - l*0.28, 1.2, 6), lp([0x2d7a1e, 0x3a9a2c, 0x2a6a18][l]));
+      cone.position.y = 1.9 + l*0.7; cone.castShadow = true; t.add(cone);
+    }
+    t.position.set(tx, 0, tz); Game.worldGroup.add(t);
+    World.colliders.push({ type:'cylinder', x:tx, z:tz, radius:0.3 });
+  });
+  // petak bunga (patch warna) di tepi
+  [[cx - w/2 + 1, cz], [cx + w/2 - 1, cz]].forEach(([fx, fz], i) => {
+    const col = [0xff5577, 0xffcc33][i % 2];
+    const bed = mP(new THREE.PlaneGeometry(1.4, 2.2), lp(0x5a8a3a), fx, 0.04, fz); bed.rotation.x = -Math.PI/2; Game.worldGroup.add(bed);
+    for (let k = 0; k < 6; k++) {
+      const fl = new THREE.Mesh(new THREE.SphereGeometry(0.12, 5, 4), lp(col));
+      fl.position.set(fx + (Math.random()-0.5), 0.15, fz + (Math.random()-0.5)*1.6); Game.worldGroup.add(fl);
+    }
+  });
+  // pagar hedge rendah keliling
+  const hedgeMat = lp(0x2f6a2a);
+  const hedge = (hx, hz, hw, hd) => { const m = mP(new THREE.BoxGeometry(hw, 0.5, hd), hedgeMat, hx, 0.25, hz); Game.worldGroup.add(m); };
+  hedge(cx, cz - d/2, w, 0.3); hedge(cx, cz + d/2, w, 0.3);
+  hedge(cx - w/2, cz, 0.3, d); hedge(cx + w/2, cz, 0.3, d);
+}
+
+
+// ═══════════════════════════════════════════════════════════════════
 // 16. API PUBLIK
 // ═══════════════════════════════════════════════════════════════════
 
@@ -3627,7 +4046,9 @@ export function buildZone(zoneId, def) {
 
   buildGround(zoneId);
 
-  if (zoneId === ZONES.HAUS) {
+  if (zoneId === ZONES.STADT) {
+    buildStadt();
+  } else if (zoneId === ZONES.HAUS) {
     buildMainHouse();
     buildHausDiorama();
   } else if (zoneId === ZONES.HAUS_INTERIOR) {

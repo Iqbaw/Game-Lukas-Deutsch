@@ -153,11 +153,11 @@ export const QUESTS = {
   // ────────────────────────────────────────────────────────────────
   quest_3: {
     id:           'quest_3',
-    title:        'Leni abholen!',
+    title:        'Der Weg zur Schule von Leni',
     subtitle:     'Jemput Leni di Sekolah',
-    description:  'Tante menyuruh Lukas menjemput Leni di sekolah. Petunjuk jalannya tidak terlalu jelas — dengarkan baik-baik dan pahami arahnya!',
+    description:  'Tante menyuruh Lukas menjemput Leni di sekolah. Tante hanya memberikan patokan — dengarkan baik-baik dan ikuti arahnya!',
     giver:        'tante_maria',
-    zone:         ZONES.SCHULE,
+    zone:         ZONES.STADT,
     prerequisites:['quest_2'],
 
     steps: [
@@ -174,9 +174,9 @@ export const QUESTS = {
       },
       {
         id:          'step3_go_schule',
-        kind:        'reach_zone',
-        target:      ZONES.SCHULE,
-        description: 'Geh zur Schule',
+        kind:        'reach_building',   // gedung Grundschule di kota STADT
+        target:      'grundschule',
+        description: 'Folge Tantes Weg zum großen gelben Gebäude',
       },
       {
         id:          'step4_meet_leni',
@@ -193,10 +193,10 @@ export const QUESTS = {
     ],
 
     reward: {
-      score:         450,
+      score:         1000,
       journal_entry: 'leni_abholen_notiz',
-      vocab_unlock:  ['geradeaus', 'links abbiegen', 'rechts abbiegen',
-                      'an der Ampel', 'an der Ecke', 'die Schule',
+      vocab_unlock:  ['geradeaus', 'nach rechts', 'an der Ampel',
+                      'gegenüber', 'neben', 'die Schule',
                       'das Gebäude', 'abholen'],
     },
 
@@ -206,59 +206,60 @@ export const QUESTS = {
 
 
   // ────────────────────────────────────────────────────────────────
-  // QUEST 4 — "Einkaufen für Oma!" (Stage 2 — Selektif 2)
-  // Lukas lupa tanya di mana Supermarkt → tanya orang yang lewat
+  // QUEST 4 — Stage 3 Quest 2: "Ein Brief von Oma"
+  // Brief di atas meja makan: Oma minta belanja di EDEKA. Layout kota
+  // VARIAN B (Blumenstraße, Wolfgangstraße, Bank, Mall) — beda dari Q1!
   // ────────────────────────────────────────────────────────────────
   quest_4: {
     id:           'quest_4',
-    title:        'Einkaufen für Oma!',
-    subtitle:     'Belanja untuk Oma',
-    description:  'Oma minta Lukas belanja bahan makan malam di Supermarkt. Tapi Lukas lupa tanya di mana letaknya! Tanya Passant di jalan.',
+    title:        'Ein Brief von Oma',
+    subtitle:     'Surat dari Oma',
+    description:  'Di atas meja makan ada surat dari Oma: Lukas diminta belanja bahan makan malam di Supermarkt EDEKA. Baca rutenya baik-baik!',
     giver:        'oma_helga',
-    zone:         ZONES.SUPERMARKET_INTERIOR,
+    zone:         ZONES.STADT,
     prerequisites:['quest_3'],
 
     steps: [
       {
-        id:          'step1_talk_oma',
-        kind:        'talk_npc',
-        target:      'oma_helga',
-        description: 'Hör was Oma fürs Abendessen braucht',
-      },
-      {
-        id:          'step2_ask_passant',
-        kind:        'talk_npc',
-        target:      'passant_1',
-        description: 'Frag den Passanten nach dem Weg zum Supermarkt',
-      },
-      {
-        id:          'step3_go_supermarkt',
+        id:          'step1_enter_house',
         kind:        'reach_zone',
-        target:      ZONES.SUPERMARKET_INTERIOR,
-        description: 'Geh zum Supermarkt',
+        target:      ZONES.HAUS_INTERIOR,
+        description: 'Geh ins Haus hinein',
       },
       {
-        id:          'step4_buy_items',
-        kind:        'collect_auto',
-        target:      ['fleisch', 'gemuese', 'brot'],
-        description: 'Kaufe Fleisch, Gemüse und Brot',
+        id:          'step2_find_brief',
+        kind:        'reach_trigger',
+        target:      'brief_oma',
+        description: 'Finde den Brief von Oma auf dem Esstisch',
       },
       {
-        id:          'step5_return_oma',
-        kind:        'reach_zone',
-        target:      ZONES.HAUS,
-        description: 'Bring die Einkäufe zurück zu Omas Haus',
+        id:          'step3_read_brief',
+        kind:        'auto',
+        description: 'Lies Omas Brief genau',
+      },
+      {
+        id:          'step4_go_edeka',
+        kind:        'reach_building',
+        target:      'edeka',
+        description: 'Folge dem Weg aus dem Brief zum EDEKA',
+      },
+      {
+        id:          'step5_shopping',
+        kind:        'auto',
+        description: 'Kauf ein: Kartoffeln, Fleisch, Salat und Butter',
       },
     ],
 
     reward: {
-      score:         500,
+      score:         1000,
       journal_entry: 'einkaufen_notiz',
-      vocab_unlock:  ['der Supermarkt', 'das Fleisch', 'das Gemüse', 'das Brot',
-                      'entlang', 'gegenüber', 'die Kreuzung', 'die Straße'],
+      vocab_unlock:  ['der Brief', 'der Supermarkt', 'die Kreuzung', 'gegenüber',
+                      'nach rechts', 'die Kartoffeln', 'das Fleisch', 'der Salat',
+                      'die Butter'],
     },
 
-    intro_dialog: 'oma_quest4_intro',
+    // intro_dialog TIDAK ADA — quest dimulai dari panel instruksi kiri,
+    // dialog kuis dibuka setelah Brief dibaca (step3 auto).
   },
 
 
@@ -268,36 +269,37 @@ export const QUESTS = {
   // ────────────────────────────────────────────────────────────────
   quest_5: {
     id:           'quest_5',
-    title:        'Eis kaufen!',
-    subtitle:     'Beli Es Krim',
-    description:  'Setelah belanja, Lukas sangat ingin es krim! Tapi tidak tahu di mana toko es krimnya. Tanya orang yang lewat!',
-    giver:        'passant_2',
-    zone:         ZONES.SUPERMARKT,
+    title:        'Lukas fragt nach dem Weg nach Tantes Haus',
+    subtitle:     'Menanyakan Jalan ke Rumah Tante',
+    description:  'Lukas ingin mampir ke rumah Tante untuk memberikan sesuatu — tapi ia lupa jalannya! Tanya orang asing di tengah kota. Layout kota VARIAN C (jembatan, taman, perpustakaan tua).',
+    giver:        'frau_weber',
+    zone:         ZONES.STADT,
     prerequisites:['quest_4'],
 
     steps: [
       {
-        id:          'step1_ask_eisstand',
+        id:          'step1_ask_frau',
         kind:        'talk_npc',
-        target:      'passant_2',
-        description: 'Frag nach dem Eisstand (selektiv)',
+        target:      'frau_weber',
+        description: 'Frag die Frau nach dem Weg (E drücken)',
       },
       {
-        id:          'step2_find_eis',
-        kind:        'collect_auto',
-        target:      ['eis'],
-        description: 'Finde den Eisstand und kauf ein Eis',
+        id:          'step2_go_tantes_haus',
+        kind:        'reach_building',
+        target:      'tantes_haus',
+        description: 'Folge dem Weg: Kreuzung → rechts → Brücke → Park → Bibliothek',
       },
     ],
 
     reward: {
-      score:         300,
-      journal_entry: 'eis_notiz',
-      vocab_unlock:  ['das Eis', 'der Eisstand', 'neben', 'zwischen',
-                      'der Blumenladen', 'das Café', 'die Bäckerei'],
+      score:         1000,
+      journal_entry: 'tantes_haus_notiz',
+      vocab_unlock:  ['die Brücke', 'der Park', 'die Bibliothek', 'die Kreuzung',
+                      'geradeaus', 'nach rechts', 'hindurch', 'daneben'],
     },
 
-    intro_dialog: 'passant2_quest5_intro',
+    // intro_dialog TIDAK ADA — dialog dibuka saat player bicara dengan
+    // Frau Weber (talk_npc step1), bukan otomatis.
   },
 
 
@@ -311,7 +313,7 @@ export const QUESTS = {
     subtitle:     'Di Mana Aku Sekarang?',
     description:  'Lukas sudah bepergian terlalu jauh dan tersesat! Tanya orang di sekitar untuk menemukan jalan pulang ke rumah Oma.',
     giver:        'passant_3',
-    zone:         ZONES.HAUS,
+    zone:         ZONES.STADT,
     prerequisites:['quest_5'],
 
     steps: [
@@ -350,14 +352,14 @@ export const QUESTS = {
     subtitle:     'Ke Bioskop!',
     description:  'Setelah makan malam, Lukas ingin nonton bioskop. Tapi dia nyasar ke Stadtpark! Cepat tanya orang asing sebelum filmnya mulai!',
     giver:        'passant_4',
-    zone:         ZONES.HAFEN,
+    zone:         ZONES.STADT,
     prerequisites:['quest_6'],
 
     steps: [
       {
         id:          'step1_arrive_stadtpark',
-        kind:        'reach_zone',
-        target:      ZONES.STADTPARK,
+        kind:        'reach_building',   // taman kota di STADT
+        target:      'stadtpark',
         description: 'Du bist im Stadtpark gelandet...',
       },
       {
@@ -368,8 +370,8 @@ export const QUESTS = {
       },
       {
         id:          'step3_find_kino',
-        kind:        'reach_zone',
-        target:      ZONES.HAFEN,
+        kind:        'reach_building',   // gedung Kino di STADT
+        target:      'kino',
         description: 'Beeil dich! Geh schnell zum Kino!',
       },
     ],

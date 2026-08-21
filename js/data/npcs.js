@@ -214,8 +214,9 @@ export const NPC_DATA = [
     id:        'leni',
     name:      'Leni',
     title:     'Cousine',
-    zone:      ZONES.SCHULE,           // di sekolah saat Quest 3 (Stage 2)
-    spawn:     { x: 0, z: 0, facing: 0 },
+    zone:      ZONES.STADT,            // di depan Grundschule kuning (kota, Quest 3)
+    spawn:     { x: -7, z: -10, facing: 0 }, // menghadap jalan (selatan)
+    hideAfterQuest: 'quest_3',         // setelah Q3 selesai, Leni tidak spawn lagi di kota
     greeting:  'Lukas! Du bist gekommen! Endlich!',
     hasQuest:  true,
     questId:   'quest_3',
@@ -288,13 +289,39 @@ export const NPC_DATA = [
   // Muncul di zona-zona luar untuk quest navigasi
   // ════════════════════════════════════════════════════════════════
 
+  // ── FRAU WEBER — Orang asing yang ditanya arah (Stage 3 Quest 3) ──
+  // Lukas tersesat di tengah kota dan bertanya jalan ke rumah Tante.
+  {
+    id:        'frau_weber',
+    name:      'Frau Weber',
+    title:     'Passantin',
+    zone:      ZONES.STADT,
+    spawn:     { x: 33, z: 2, facing: -Math.PI / 2 }, // tengah kota, dekat spawn Q5
+    greeting:  'Ja? Kann ich dir helfen?',
+    hasQuest:  true,
+    questId:   'quest_5',
+    hideAfterQuest: 'quest_5',
+
+    body: {
+      height:      0.99,
+      bodyColor:   0x8a5a8a,           // mantel ungu
+      hasApron:    false,
+      hairColor:   NPC_COLORS.HAIR_GREY,
+      hairStyle:   'bun',
+      skinColor:   NPC_COLORS.SKIN_LIGHT,
+      pantsColor:  NPC_COLORS.PANTS_GREY,
+      shoesColor:  NPC_COLORS.SHOES_DARK,
+      hasGlasses:  true,
+    },
+  },
+
   // ── 8. PASSANT 1 — Tanya arah ke Supermarkt (Quest 4) ─────────
   {
     id:        'passant_1',
     name:      'Herr Bauer',
     title:     'Passant',
-    zone:      ZONES.HAUS,             // di jalan dekat rumah Oma
-    spawn:     { x: -3, z: 10, facing: Math.PI / 2 },
+    zone:      ZONES.STADT,            // di kota, dekat pintu masuk (Quest 4)
+    spawn:     { x: 6, z: 8, facing: Math.PI },
     level:     4,                       // muncul saat quest_4 aktif
     greeting:  'Guten Tag! Kann ich Ihnen helfen?',
     hasQuest:  true,
@@ -318,8 +345,8 @@ export const NPC_DATA = [
     id:        'passant_2',
     name:      'Frau Schmidt',
     title:     'Passantin',
-    zone:      ZONES.SUPERMARKT,       // di area supermarket
-    spawn:     { x: 2, z: 8, facing: Math.PI },
+    zone:      ZONES.STADT,            // dekat Eisstand (Quest 5)
+    spawn:     { x: 16, z: 20, facing: -Math.PI / 2 },
     level:     5,
     greeting:  'Ja bitte? Wie kann ich helfen?',
     hasQuest:  true,
@@ -343,8 +370,8 @@ export const NPC_DATA = [
     id:        'passant_3',
     name:      'Herr Fischer',
     title:     'Passant',
-    zone:      ZONES.WOCHENMARKT,      // Lukas tersesat sampai ke sini
-    spawn:     { x: 0, z: 5, facing: 0 },
+    zone:      ZONES.STADT,            // di kota (Lukas tersesat, Quest 6)
+    spawn:     { x: 30, z: 8, facing: Math.PI },
     level:     6,
     greeting:  'Hallo! Sie sehen verloren aus...',
     hasQuest:  true,
@@ -369,8 +396,8 @@ export const NPC_DATA = [
     id:        'passant_4',
     name:      'Frau Müller',
     title:     'Passantin',
-    zone:      ZONES.STADTPARK,        // Lukas nyasar di taman
-    spawn:     { x: 0, z: 3, facing: -Math.PI / 2 },
+    zone:      ZONES.STADT,            // dekat Stadtpark (Quest 7)
+    spawn:     { x: 7, z: 24, facing: -Math.PI / 2 },
     level:     7,
     greeting:  'Hallo! Ich kenne diesen Park sehr gut.',
     hasQuest:  true,
@@ -393,7 +420,11 @@ export const NPC_DATA = [
 
 /** Helper: ambil semua NPC di zona tertentu. */
 export function getNPCsInZone(zoneId) {
-  return NPC_DATA.filter(npc => npc.zone === zoneId);
+  const qs = (typeof window !== 'undefined' && window.__questState__) || {};
+  return NPC_DATA.filter(npc =>
+    npc.zone === zoneId &&
+    !(npc.hideAfterQuest && qs[npc.hideAfterQuest] === 'completed')
+  );
 }
 
 /** Helper: ambil 1 NPC by id. */
