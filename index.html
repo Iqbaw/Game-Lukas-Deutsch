@@ -136,12 +136,9 @@
         💡 Tipp: Mit <kbd>WASD</kbd> bewegen, mit <kbd>E</kbd> sprechen, mit <kbd>TAB</kbd> Reisetagebuch öffnen.
       </p>
 
-      <!-- Tombol mulai (muncul setelah loading 100%) -->
-      <button id="start-button" class="start-button" type="button" aria-hidden="true">
-        <span class="start-button-icon">▶</span>
-        <span class="start-button-text">Abenteuer beginnen</span>
-        <span class="start-button-shine"></span>
-      </button>
+      <!-- Tombol "Abenteuer beginnen" sekarang ada di MAIN MENU
+           (#main-menu, dirender oleh js/mainmenu.js). Loading screen
+           otomatis fade ke main menu saat progress 100%. -->
     </div>
 
     <!-- Footer skripsi -->
@@ -149,6 +146,12 @@
       <p>Lernspiel basierend auf der Skripsi von Yemima · CTL-Ansatz · Klasse XI SMA</p>
     </div>
   </div>
+
+  <!-- ═══════════════════════════════════════════════════════════
+       MAIN MENU — cozy countryside, dirender oleh js/mainmenu.js
+       Muncul setelah loading selesai, sebelum story intro.
+       ═══════════════════════════════════════════════════════════ -->
+  <div id="main-menu" class="main-menu" role="dialog" aria-label="Hauptmenü" aria-hidden="true" hidden></div>
 
   <!-- ═══════════════════════════════════════════════════════════
        STORY INTRO — Cinematic intro before gameplay
@@ -407,7 +410,6 @@
     const $progressFill = document.getElementById('loading-progress-fill');
     const $progressPct  = document.getElementById('loading-percent');
     const $progressStat = document.getElementById('loading-status');
-    const $startBtn     = document.getElementById('start-button');
     const $loadingTip   = document.getElementById('loading-tip');
     const $loadingScr   = document.getElementById('loading-screen');
     const $gameContain  = document.getElementById('game-container');
@@ -453,12 +455,39 @@
         if (msg) $progressStat.textContent = msg.text;
       }
 
-      if (pct >= 100) showStartButton();
+      if (pct >= 100) revealMainMenu();
     }
 
-    function showStartButton() {
-      $startBtn.setAttribute('aria-hidden', 'false');
-      $startBtn.classList.add('start-button-ready');
+    // === LOADING → MAIN MENU ===
+    let menuRevealed = false;
+
+    function revealMainMenu() {
+      if (menuRevealed) return;
+      menuRevealed = true;
+      clearInterval(tipTimer);
+
+      const showMenu = () => {
+        $loadingScr.style.display = 'none';
+        if (window.LukasMainMenu) {
+          window.LukasMainMenu.open();
+        } else {
+          // Fallback: Menü-Modul konnte nicht laden → direkt ins Story-Intro
+          openStoryIntro();
+        }
+      };
+
+      // Kurz "100% / Bereit!" zeigen, dann sanft ins Menü überblenden
+      setTimeout(() => {
+        if (window.gsap) {
+          window.gsap.to($loadingScr, {
+            opacity: 0, duration: 0.6, ease: 'power2.inOut', onComplete: showMenu
+          });
+        } else {
+          $loadingScr.style.transition = 'opacity 0.6s ease';
+          $loadingScr.style.opacity = '0';
+          setTimeout(showMenu, 600);
+        }
+      }, 700);
     }
 
     // Listen ke event dari main.js (akan dipakai mulai Step 3)
@@ -470,26 +499,18 @@
       setProgress(100);
     });
 
-    // === START BUTTON: fade out loading screen, masuk story intro ===
-    $startBtn.addEventListener('click', () => {
-      clearInterval(tipTimer);
+    // === MAIN MENU: "Abenteuer beginnen" → story intro ===
+    // js/mainmenu.js feuert 'menu:start' und schließt sich selbst.
+    let storyIntroOpened = false;
 
-      const finishLoading = () => {
-        $loadingScr.style.display = 'none';
-        document.getElementById('story-intro').style.display = 'flex';
-        initStoryIntro();
-      };
+    function openStoryIntro() {
+      if (storyIntroOpened) return;
+      storyIntroOpened = true;
+      document.getElementById('story-intro').style.display = 'flex';
+      initStoryIntro();
+    }
 
-      if (window.gsap) {
-        window.gsap.to($loadingScr, {
-          opacity: 0, duration: 0.8, ease: 'power2.inOut', onComplete: finishLoading
-        });
-      } else {
-        $loadingScr.style.transition = 'opacity 0.8s ease';
-        $loadingScr.style.opacity = '0';
-        setTimeout(finishLoading, 800);
-      }
-    });
+    window.addEventListener('menu:start', openStoryIntro);
 
     // === STORY INTRO LOGIC ===
     function initStoryIntro() {
@@ -549,6 +570,9 @@
       $progressStat.style.color = '#ff6b35';
     }
   </script>
+
+  <!-- Main menu (berdiri sendiri — tetap tampil walau Three.js gagal) -->
+  <script type="module" src="js/mainmenu.js"></script>
 
   <!-- Entry point Three.js -->
   <script type="module" src="js/main.js"></script>

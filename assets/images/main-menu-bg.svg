@@ -1,0 +1,125 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1920 1080" width="1920" height="1080" preserveAspectRatio="xMidYMid slice" role="img" aria-label="Low-Poly Landschaft — Hügel, Fluss, Windmühle und Häuschen">
+  <!-- ═══════════════════════════════════════════════════════════════
+       main-menu-bg.svg — FALLBACK-Kulisse für das Hauptmenü.
+       Wird nur gezeigt, wenn assets/images/main-menu-bg.webp fehlt.
+       Palette identisch mit dem Menü: Creme, Waldgrün, Salbei,
+       Tiefblau und warmes Gelb.
+       ═══════════════════════════════════════════════════════════ -->
+  <defs>
+    <linearGradient id="mmSky" x1="0" y1="0" x2="0.16" y2="1">
+      <stop offset="0%"   stop-color="#8ec8d6"/>
+      <stop offset="36%"  stop-color="#c3e0d4"/>
+      <stop offset="68%"  stop-color="#e8f0cc"/>
+      <stop offset="100%" stop-color="#f8f2d6"/>
+    </linearGradient>
+    <radialGradient id="mmSun" cx="0.62" cy="0.24" r="0.55">
+      <stop offset="0%"   stop-color="#fff8d8" stop-opacity="0.95"/>
+      <stop offset="45%"  stop-color="#ffeeb0" stop-opacity="0.42"/>
+      <stop offset="100%" stop-color="#ffeeb0" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="mmWater" x1="0" y1="0" x2="0.3" y2="1">
+      <stop offset="0%"   stop-color="#7fd6e0"/>
+      <stop offset="60%"  stop-color="#42a9c4"/>
+      <stop offset="100%" stop-color="#2c7fa5"/>
+    </linearGradient>
+    <linearGradient id="mmFore" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%"   stop-color="#5e9c4a"/>
+      <stop offset="100%" stop-color="#2f5f34"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Himmel + Sonnenlicht -->
+  <rect width="1920" height="1080" fill="url(#mmSky)"/>
+  <rect width="1920" height="1080" fill="url(#mmSun)"/>
+
+  <!-- Ferne Hügel (Salbei) -->
+  <polygon points="0,470 210,362 430,452 610,392 820,470 820,620 0,620" fill="#8fbd85" opacity="0.85"/>
+  <polygon points="700,452 900,352 1120,436 1330,368 1560,452 1920,392 1920,620 700,620" fill="#7db276" opacity="0.9"/>
+
+  <!-- Mittlere Hügelkette (facettiert) -->
+  <polygon points="0,556 260,452 520,540 760,470 980,560 980,760 0,760" fill="#6da55f"/>
+  <polygon points="260,452 520,540 380,560" fill="#7cb46b" opacity="0.7"/>
+  <polygon points="900,540 1160,436 1420,528 1660,452 1920,536 1920,760 900,760" fill="#5f9a55"/>
+  <polygon points="1160,436 1420,528 1280,552" fill="#74ab63" opacity="0.65"/>
+
+  <!-- Windmühle auf dem Hügel (links) -->
+  <g transform="translate(430 300)">
+    <polygon points="0,160 44,160 34,36 10,36" fill="#c9a06a"/>
+    <polygon points="10,36 34,36 22,0" fill="#8a6440"/>
+    <polygon points="0,160 22,148 44,160 44,172 0,172" fill="#8a6440"/>
+    <g stroke="#e6d6b4" stroke-width="7" stroke-linecap="round">
+      <line x1="22" y1="42" x2="-56" y2="-14"/>
+      <line x1="22" y1="42" x2="100" y2="98"/>
+      <line x1="22" y1="42" x2="-34" y2="120"/>
+      <line x1="22" y1="42" x2="78" y2="-36"/>
+    </g>
+    <circle cx="22" cy="42" r="8" fill="#f2e2bd"/>
+  </g>
+
+  <!-- Häuschen mit Giebeldach (rechts) -->
+  <g transform="translate(1310 402)">
+    <polygon points="0,120 190,120 190,250 0,250" fill="#efe3c8"/>
+    <polygon points="-24,124 95,10 214,124" fill="#8d6a48"/>
+    <polygon points="95,10 214,124 190,124 95,38" fill="#6f5136"/>
+    <rect x="52" y="160" width="42" height="46" fill="#7b5a3c"/>
+    <rect x="120" y="160" width="42" height="46" fill="#7b5a3c"/>
+    <rect x="76" y="70" width="36" height="36" fill="#c9a86f"/>
+  </g>
+
+  <!-- Fluss -->
+  <path d="M0,806 C230,742 360,714 540,700 C742,684 880,664 1020,616 C1120,582 1180,566 1260,560 L1300,610 C1206,624 1140,646 1046,684 C900,742 760,762 566,784 C382,804 214,846 0,904 Z" fill="url(#mmWater)"/>
+  <path d="M120,812 C300,772 470,748 640,730" stroke="#c8f2f6" stroke-width="9" stroke-linecap="round" fill="none" opacity="0.55"/>
+  <path d="M700,700 C830,678 940,654 1040,616" stroke="#c8f2f6" stroke-width="7" stroke-linecap="round" fill="none" opacity="0.4"/>
+
+  <!-- Holzbrücke -->
+  <g transform="translate(560 664) rotate(-9)">
+    <rect x="0" y="0" width="250" height="26" rx="4" fill="#a97c4c"/>
+    <g fill="#8a6440">
+      <rect x="18"  y="26" width="12" height="46"/>
+      <rect x="112" y="26" width="12" height="52"/>
+      <rect x="214" y="26" width="12" height="44"/>
+    </g>
+    <g stroke="#c49364" stroke-width="7" stroke-linecap="round">
+      <line x1="6" y1="-26" x2="244" y2="-26"/>
+    </g>
+  </g>
+
+  <!-- Vordergrund-Wiese -->
+  <path d="M0,860 C300,808 640,832 940,880 C1240,928 1580,910 1920,842 L1920,1080 L0,1080 Z" fill="url(#mmFore)"/>
+  <path d="M0,946 C360,900 760,930 1120,972 C1420,1006 1700,996 1920,958 L1920,1080 L0,1080 Z" fill="#2b5730" opacity="0.55"/>
+
+  <!-- Facettierte Bäume -->
+  <g>
+    <g transform="translate(140 596) scale(1.15)">
+      <rect x="-7" y="46" width="15" height="60" fill="#6b4c2a"/>
+      <polygon points="0,-40 62,44 -62,44" fill="#4f8c3f"/>
+      <polygon points="0,-40 62,44 0,44" fill="#437a35"/>
+    </g>
+    <g transform="translate(1712 552) scale(1.5)">
+      <rect x="-8" y="44" width="17" height="70" fill="#6b4c2a"/>
+      <polygon points="0,-52 70,46 -70,46" fill="#4a8639"/>
+      <polygon points="0,-52 70,46 0,46" fill="#3d7330"/>
+    </g>
+    <g transform="translate(1560 640) scale(1.05)">
+      <rect x="-7" y="42" width="14" height="56" fill="#5c4025"/>
+      <polygon points="0,-38 58,42 -58,42" fill="#54903f"/>
+    </g>
+    <g transform="translate(1010 606) scale(0.8)">
+      <rect x="-6" y="40" width="12" height="50" fill="#6b4c2a"/>
+      <polygon points="0,-34 50,40 -50,40" fill="#57964a"/>
+    </g>
+  </g>
+
+  <!-- Felsen im Vordergrund -->
+  <polygon points="0,1006 168,930 318,1010 296,1080 0,1080" fill="#2c4a5c"/>
+  <polygon points="168,930 318,1010 210,1002" fill="#3a5f74" opacity="0.8"/>
+  <polygon points="1596,1042 1740,962 1920,1024 1920,1080 1596,1080" fill="#2c4a5c"/>
+
+  <!-- Vögel -->
+  <g stroke="#2b4a40" stroke-width="5" stroke-linecap="round" fill="none" opacity="0.55">
+    <path d="M840,214 q17,-15 34,0"/>
+    <path d="M874,214 q17,-15 34,0"/>
+    <path d="M920,262 q14,-12 28,0"/>
+    <path d="M948,262 q14,-12 28,0"/>
+  </g>
+</svg>

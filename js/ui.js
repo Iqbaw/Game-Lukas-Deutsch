@@ -65,12 +65,22 @@ export function initUI() {
   // Juga tampilkan di desktop kalau ada touch screen
   if (window.matchMedia('(pointer: coarse)').matches) setupMobileControls();
 
-  // ESC toggle pause
+  // ESC toggle pause — nicht, solange das Hauptmenü offen ist
   window.addEventListener('keydown', (e) => {
     if (e.code === 'Escape') {
+      if (document.body.classList.contains('main-menu-open')) return;
       if (UI.isPauseMenuOpen) closePauseMenu();
       else openPauseMenu();
     }
+  });
+
+  // Einstellungen aus dem Hauptmenü übernehmen (js/mainmenu.js)
+  window.addEventListener('settings:change', (e) => {
+    if (!e.detail || e.detail.source !== 'mainmenu') return;
+    const { source, ...incoming } = e.detail;
+    Object.assign(UI.settings, incoming);
+    syncSettingsUI();
+    applyGraphicQuality(UI.settings.graphicLevel);
   });
 
   // Listen event dari main.js pause/resume
@@ -283,6 +293,39 @@ function setupPauseMenu() {
   overlay.addEventListener('click', (e) => {
     if (e.target === overlay) closePauseMenu();
   });
+}
+
+/**
+ * Zieht die Regler im Pause-Menü auf den aktuellen UI.settings-Stand nach.
+ * Nötig, weil das Hauptmenü dieselben Einstellungen schreiben kann.
+ */
+function syncSettingsUI() {
+  const vol = Math.round(UI.settings.volume * 100);
+
+  const slider = document.getElementById('slider-volume');
+  if (slider) slider.value = vol;
+  const volDisplay = document.getElementById('vol-display');
+  if (volDisplay) volDisplay.textContent = vol + '%';
+
+  const musicBtn = document.getElementById('toggle-music');
+  if (musicBtn) {
+    const on = UI.settings.musicOn !== false;
+    musicBtn.textContent = on ? 'An' : 'Aus';
+    musicBtn.classList.toggle('active', on);
+  }
+
+  const hintBtn = document.getElementById('toggle-hint');
+  if (hintBtn) {
+    hintBtn.textContent = UI.settings.showHint ? 'An' : 'Aus';
+    hintBtn.classList.toggle('active', !!UI.settings.showHint);
+  }
+
+  document.querySelectorAll('[data-gfx]').forEach((b) => {
+    b.classList.toggle('active', b.dataset.gfx === UI.settings.graphicLevel);
+  });
+
+  const audioEl = document.getElementById('bgm');
+  if (audioEl) audioEl.volume = UI.settings.musicOn === false ? 0 : UI.settings.volume;
 }
 
 function showSubPanel(panel) {
