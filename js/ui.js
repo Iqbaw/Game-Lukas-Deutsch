@@ -12,6 +12,7 @@ import { migrateSettings }                        from './mainmenu.js';
 const UI = {
   // Pause state
   isPauseMenuOpen:   false,
+  _pauseOpenedAt:    0,
   isSettingsOpen:    false,
   isHelpOpen:        false,
   confirmingRestart: false,
@@ -67,6 +68,9 @@ export function initUI() {
 
   // Eingabemodus bestimmen (Touch vs. Maus/Tastatur) und überwachen
   initInputMode();
+
+  // Quest-Anzeige einklappbar machen
+  setupQuestCollapse();
 
   // ESC toggle pause — nicht, solange das Hauptmenü offen ist
   window.addEventListener('keydown', (e) => {
@@ -317,9 +321,13 @@ function setupPauseMenu() {
     if (UI.settings.sfxOn) playSfx('toggle');
   });
 
-  // Click backdrop to resume
+  // Klick auf den Hintergrund schließt — aber nicht der Klick, der das
+  // Menü gerade geöffnet hat (er trifft das neue Overlay, nicht mehr
+  // den Knopf darunter).
   overlay.addEventListener('click', (e) => {
-    if (e.target === overlay) closePauseMenu();
+    if (e.target !== overlay) return;
+    if (performance.now() - UI._pauseOpenedAt < 450) return;
+    closePauseMenu();
   });
 }
 
@@ -391,6 +399,7 @@ export function openPauseMenu() {
   showSubPanel('main');
   overlay.classList.remove('hud-hidden');
   overlay.classList.add('pause-active');
+  UI._pauseOpenedAt = performance.now();
   releaseAllInput();
 
   // Stop game (tapi jangan dispatch event lagi untuk hindari loop)
@@ -467,6 +476,54 @@ function restartGame() {
   // Teleport Lukas ke spawn dan reset score
   teleportPlayer(0, 4, Math.PI);
   window.location.reload(); // Simple: reload halaman
+}
+
+
+// ═══════════════════════════════════════════════════════════════════
+// QUEST-ANZEIGE EIN-/AUSKLAPPEN
+// Auf dem Handy nimmt die Auftragstafel mit Notiz und Checkliste viel
+// Platz weg — ein Tipp auf den Pfeil schrumpft alles auf ein Symbol.
+// ═══════════════════════════════════════════════════════════════════
+
+const QUEST_COLLAPSE_KEY = 'lukas_quest_collapsed';
+
+function setupQuestCollapse() {
+  const tracker = document.getElementById('quest-tracker');
+  const toggle  = document.getElementById('quest-collapse');
+  if (!tracker || !toggle) return;
+
+  // Auf dem Handy ist die volle Tafel mit Notiz und Checkliste beim
+  // ersten Start zugeklappt — sonst deckt sie halb den Schirm zu.
+  // Wer sie aufklappt, bekommt sie beim nächsten Mal wieder offen.
+  let stored = null;
+  try { stored = localStorage.getItem(QUEST_COLLAPSE_KEY); } catch (_) {}
+
+  const smallScreen = window.matchMedia('(max-width: 768px)').matches;
+  const collapsed = (stored === null) ? smallScreen : (stored === '1');
+  applyQuestCollapse(collapsed);
+
+  toggle.addEventListener('click', (e) => {
+    e.stopPropagation();
+    applyQuestCollapse(!document.body.classList.contains('hud-collapsed'));
+  });
+
+  // Im eingeklappten Zustand öffnet ein Tipp auf die Tafel selbst wieder
+  tracker.addEventListener('click', () => {
+    if (document.body.classList.contains('hud-collapsed')) applyQuestCollapse(false);
+  });
+}
+
+function applyQuestCollapse(collapsed) {
+  document.body.classList.toggle('hud-collapsed', collapsed);
+
+  const toggle = document.getElementById('quest-collapse');
+  if (toggle) {
+    toggle.setAttribute('aria-expanded', String(!collapsed));
+    toggle.setAttribute('aria-label', collapsed ? 'Auftrag einblenden' : 'Auftrag ausblenden');
+    toggle.textContent = collapsed ? '▸' : '▾';
+  }
+
+  try { localStorage.setItem(QUEST_COLLAPSE_KEY, collapsed ? '1' : '0'); } catch (_) {}
 }
 
 
@@ -636,20 +693,33 @@ function setupTouchControls() {
   // Finger und Stift, und 'pointercancel' kommt zuverlässig an.
   const onPress = (el, down, up) => {
     if (!el) return;
+    let held = false;
+
     el.addEventListener('pointerdown', (e) => {
+      if (held) return;
       e.preventDefault();
+      held = true;
       el.classList.add('is-pressed');
       try { el.setPointerCapture(e.pointerId); } catch (_) {}
       down?.();
     });
+
+    // 'pointerup' und das darauf folgende 'lostpointercapture' feuerten
+    // beide — bei einem Umschalter wie Pause hieß das: aufmachen und
+    // sofort wieder zu. Das Flag lässt das Loslassen nur einmal durch.
     const release = (e) => {
+      if (!held) return;
+      held = false;
       el.classList.remove('is-pressed');
-      try { el.releasePointerCapture(e.pointerId); } catch (_) {}
+      if (e?.pointerId !== undefined) {
+        try { el.releasePointerCapture(e.pointerId); } catch (_) {}
+      }
       up?.();
     };
+
     el.addEventListener('pointerup', release);
     el.addEventListener('pointercancel', release);
-    el.addEventListener('lostpointercapture', () => { el.classList.remove('is-pressed'); up?.(); });
+    el.addEventListener('lostpointercapture', release);
   };
 
   onPress(document.getElementById('mobile-jump'), () => {
@@ -669,7 +739,9 @@ function setupTouchControls() {
     window.dispatchEvent(new KeyboardEvent('keydown', { code: 'KeyE', bubbles: true }));
   });
 
-  onPress(document.getElementById('mobile-pause-btn'), () => {
+  // Beim LOSLASSEN auslösen, nicht beim Drücken: sonst öffnet der
+  // Druck das Menü und der Klick danach schließt es wieder.
+  onPress(document.getElementById('mobile-pause-btn'), null, () => {
     if (UI.isPauseMenuOpen) closePauseMenu();
     else openPauseMenu();
   });
@@ -694,26 +766,115 @@ function updateHUD(delta, elapsed) {
 // TOAST NOTIFIKASI
 // ═══════════════════════════════════════════════════════════════════
 
-export function showToast({ title, body='', type='info', icon='', duration=3500 }) {
+// Meldungen wurden bisher unbegrenzt untereinander gehängt: bei mehreren
+// Ereignissen kurz nacheinander wuchs der Stapel über den halben Schirm,
+// verdeckte Lukas und fing als klickbare Fläche die Tipps auf die
+// Steuerknöpfe ab. Jetzt läuft immer nur eine Meldung, die nächste
+// wartet in der Schlange.
+
+const toastQueue = [];
+let activeToast  = null;
+let toastTimer   = null;
+
+const TOAST_ICONS = { success: '✅', error: '❌', info: '💬', vocab: '📖' };
+
+export function showToast({ title, body = '', type = 'info', icon = '', duration = 3500 }) {
+  if (!document.getElementById('toast-container')) return;
+
+  // Gleiche Meldung direkt hintereinander nicht doppelt anzeigen
+  const last = toastQueue[toastQueue.length - 1];
+  if (last && last.title === title && last.body === body) return;
+
+  toastQueue.push({ title, body, type, icon, duration });
+  if (toastQueue.length > 6) toastQueue.splice(0, toastQueue.length - 6);
+  if (!activeToast) nextToast();
+}
+
+function nextToast() {
   const container = document.getElementById('toast-container');
   if (!container) return;
 
-  const iconMap = { success: '✅', error: '❌', info: '💬', vocab: '📖' };
+  const item = toastQueue.shift();
+  if (!item) { activeToast = null; return; }
 
   const toast = document.createElement('div');
-  toast.className = `toast toast-${type}`;
+  toast.className = `toast toast-${item.type}`;
   toast.innerHTML = `
-    <div class="toast-icon">${icon || iconMap[type] || '💬'}</div>
-    <div>
-      <div class="toast-title">${title}</div>
-      ${body ? `<div class="toast-body">${body}</div>` : ''}
+    <div class="toast-icon">${item.icon || TOAST_ICONS[item.type] || '💬'}</div>
+    <div class="toast-copy">
+      <div class="toast-title">${item.title}</div>
+      ${item.body ? `<div class="toast-body">${item.body}</div>` : ''}
     </div>
   `;
   container.appendChild(toast);
+  activeToast = toast;
+  // Solange eine Meldung läuft, tritt die Auftragstafel darunter zurück —
+  // sonst liegen zwei Kästen übereinander.
+  document.body.classList.add('toast-active');
 
-  // Auto remove
-  setTimeout(() => {
+  makeToastSwipeable(toast);
+
+  toastTimer = setTimeout(() => dismissToast(toast), item.duration);
+}
+
+function dismissToast(toast, direction = 0) {
+  if (!toast || toast._leaving) return;
+  toast._leaving = true;
+  clearTimeout(toastTimer);
+
+  if (direction) {
+    toast.style.transition = 'transform 0.2s ease, opacity 0.2s ease';
+    toast.style.transform  = `translateX(${direction * 120}%)`;
+    toast.style.opacity    = '0';
+  } else {
     toast.classList.add('toast-out');
-    setTimeout(() => toast.remove(), 350);
-  }, duration);
+  }
+
+  setTimeout(() => {
+    toast.remove();
+    if (activeToast === toast) activeToast = null;
+    nextToast();          // nächste Meldung nachrücken
+    if (!activeToast) document.body.classList.remove('toast-active');
+  }, 260);
+}
+
+/** Wischen (seitwärts oder nach oben) blendet die Meldung sofort aus. */
+function makeToastSwipeable(toast) {
+  let startX = 0, startY = 0, dx = 0, dy = 0, dragging = false;
+
+  toast.addEventListener('pointerdown', (e) => {
+    dragging = true;
+    startX = e.clientX;
+    startY = e.clientY;
+    dx = dy = 0;
+    toast.style.transition = 'none';
+    try { toast.setPointerCapture(e.pointerId); } catch (_) {}
+  });
+
+  toast.addEventListener('pointermove', (e) => {
+    if (!dragging) return;
+    dx = e.clientX - startX;
+    dy = e.clientY - startY;
+    toast.style.transform = `translate(${dx}px, ${Math.min(0, dy)}px)`;
+    toast.style.opacity   = String(Math.max(0.2, 1 - Math.max(Math.abs(dx), Math.abs(Math.min(0, dy))) / 160));
+  });
+
+  const end = () => {
+    if (!dragging) return;
+    dragging = false;
+    if (Math.abs(dx) > 60)      dismissToast(toast, Math.sign(dx));
+    else if (dy < -50)          dismissToast(toast);
+    else {
+      toast.style.transition = 'transform 0.18s ease, opacity 0.18s ease';
+      toast.style.transform  = '';
+      toast.style.opacity    = '';
+    }
+  };
+  toast.addEventListener('pointerup', end);
+  toast.addEventListener('pointercancel', end);
+
+  // Antippen blendet ebenfalls aus — praktisch, wenn es schnell gehen soll
+  toast.addEventListener('click', () => {
+    if (Math.abs(dx) < 6 && Math.abs(dy) < 6) dismissToast(toast);
+  });
 }
