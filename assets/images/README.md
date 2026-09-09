@@ -2,21 +2,45 @@
 
 ## Hintergrund des Hauptmenüs
 
-Das Hauptmenü (`js/mainmenu.js` + Abschnitt 21 in `style.css`) lädt sein
-Hintergrundbild **immer** von diesem festen Pfad:
+`main-menu-bg.webp` ist das **Original** (5504 × 3040). Ausgeliefert wird es
+nicht — 16,7 Megapixel kosten beim Dekodieren spürbar Zeit. Das Menü lädt
+stattdessen die skalierten Varianten:
 
+| Datei | Größe | Einsatz |
+|---|---|---|
+| `main-menu-bg-1280.webp` | 1280 × 707 | Handy / kleines Tablet |
+| `main-menu-bg-1920.webp` | 1920 × 1060 | Desktop (auch `src`-Fallback) |
+| `main-menu-bg-2560.webp` | 2560 × 1414 | große und Retina-Displays |
+
+Die Auswahl trifft der Browser über `srcset`/`sizes` in `js/mainmenu.js`.
+Zusätzlich steckt dort ein **LQIP**: eine 32 px breite Miniatur derselben
+Kulisse, inline als `data:`-URI. Sie ist im allerersten Frame sichtbar,
+danach tauscht das scharfe WebP unmerklich darüber — deshalb wirkt der
+Hintergrund ohne Verzögerung „schon da“.
+
+### Wenn das Bild ausgetauscht wird
+
+Neues Original als `main-menu-bg.webp` ablegen und die Varianten neu
+erzeugen (Pillow):
+
+```python
+from PIL import Image, ImageFilter
+import base64, io
+src = Image.open('assets/images/main-menu-bg.webp').convert('RGB')
+W, H = src.size
+for w in (1280, 1920, 2560):
+    src.resize((w, round(w * H / W)), Image.LANCZOS) \
+       .save(f'assets/images/main-menu-bg-{w}.webp', 'WEBP', quality=82, method=6)
+
+# LQIP für BG_LQIP in js/mainmenu.js
+tiny = src.resize((32, round(32 * H / W)), Image.LANCZOS).filter(ImageFilter.GaussianBlur(0.6))
+buf = io.BytesIO(); tiny.save(buf, 'WEBP', quality=62, method=6)
+print('data:image/webp;base64,' + base64.b64encode(buf.getvalue()).decode())
 ```
-assets/images/main-menu-bg.webp
-```
 
-* Format: **WebP** (oder AVIF, dann Datei ebenfalls `main-menu-bg.webp` nennen —
-  der Browser erkennt das Format am Inhalt, nicht an der Endung).
-* Empfohlene Größe: **2048 × 1152 px** (16:9), Qualität ~80, Ziel < 400 KB.
-* Kein Text im Bild — alle Schrift kommt aus dem DOM.
-* Der Bildausschnitt wird per `object-fit: cover` skaliert und über
-  `object-position` pro Breakpoint so verschoben, dass Lukas (rechter
-  Bildrand) auch im Hochformat sichtbar bleibt.
+Danach ggf. `object-position` in `style.css` (Abschnitt 21/21b) anpassen,
+damit Lukas auch im Hochformat im Bild bleibt.
 
-Fehlt die Datei, blendet `mainmenu.js` automatisch `main-menu-bg.svg`
-(Low-Poly-Kulisse in derselben Palette) als Ersatz ein — das Menü sieht
-also nie kaputt aus.
+Fehlen die Dateien, blendet `mainmenu.js` automatisch `main-menu-bg.svg`
+(Low-Poly-Kulisse in derselben Palette) ein — das Menü sieht also nie
+kaputt aus.

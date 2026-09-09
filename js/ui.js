@@ -5,6 +5,8 @@
 import { Game, registerUpdate } from './main.js';
 import { CONFIG, EVENTS }       from './config.js';
 import { Player, setInputEnabled, teleportPlayer } from './player.js';
+import { setMusicVolume, setMusicEnabled }        from './music.js';
+import { setSfxVolume, setSfxEnabled, playSfx }   from './sfx.js';
 
 const UI = {
   // Pause state
@@ -17,6 +19,8 @@ const UI = {
   settings: {
     volume:       0.7,
     graphicLevel: 'high',  // 'low'|'medium'|'high'
+    musicOn:      true,
+    sfxOn:        true,
     showHint:     true,
   },
 
@@ -167,6 +171,16 @@ function setupPauseMenu() {
 
       <div class="setting-row">
         <label class="setting-label">
+          <span>🔔 Soundeffekte</span>
+          <span class="setting-value">${UI.settings.sfxOn!==false?'An':'Aus'}</span>
+        </label>
+        <button class="setting-toggle-btn ${UI.settings.sfxOn!==false?'active':''}" id="toggle-sfx">
+          ${UI.settings.sfxOn!==false?'An':'Aus'}
+        </button>
+      </div>
+
+      <div class="setting-row">
+        <label class="setting-label">
           <span>💡 Hinweise zeigen</span>
           <span class="setting-value">${UI.settings.showHint?'An':'Aus'}</span>
         </label>
@@ -249,10 +263,7 @@ function setupPauseMenu() {
     const v = parseInt(e.target.value) / 100;
     document.getElementById('vol-display').textContent = e.target.value + '%';
     UI.settings.volume = v;
-    
-    // Update audio element if present
-    const audioEl = document.getElementById('bgm');
-    if (audioEl) audioEl.volume = v;
+    applyAudioSettings();
   });
 
   // Graphic quality buttons
@@ -270,23 +281,24 @@ function setupPauseMenu() {
     UI.settings.showHint = !UI.settings.showHint;
     e.target.textContent = UI.settings.showHint ? 'An' : 'Aus';
     e.target.classList.toggle('active', UI.settings.showHint);
+    playSfx('toggle');
   });
 
   // Music toggle
   document.getElementById('toggle-music')?.addEventListener('click', (e) => {
-    UI.settings.musicOn = UI.settings.musicOn !== false ? false : true;
+    UI.settings.musicOn = UI.settings.musicOn === false;
     e.target.textContent = UI.settings.musicOn ? 'An' : 'Aus';
     e.target.classList.toggle('active', UI.settings.musicOn);
-    
-    // Toggle audio
-    const audioEl = document.getElementById('bgm');
-    if (audioEl) {
-      if (UI.settings.musicOn) {
-        audioEl.play().catch(e=>console.warn("Audio play blocked",e));
-      } else {
-        audioEl.pause();
-      }
-    }
+    applyAudioSettings();
+  });
+
+  // SFX toggle
+  document.getElementById('toggle-sfx')?.addEventListener('click', (e) => {
+    UI.settings.sfxOn = UI.settings.sfxOn === false;
+    e.target.textContent = UI.settings.sfxOn ? 'An' : 'Aus';
+    e.target.classList.toggle('active', UI.settings.sfxOn);
+    applyAudioSettings();
+    if (UI.settings.sfxOn) playSfx('toggle');
   });
 
   // Click backdrop to resume
@@ -314,6 +326,13 @@ function syncSettingsUI() {
     musicBtn.classList.toggle('active', on);
   }
 
+  const sfxBtn = document.getElementById('toggle-sfx');
+  if (sfxBtn) {
+    const on = UI.settings.sfxOn !== false;
+    sfxBtn.textContent = on ? 'An' : 'Aus';
+    sfxBtn.classList.toggle('active', on);
+  }
+
   const hintBtn = document.getElementById('toggle-hint');
   if (hintBtn) {
     hintBtn.textContent = UI.settings.showHint ? 'An' : 'Aus';
@@ -323,9 +342,17 @@ function syncSettingsUI() {
   document.querySelectorAll('[data-gfx]').forEach((b) => {
     b.classList.toggle('active', b.dataset.gfx === UI.settings.graphicLevel);
   });
+}
 
-  const audioEl = document.getElementById('bgm');
-  if (audioEl) audioEl.volume = UI.settings.musicOn === false ? 0 : UI.settings.volume;
+/**
+ * Schiebt Lautstärke und An/Aus an die Audio-Module weiter.
+ * Effekte laufen bewusst leiser als die Musik.
+ */
+function applyAudioSettings() {
+  setMusicEnabled(UI.settings.musicOn !== false);
+  setMusicVolume(UI.settings.volume);
+  setSfxEnabled(UI.settings.sfxOn !== false);
+  setSfxVolume(UI.settings.volume * 0.55);
 }
 
 function showSubPanel(panel) {
@@ -391,7 +418,7 @@ export function closePauseMenu() {
 function saveSettings() {
   UI.settings.volume = parseInt(document.getElementById('slider-volume')?.value || 70) / 100;
   try { localStorage.setItem('lukas_settings', JSON.stringify(UI.settings)); } catch (_) {}
-  if (window.Howler) window.Howler.volume(UI.settings.volume);
+  applyAudioSettings();
   applyGraphicQuality(UI.settings.graphicLevel);
   // Flash success
   const btn = document.getElementById('btn-settings-save');
