@@ -28,7 +28,8 @@ const BG_LQIP      = 'data:image/webp;base64,UklGRu4AAABXRUJQVlA4IOIAAABwBQCdASo
 const SETTINGS_KEY = 'lukas_settings';
 
 const DEFAULT_SETTINGS = {
-  volume:       0.7,
+  musicVolume:  0.7,      // Hintergrundmusik
+  sfxVolume:    0.4,      // Menü-Effekte (bewusst leiser)
   graphicLevel: 'high',   // 'low' | 'medium' | 'high'
   musicOn:      true,
   sfxOn:        true,
@@ -62,14 +63,37 @@ export const MainMenu = {
 // ═══════════════════════════════════════════════════════════════════
 
 function loadSettings() {
+  let saved = null;
   try {
-    const saved = localStorage.getItem(SETTINGS_KEY);
-    if (saved) Object.assign(MainMenu.settings, JSON.parse(saved));
+    const raw = localStorage.getItem(SETTINGS_KEY);
+    if (raw) saved = JSON.parse(raw);
   } catch (_) {}
-  // Felder, die in älteren Speicherständen fehlen können
-  if (MainMenu.settings.musicOn === undefined) MainMenu.settings.musicOn = true;
-  if (MainMenu.settings.sfxOn   === undefined) MainMenu.settings.sfxOn   = true;
+  if (saved && typeof saved === 'object') {
+    Object.assign(MainMenu.settings, migrateSettings(saved));
+  }
 }
+
+/**
+ * Ältere Speicherstände kannten nur eine gemeinsame Lautstärke ('volume').
+ * Daraus werden die getrennten Regler abgeleitet.
+ */
+export function migrateSettings(s) {
+  const legacy = (typeof s.volume === 'number') ? s.volume : null;
+
+  if (s.musicOn === undefined) s.musicOn = true;
+  if (s.sfxOn   === undefined) s.sfxOn   = true;
+
+  if (typeof s.musicVolume !== 'number') {
+    s.musicVolume = (legacy !== null) ? legacy : DEFAULT_SETTINGS.musicVolume;
+  }
+  if (typeof s.sfxVolume !== 'number') {
+    // Effekte waren früher fest auf 55 % der Gesamtlautstärke
+    s.sfxVolume = (legacy !== null) ? legacy * 0.55 : DEFAULT_SETTINGS.sfxVolume;
+  }
+  delete s.volume;
+  return s;
+}
+
 
 function saveSettings() {
   try {
@@ -87,10 +111,9 @@ function saveSettings() {
 function applyAudioSettings() {
   const s = MainMenu.settings;
   setMusicEnabled(s.musicOn !== false);
-  setMusicVolume(s.volume);
-  // Effekte etwas leiser als die Musik — sie sollen nur akzentuieren
+  setMusicVolume(s.musicVolume);
   setSfxEnabled(s.sfxOn !== false);
-  setSfxVolume(s.volume * 0.55);
+  setSfxVolume(s.sfxVolume);
 }
 
 
@@ -99,8 +122,9 @@ function applyAudioSettings() {
 // ═══════════════════════════════════════════════════════════════════
 
 function render() {
-  const s   = MainMenu.settings;
-  const vol = Math.round(s.volume * 100);
+  const s        = MainMenu.settings;
+  const musicVol = Math.round(s.musicVolume * 100);
+  const sfxVol   = Math.round(s.sfxVolume * 100);
 
   MainMenu.root.innerHTML = `
     <div class="mm-bg" style="--mm-lqip:url('${BG_LQIP}')">
@@ -145,25 +169,30 @@ function render() {
           <button type="button" class="mm-back" data-action="back">← Zurück</button>
           <h2 class="mm-sub-title">Einstellungen</h2>
 
-          <div class="mm-row">
-            <label class="mm-row-head" for="mm-volume">
-              <span>🔊 Lautstärke</span>
-              <span class="mm-row-value" id="mm-volume-value">${vol}%</span>
-            </label>
-            <input type="range" class="mm-slider" id="mm-volume" min="0" max="100" value="${vol}"
-                   aria-label="Lautstärke" />
+          <div class="mm-row ${s.musicOn !== false ? '' : 'is-muted'}" id="mm-row-music">
+            <div class="mm-row-head">
+              <label for="mm-music-volume">🎵 Musik</label>
+              <span class="mm-row-controls">
+                <span class="mm-row-value" id="mm-music-value">${musicVol}%</span>
+                <button type="button" class="mm-toggle ${s.musicOn !== false ? 'is-on' : ''}" id="mm-music"
+                        aria-pressed="${s.musicOn !== false}">${s.musicOn !== false ? 'An' : 'Aus'}</button>
+              </span>
+            </div>
+            <input type="range" class="mm-slider" id="mm-music-volume" min="0" max="100" value="${musicVol}"
+                   aria-label="Lautstärke der Musik" />
           </div>
 
-          <div class="mm-row mm-row-inline">
-            <span class="mm-row-head"><span>🎵 Musik</span></span>
-            <button type="button" class="mm-toggle ${s.musicOn !== false ? 'is-on' : ''}" id="mm-music"
-                    aria-pressed="${s.musicOn !== false}">${s.musicOn !== false ? 'An' : 'Aus'}</button>
-          </div>
-
-          <div class="mm-row mm-row-inline">
-            <span class="mm-row-head"><span>🔔 Soundeffekte</span></span>
-            <button type="button" class="mm-toggle ${s.sfxOn !== false ? 'is-on' : ''}" id="mm-sfx"
-                    aria-pressed="${s.sfxOn !== false}">${s.sfxOn !== false ? 'An' : 'Aus'}</button>
+          <div class="mm-row ${s.sfxOn !== false ? '' : 'is-muted'}" id="mm-row-sfx">
+            <div class="mm-row-head">
+              <label for="mm-sfx-volume">🔔 Soundeffekte</label>
+              <span class="mm-row-controls">
+                <span class="mm-row-value" id="mm-sfx-value">${sfxVol}%</span>
+                <button type="button" class="mm-toggle ${s.sfxOn !== false ? 'is-on' : ''}" id="mm-sfx"
+                        aria-pressed="${s.sfxOn !== false}">${s.sfxOn !== false ? 'An' : 'Aus'}</button>
+              </span>
+            </div>
+            <input type="range" class="mm-slider" id="mm-sfx-volume" min="0" max="100" value="${sfxVol}"
+                   aria-label="Lautstärke der Soundeffekte" />
           </div>
 
           <div class="mm-row">
@@ -373,32 +402,34 @@ function bindEvents() {
   });
 
   // ── Einstellungen ──────────────────────────────────────────
-  const volume = root.querySelector('#mm-volume');
-  volume?.addEventListener('input', (e) => {
-    const v = parseInt(e.target.value, 10) / 100;
-    MainMenu.settings.volume = v;
-    root.querySelector('#mm-volume-value').textContent = e.target.value + '%';
-    saveSettings();
-  });
-  // Nach dem Loslassen einmal hörbar quittieren
-  volume?.addEventListener('change', () => playSfx('toggle'));
+  const wireSlider = (id, key, valueId, quittieren) => {
+    const el = root.querySelector(id);
+    el?.addEventListener('input', (e) => {
+      MainMenu.settings[key] = parseInt(e.target.value, 10) / 100;
+      root.querySelector(valueId).textContent = e.target.value + '%';
+      saveSettings();
+    });
+    // Nach dem Loslassen einmal hörbar quittieren
+    if (quittieren) el?.addEventListener('change', () => playSfx('toggle'));
+  };
+  wireSlider('#mm-music-volume', 'musicVolume', '#mm-music-value', false);
+  wireSlider('#mm-sfx-volume',   'sfxVolume',   '#mm-sfx-value',   true);
 
-  const wireToggle = (id, key) => {
+  const wireToggle = (id, key, rowId) => {
     root.querySelector(id)?.addEventListener('click', (e) => {
       MainMenu.settings[key] = !MainMenu.settings[key];
       const on = MainMenu.settings[key];
       e.currentTarget.textContent = on ? 'An' : 'Aus';
       e.currentTarget.classList.toggle('is-on', on);
       e.currentTarget.setAttribute('aria-pressed', String(on));
+      // Ausgeschaltet → zugehörigen Regler abdunkeln
+      if (rowId) root.querySelector(rowId)?.classList.toggle('is-muted', !on);
       saveSettings();
       playSfx('toggle');
     });
   };
-  // musicOn kann in alten Ständen 'undefined' sein → auf true normalisieren
-  MainMenu.settings.musicOn = MainMenu.settings.musicOn !== false;
-  MainMenu.settings.sfxOn   = MainMenu.settings.sfxOn   !== false;
-  wireToggle('#mm-music',       'musicOn');
-  wireToggle('#mm-sfx',         'sfxOn');
+  wireToggle('#mm-music',       'musicOn',  '#mm-row-music');
+  wireToggle('#mm-sfx',         'sfxOn',    '#mm-row-sfx');
   wireToggle('#mm-hint-toggle', 'showHint');
 
   root.querySelectorAll('[data-gfx]').forEach((btn) => {
@@ -491,7 +522,7 @@ export function initMainMenu(root = document.getElementById('main-menu')) {
 
   // Musik startet sofort (stumm) und wird bei der ersten Geste hörbar
   applyAudioSettings();
-  initMusic({ volume: MainMenu.settings.volume, enabled: MainMenu.settings.musicOn !== false });
+  initMusic({ volume: MainMenu.settings.musicVolume, enabled: MainMenu.settings.musicOn !== false });
 
   MainMenu._initialized = true;
   return MainMenu;

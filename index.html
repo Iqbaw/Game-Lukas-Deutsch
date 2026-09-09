@@ -16,12 +16,12 @@
        Hauptmenü nicht aufhalten. Dank display=swap tauschen die Schriften
        nach, sobald sie da sind. -->
   <link
-    href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700;900&family=DM+Sans:ital,wght@0,300;0,400;0,500;0,700;1,400&family=Caveat:wght@400;600&display=swap"
+    href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700;900&family=DM+Sans:ital,wght@0,300;0,400;0,500;0,700;1,400&family=Caveat:wght@400;600&family=Cinzel:wght@400;600;700&display=swap"
     rel="preload" as="style" onload="this.onload=null;this.rel='stylesheet'"
   />
   <noscript>
     <link
-      href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700;900&family=DM+Sans:ital,wght@0,300;0,400;0,500;0,700;1,400&family=Caveat:wght@400;600&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700;900&family=DM+Sans:ital,wght@0,300;0,400;0,500;0,700;1,400&family=Caveat:wght@400;600&family=Cinzel:wght@400;600;700&display=swap"
       rel="stylesheet"
     />
   </noscript>
@@ -68,55 +68,8 @@
   <!-- ═══════════════════════════════════════════════════════════
        STORY INTRO — Cinematic intro before gameplay
        ═══════════════════════════════════════════════════════════ -->
-  <div id="story-intro" class="story-intro" style="display:none">
-    <div class="story-slides">
-      <div class="story-slide story-slide-active" data-slide="0">
-        <div class="story-emoji">✈️</div>
-        <h2 class="story-heading">Hamburg, Deutschland</h2>
-        <p class="story-text">
-          Setelah 10 tahun tidak berkunjung, <strong>Lukas</strong> — seorang remaja Indonesia — 
-          akhirnya kembali ke kota Hamburg untuk menemui kakek dan neneknya.
-        </p>
-      </div>
-      <div class="story-slide" data-slide="1">
-        <div class="story-emoji">🏡</div>
-        <h2 class="story-heading">Haus der Großeltern</h2>
-        <p class="story-text">
-          Di rumah kakek-nenek yang hangat, Oma Helga dan Opa Klaus sudah menunggu 
-          dengan masakan khas Jerman dan cerita-cerita lama.
-        </p>
-      </div>
-      <div class="story-slide" data-slide="2">
-        <div class="story-emoji">🗺️</div>
-        <h2 class="story-heading">Ein neues Abenteuer</h2>
-        <p class="story-text">
-          Bersama keluarga dan teman masa kecil, Lukas akan menjelajahi kota — 
-          dari supermarket hingga pelabuhan Elbe — sambil belajar bahasa Jerman 
-          melalui petualangan seru!
-        </p>
-      </div>
-      <div class="story-slide" data-slide="3">
-        <div class="story-emoji">📖</div>
-        <h2 class="story-heading">Bist du bereit?</h2>
-        <p class="story-text">
-          10 quest menanti. Bicaralah dengan penduduk, jelajahi setiap sudut kota, 
-          dan buktikan bahwa bahasa Jerman itu menyenangkan!
-        </p>
-        <button id="story-start-btn" class="story-start-btn">Los geht's! 🎮</button>
-      </div>
-    </div>
-    <div class="story-nav">
-      <button id="story-prev" class="story-nav-btn" style="visibility:hidden">← Zurück</button>
-      <div class="story-dots">
-        <span class="story-dot story-dot-active"></span>
-        <span class="story-dot"></span>
-        <span class="story-dot"></span>
-        <span class="story-dot"></span>
-      </div>
-      <button id="story-next" class="story-nav-btn">Weiter →</button>
-    </div>
-    <button id="story-skip" class="story-skip-btn">Überspringen ⏭</button>
-  </div>
+  <div id="story-intro" class="story-intro" role="dialog" aria-modal="true"
+       aria-label="Prolog" aria-hidden="true" style="display:none"></div>
 
   <!-- ═══════════════════════════════════════════════════════════
        GAME CONTAINER — canvas Three.js akan dimount di sini
@@ -316,68 +269,8 @@
     // Fortschritt per 'loading:progress' / 'loading:complete' — das Menü
     // zeigt ihn als dezente Zeile unter den Buttons.
 
-    const $gameContain = document.getElementById('game-container');
-
-    // === MAIN MENU: "Abenteuer beginnen" → story intro ===
-    // js/mainmenu.js feuert 'menu:start' und schließt sich selbst.
-    let storyIntroOpened = false;
-
-    function openStoryIntro() {
-      if (storyIntroOpened) return;
-      storyIntroOpened = true;
-      document.getElementById('story-intro').style.display = 'flex';
-      initStoryIntro();
-    }
-
-    window.addEventListener('menu:start', openStoryIntro);
-
-    // === STORY INTRO LOGIC ===
-    function initStoryIntro() {
-      const slides = document.querySelectorAll('.story-slide');
-      const dots = document.querySelectorAll('.story-dot');
-      const prevBtn = document.getElementById('story-prev');
-      const nextBtn = document.getElementById('story-next');
-      const skipBtn = document.getElementById('story-skip');
-      const startIntroBtn = document.getElementById('story-start-btn');
-      
-      let currentSlide = 0;
-      
-      function updateSlides() {
-        slides.forEach((s, i) => {
-          if (i === currentSlide) {
-            s.classList.add('story-slide-active');
-            dots[i].classList.add('story-dot-active');
-          } else {
-            s.classList.remove('story-slide-active');
-            dots[i].classList.remove('story-dot-active');
-          }
-        });
-        
-        prevBtn.style.visibility = currentSlide === 0 ? 'hidden' : 'visible';
-        nextBtn.style.visibility = currentSlide === slides.length - 1 ? 'hidden' : 'visible';
-      }
-      
-      prevBtn.addEventListener('click', () => {
-        if (currentSlide > 0) { currentSlide--; updateSlides(); }
-      });
-      nextBtn.addEventListener('click', () => {
-        if (currentSlide < slides.length - 1) { currentSlide++; updateSlides(); }
-      });
-      
-      const startGameFromIntro = () => {
-        document.getElementById('story-intro').style.display = 'none';
-        window.dispatchEvent(new CustomEvent('game:start'));
-
-        // Musik läuft bereits seit dem Hauptmenü durch (js/music.js) —
-        // hier ist nichts mehr zu starten.
-
-        $gameContain.setAttribute('aria-hidden', 'false');
-        $gameContain.classList.add('game-container-active');
-      };
-      
-      skipBtn.addEventListener('click', startGameFromIntro);
-      startIntroBtn.addEventListener('click', startGameFromIntro);
-    }
+    // Das Story-Intro lebt jetzt in js/story.js: es hört selbst auf
+    // 'menu:start', zeigt den Prolog und feuert am Ende 'game:start'.
 
     // Cek browser compatibility (early warning) — erscheint im Menü
     if (!('WebGLRenderingContext' in window)) {
@@ -389,6 +282,9 @@
 
   <!-- Main menu = layar pertama (berdiri sendiri — tetap tampil walau Three.js gagal) -->
   <script type="module" src="js/mainmenu.js"></script>
+
+  <!-- Story-Intro (Prolog zwischen Menü und Gameplay) -->
+  <script type="module" src="js/story.js"></script>
 
   <!-- Entry point Three.js -->
   <script type="module" src="js/main.js"></script>
