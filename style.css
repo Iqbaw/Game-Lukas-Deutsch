@@ -148,253 +148,9 @@ kbd {
 
 
 /* ═══════════════════════════════════════════════════════════════════
-   2.  LOADING SCREEN
+   2.  (Der Ladebildschirm ist entfallen — das Hauptmenü in Abschnitt 21
+       ist der erste Bildschirm und blendet aus dem Dunkeln auf.)
    ═══════════════════════════════════════════════════════════════════ */
-
-.loading-screen {
-  position: fixed;
-  inset: 0;
-  z-index: 9999;
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  align-items: center;
-}
-
-.loading-sky {
-  position: absolute;
-  inset: 0;
-  z-index: 0;
-  background:
-    radial-gradient(ellipse at 70% 30%, rgba(255, 220, 150, 0.6) 0%, transparent 55%),
-    linear-gradient(180deg,
-      var(--c-sky-1)   0%,
-      var(--c-sky-2)  35%,
-      var(--c-sky-3)  70%,
-      var(--c-sky-4) 100%);
-}
-
-.loading-sky::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background:
-    radial-gradient(ellipse 60% 18% at 20% 32%, rgba(255, 240, 220, 0.35) 0%, transparent 70%),
-    radial-gradient(ellipse 45% 12% at 78% 25%, rgba(255, 200, 160, 0.3) 0%, transparent 70%),
-    radial-gradient(ellipse 55% 14% at 50% 45%, rgba(255, 220, 200, 0.22) 0%, transparent 70%);
-  z-index: 1;
-  animation: cloudDrift 60s ease-in-out infinite alternate;
-}
-
-@keyframes cloudDrift {
-  0%   { transform: translateX(0); }
-  100% { transform: translateX(-30px); }
-}
-
-.loading-skyline {
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  width: 100%;
-  height: 28vh;
-  min-height: 200px;
-  z-index: 2;
-  filter: drop-shadow(0 -6px 20px rgba(0, 0, 0, 0.4));
-}
-
-.loading-bird {
-  position: absolute;
-  font-size: 22px;
-  color: rgba(40, 25, 30, 0.7);
-  z-index: 3;
-  animation: birdFly 18s linear infinite;
-  text-shadow: 0 0 8px rgba(0, 0, 0, 0.2);
-}
-.loading-bird-1 { top: 22%; animation-delay: 0s;    font-size: 18px; }
-.loading-bird-2 { top: 18%; animation-delay: -7s;   font-size: 22px; }
-.loading-bird-3 { top: 28%; animation-delay: -13s;  font-size: 16px; }
-
-@keyframes birdFly {
-  0%   { left: -5%;   transform: translateY(0)    rotate(0deg); }
-  25%  { transform: translateY(-12px) rotate(-2deg); }
-  50%  { transform: translateY(0)     rotate(0deg); }
-  75%  { transform: translateY(-10px) rotate(2deg); }
-  100% { left: 105%;  transform: translateY(0)    rotate(0deg); }
-}
-
-.loading-content {
-  position: relative;
-  z-index: 5;
-  text-align: center;
-  padding: 48px 32px;
-  max-width: 720px;
-  width: 90%;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 36px;
-  background: rgba(255, 240, 220, 0.08);
-  backdrop-filter: blur(2px);
-  -webkit-backdrop-filter: blur(2px);
-  border-radius: var(--r-xl);
-}
-
-.loading-title-block {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 6px;
-}
-
-.loading-eyebrow {
-  font-family: var(--font-body);
-  font-style: italic;
-  font-weight: 300;
-  font-size: 14px;
-  letter-spacing: 0.18em;
-  text-transform: uppercase;
-  color: rgba(26, 20, 16, 0.7);
-  margin-bottom: 4px;
-}
-
-.loading-title {
-  font-family: var(--font-display);
-  font-weight: 900;
-  font-size: clamp(48px, 8vw, 96px);
-  line-height: 0.95;
-  letter-spacing: -0.02em;
-  text-shadow: 0 1px 0 rgba(255, 240, 220, 0.4), 0 4px 24px rgba(0, 0, 0, 0.18);
-  background: linear-gradient(180deg, #2a1f1a 0%, #4a3024 100%);
-  -webkit-background-clip: text;
-  background-clip: text;
-  -webkit-text-fill-color: transparent;
-  animation: titleReveal 1.2s var(--ease-out) both;
-}
-
-@keyframes titleReveal {
-  0%   { opacity: 0; transform: translateY(20px) scale(0.96); letter-spacing: 0.05em; }
-  100% { opacity: 1; transform: translateY(0)    scale(1);    letter-spacing: -0.02em; }
-}
-
-.loading-subtitle {
-  font-family: var(--font-display);
-  font-style: italic;
-  font-weight: 400;
-  font-size: clamp(18px, 2.4vw, 26px);
-  color: var(--c-ink-2);
-  margin-top: 4px;
-  animation: fadeUp 1s 0.4s var(--ease-out) both;
-}
-
-.loading-tagline {
-  font-family: var(--font-body);
-  font-weight: 500;
-  font-size: 13px;
-  letter-spacing: 0.22em;
-  text-transform: uppercase;
-  color: rgba(26, 20, 16, 0.65);
-  margin-top: 8px;
-  animation: fadeUp 1s 0.6s var(--ease-out) both;
-}
-
-@keyframes fadeUp {
-  0%   { opacity: 0; transform: translateY(12px); }
-  100% { opacity: 1; transform: translateY(0); }
-}
-
-.loading-progress-container {
-  width: 100%;
-  max-width: 480px;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  animation: fadeUp 1s 0.8s var(--ease-out) both;
-}
-
-.loading-progress-track {
-  width: 100%;
-  height: 6px;
-  background: rgba(26, 20, 16, 0.18);
-  border-radius: var(--r-pill);
-  overflow: hidden;
-  position: relative;
-  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.15);
-}
-
-.loading-progress-fill {
-  height: 100%;
-  width: 0%;
-  background: linear-gradient(90deg, var(--c-accent) 0%, var(--c-orange) 100%);
-  border-radius: var(--r-pill);
-  transition: width 0.3s var(--ease-out);
-  position: relative;
-  box-shadow: 0 0 12px rgba(244, 196, 48, 0.6);
-}
-
-.loading-progress-fill::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(90deg, transparent 0%, rgba(255, 255, 255, 0.5) 50%, transparent 100%);
-  animation: shimmer 1.5s ease-in-out infinite;
-}
-
-@keyframes shimmer {
-  0%   { transform: translateX(-100%); }
-  100% { transform: translateX(100%); }
-}
-
-.loading-progress-meta {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  font-size: 13px;
-  color: rgba(26, 20, 16, 0.75);
-}
-
-.loading-status {
-  font-style: italic;
-  letter-spacing: 0.02em;
-}
-
-.loading-percent {
-  font-weight: 700;
-  font-variant-numeric: tabular-nums;
-  color: var(--c-ink);
-}
-
-.loading-tip {
-  font-size: 13px;
-  color: rgba(26, 20, 16, 0.7);
-  max-width: 420px;
-  line-height: 1.6;
-  transition: opacity 0.3s ease;
-  animation: fadeUp 1s 1s var(--ease-out) both;
-}
-
-.loading-tip kbd {
-  background: rgba(26, 20, 16, 0.1);
-  border-color: rgba(26, 20, 16, 0.25);
-  color: var(--c-ink);
-}
-
-/* Der frühere Start-Button des Loading-Screens ist ins Hauptmenü
-   umgezogen — siehe Abschnitt 21 (.mm-item). */
-
-.loading-footer {
-  position: absolute;
-  bottom: 16px;
-  left: 0;
-  right: 0;
-  z-index: 4;
-  text-align: center;
-  font-size: 11px;
-  font-weight: 300;
-  letter-spacing: 0.08em;
-  color: rgba(26, 20, 16, 0.55);
-  padding: 0 16px;
-}
 
 
 /* ═══════════════════════════════════════════════════════════════════
@@ -2162,11 +1918,6 @@ kbd {
    ═══════════════════════════════════════════════════════════════════ */
 
 @media (max-width: 768px) {
-  .loading-content { padding: 32px 20px; gap: 24px; }
-  .loading-title   { font-size: clamp(40px, 12vw, 64px); }
-  .loading-progress-container { max-width: 100%; }
-  .loading-tip     { font-size: 12px; }
-
   .hud-quest-tracker { top: 12px; left: 12px; min-width: 200px; padding: 10px 14px; }
   .hud-score        { top: 12px; right: 12px; padding: 10px 14px; }
   .hud-minimap      { bottom: 12px; left: 12px; width: 100px; }
@@ -2197,8 +1948,6 @@ kbd {
 }
 
 @media (max-height: 600px) {
-  .loading-content { gap: 18px; padding: 24px; }
-  .loading-skyline { height: 22vh; }
   .dialog-box      { bottom: 2vh; padding: 14px 18px; }
 }
 
@@ -2215,8 +1964,6 @@ kbd {
     scroll-behavior: auto !important;
   }
 
-  .loading-bird,
-  .loading-sky::after,
   .streak-icon { animation: none !important; }
 }
 
@@ -3107,8 +2854,14 @@ button:focus-visible,
   position: absolute;
   inset: 0;
   z-index: 0;
-  /* Basis-Ton, falls das Bild noch lädt — nie ein weißer Blitz */
-  background: linear-gradient(180deg, #17352f 0%, #4b8163 42%, #cfe0ac 78%, #f3f1cf 100%);
+  background-color: #12241d;
+  /* LQIP: 32 px breite Miniatur derselben Kulisse, inline als data: URI.
+     Steht im allerersten Frame — dadurch ist der Hintergrund sofort da
+     und das scharfe WebP tauscht sich unmerklich darüber. */
+  background-image: var(--mm-lqip);
+  background-size: cover;
+  background-position: 62% 50%;
+  background-repeat: no-repeat;
 }
 
 .mm-bg-img {
@@ -3118,7 +2871,11 @@ button:focus-visible,
   object-position: 62% 50%;       /* Charaktere bleiben im Blick */
   display: block;
   transform: scale(1.015);        /* verhindert Kantenflimmern beim Skalieren */
+  opacity: 0;
+  transition: opacity 0.45s var(--ease-out);
 }
+
+.main-menu.mm-bg-loaded .mm-bg-img { opacity: 1; }
 
 /* Fehlt main-menu-bg.webp, springt mainmenu.js auf die SVG-Kulisse um */
 .mm-bg-fallback {
@@ -3172,7 +2929,11 @@ button:focus-visible,
 
 .mm-brand {
   max-width: min(560px, 92vw);
-  animation: mmFadeUp 0.7s 0.05s var(--ease-out) both;
+  opacity: 0;
+}
+
+.main-menu.mm-bg-loaded .mm-brand {
+  animation: mmFadeUp 0.9s 0.35s var(--ease-out) both;
 }
 
 .mm-brand-eyebrow {
@@ -3214,7 +2975,11 @@ button:focus-visible,
 .mm-panel-stack {
   position: relative;
   width: min(400px, 100%);
-  animation: mmPanelIn 0.6s 0.18s var(--ease-out) both;
+  opacity: 0;
+}
+
+.main-menu.mm-bg-loaded .mm-panel-stack {
+  animation: mmPanelIn 0.8s 0.6s var(--ease-out) both;
 }
 
 .mm-panel {
@@ -3553,6 +3318,67 @@ button:focus-visible,
 }
 
 
+/* ── Schleier: Start im Dunkeln, langsam ins Helle ──────────────── */
+
+.mm-veil {
+  position: absolute;
+  inset: 0;
+  z-index: 6;
+  pointer-events: none;
+  background: radial-gradient(125% 105% at 62% 40%, #0e1c17 0%, #040907 100%);
+  opacity: 1;
+  transition: opacity 1.7s cubic-bezier(0.33, 0, 0.2, 1);
+}
+
+.main-menu.mm-bg-loaded .mm-veil { opacity: 0; }
+
+/* ── Ladehinweis, solange die 3D-Szene im Hintergrund aufbaut ───── */
+
+.mm-hint-loading {
+  font-style: italic;
+  color: rgba(36, 64, 44, 0.62);
+}
+
+.mm-hint-loading::after {
+  content: '';
+  display: inline-block;
+  width: 5px;
+  height: 5px;
+  margin-left: 7px;
+  border-radius: 50%;
+  background: var(--mm-sage-d);
+  vertical-align: middle;
+  animation: mmPulse 1.4s ease-in-out infinite;
+}
+
+@keyframes mmPulse {
+  0%, 100% { opacity: 0.25; transform: scale(0.8); }
+  50%      { opacity: 1;    transform: scale(1); }
+}
+
+/* ── Musik-Player (YouTube-IFrame) ───────────────────────────────
+   Wird nur für den Ton gebraucht: unsichtbar, aber gerendert —
+   display:none würde die Wiedergabe in manchen Browsern stoppen. */
+
+.music-player-host {
+  position: fixed;
+  right: 0;
+  bottom: 0;
+  width: 320px;
+  height: 180px;
+  opacity: 0;
+  pointer-events: none;
+  z-index: -1;
+  overflow: hidden;
+}
+
+.music-player-host iframe {
+  width: 100%;
+  height: 100%;
+  border: 0;
+}
+
+
 /* ═══════════════════════════════════════════════════════════════════
    21b.  HAUPTMENÜ — RESPONSIVE
    ═══════════════════════════════════════════════════════════════════ */
@@ -3617,7 +3443,9 @@ button:focus-visible,
 
 /* Reduzierte Bewegung */
 @media (prefers-reduced-motion: reduce) {
-  .mm-brand,
-  .mm-panel-stack { animation: none !important; }
+  .main-menu.mm-bg-loaded .mm-brand,
+  .main-menu.mm-bg-loaded .mm-panel-stack { animation: none !important; opacity: 1; }
   .mm-pill        { transition: opacity 0.01ms !important; }
+  .mm-veil        { transition: opacity 0.3s linear !important; }
+  .mm-hint-loading::after { animation: none !important; opacity: 0.8; }
 }

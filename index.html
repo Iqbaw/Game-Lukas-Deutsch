@@ -12,19 +12,35 @@
        ═══════════════════════════════════════════════════════════ -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <!-- Nicht render-blockierend laden: eine hängende Schriftanfrage darf das
+       Hauptmenü nicht aufhalten. Dank display=swap tauschen die Schriften
+       nach, sobald sie da sind. -->
   <link
     href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700;900&family=DM+Sans:ital,wght@0,300;0,400;0,500;0,700;1,400&family=Caveat:wght@400;600&display=swap"
-    rel="stylesheet"
+    rel="preload" as="style" onload="this.onload=null;this.rel='stylesheet'"
   />
+  <noscript>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700;900&family=DM+Sans:ital,wght@0,300;0,400;0,500;0,700;1,400&family=Caveat:wght@400;600&display=swap"
+      rel="stylesheet"
+    />
+  </noscript>
+
+  <!-- Hintergrund des Hauptmenüs vorladen — er ist das Erste, was man sieht -->
+  <link rel="preload" as="image" href="assets/images/main-menu-bg-1920.webp"
+        imagesrcset="assets/images/main-menu-bg-1280.webp 1280w,
+                     assets/images/main-menu-bg-1920.webp 1920w,
+                     assets/images/main-menu-bg-2560.webp 2560w"
+        imagesizes="100vw" fetchpriority="high" />
 
   <!-- Stylesheet utama -->
   <link rel="stylesheet" href="style.css" />
 
   <!-- ═══════════════════════════════════════════════════════════
-       LIBRARIES — GSAP, Howler
+       LIBRARIES — GSAP (defer: darf das Hauptmenü nicht aufhalten).
+       Howler wurde entfernt — der Ton läuft über js/music.js + js/sfx.js.
        ═══════════════════════════════════════════════════════════ -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/howler/2.2.3/howler.min.js"></script>
+  <script defer src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
 
   <!-- ═══════════════════════════════════════════════════════════
        THREE.JS — via importmap (WAJIB sebelum script type=module)
@@ -40,112 +56,8 @@
 </head>
 
 <body>
-  <!-- Background Music Element -->
-  <audio id="bgm" loop>
-    <source src="assets/audio/bgm.mp3" type="audio/mpeg">
-    <source src="assets/audio/bgm.ogg" type="audio/ogg">
-  </audio>
-
-  <!-- ═══════════════════════════════════════════════════════════
-       LOADING SCREEN — Hamburg silhouette + progress bar
-       Tampil pertama kali, di-fade out setelah scene siap
-       ═══════════════════════════════════════════════════════════ -->
-  <div id="loading-screen" class="loading-screen">
-
-    <!-- Layer 1: Sky gradient sore Hamburg -->
-    <div class="loading-sky"></div>
-
-    <!-- Layer 2: Siluet skyline Hamburg (SVG) -->
-    <svg
-      class="loading-skyline"
-      viewBox="0 0 1200 200"
-      xmlns="http://www.w3.org/2000/svg"
-      preserveAspectRatio="xMidYMax slice"
-      aria-hidden="true"
-    >
-      <!-- Air/ombak -->
-      <path d="M0,180 Q150,170 300,180 T600,180 T900,180 T1200,180 L1200,200 L0,200 Z"
-            fill="#3d6b85" opacity="0.6" />
-
-      <!-- Bangunan kanan (Speicherstadt) -->
-      <rect x="0"   y="120" width="60"  height="80" fill="#2a1f1a" />
-      <rect x="55"  y="100" width="70"  height="100" fill="#2a1f1a" />
-      <rect x="120" y="130" width="50"  height="70" fill="#2a1f1a" />
-      <rect x="165" y="110" width="80"  height="90" fill="#2a1f1a" />
-
-      <!-- Menara gereja St. Michaelis (Michel) — landmark Hamburg -->
-      <rect x="280" y="60"  width="40"  height="140" fill="#2a1f1a" />
-      <polygon points="280,60 300,30 320,60" fill="#2a1f1a" />
-      <rect x="296" y="10" width="8" height="20" fill="#2a1f1a" />
-
-      <!-- Bangunan tengah -->
-      <rect x="350" y="115" width="60"  height="85" fill="#2a1f1a" />
-      <rect x="405" y="95"  width="55"  height="105" fill="#2a1f1a" />
-      <rect x="455" y="125" width="70"  height="75" fill="#2a1f1a" />
-
-      <!-- Crane pelabuhan -->
-      <rect x="555" y="80"  width="4"   height="120" fill="#2a1f1a" />
-      <line x1="557" y1="80"  x2="620" y2="100" stroke="#2a1f1a" stroke-width="3" />
-      <rect x="615" y="98" width="3" height="25" fill="#2a1f1a" />
-
-      <!-- Bangunan kanan tengah -->
-      <rect x="640" y="120" width="65"  height="80" fill="#2a1f1a" />
-      <rect x="700" y="100" width="70"  height="100" fill="#2a1f1a" />
-      <rect x="765" y="115" width="55"  height="85" fill="#2a1f1a" />
-
-      <!-- Elbphilharmonie — bentuk gelombang khas -->
-      <rect x="830" y="105" width="120" height="95" fill="#2a1f1a" />
-      <path d="M830,105 Q860,75 890,90 Q920,70 950,90 L950,105 Z" fill="#2a1f1a" />
-
-      <!-- Bangunan kanan -->
-      <rect x="970"  y="125" width="60"  height="75" fill="#2a1f1a" />
-      <rect x="1025" y="105" width="70"  height="95" fill="#2a1f1a" />
-      <rect x="1090" y="120" width="60"  height="80" fill="#2a1f1a" />
-      <rect x="1145" y="130" width="55"  height="70" fill="#2a1f1a" />
-    </svg>
-
-    <!-- Layer 3: Burung camar terbang (animasi CSS) -->
-    <div class="loading-bird loading-bird-1">𓅪</div>
-    <div class="loading-bird loading-bird-2">𓅪</div>
-    <div class="loading-bird loading-bird-3">𓅪</div>
-
-    <!-- Layer 4: Konten utama loading -->
-    <div class="loading-content">
-
-      <!-- Title -->
-      <div class="loading-title-block">
-        <p class="loading-eyebrow">Ein interaktives Sprachabenteuer</p>
-        <h1 class="loading-title">Lukas Abenteuer</h1>
-        <p class="loading-subtitle">— Willkommen in Hamburg! —</p>
-        <p class="loading-tagline">In der Stadt &nbsp;•&nbsp; Wohnung &nbsp;•&nbsp; Reise</p>
-      </div>
-
-      <!-- Progress bar -->
-      <div class="loading-progress-container">
-        <div class="loading-progress-track">
-          <div id="loading-progress-fill" class="loading-progress-fill"></div>
-        </div>
-        <div class="loading-progress-meta">
-          <span id="loading-status" class="loading-status">Hamburg wird geladen…</span>
-          <span id="loading-percent" class="loading-percent">0%</span>
-        </div>
-      </div>
-
-      <!-- Tip rotasi -->
-      <p id="loading-tip" class="loading-tip">
-        💡 Tipp: Mit <kbd>WASD</kbd> bewegen, mit <kbd>E</kbd> sprechen, mit <kbd>TAB</kbd> Reisetagebuch öffnen.
-      </p>
-
-      <!-- Tombol "Abenteuer beginnen" sekarang ada di MAIN MENU
-           (#main-menu, dirender oleh js/mainmenu.js). Loading screen
-           otomatis fade ke main menu saat progress 100%. -->
-    </div>
-
-    <!-- Footer skripsi -->
-    <div class="loading-footer">
-      <p>Lernspiel basierend auf der Skripsi von Yemima · CTL-Ansatz · Klasse XI SMA</p>
-    </div>
-  </div>
+  <!-- Hintergrundmusik läuft über js/music.js (YouTube-Playlist,
+       durchgehend vom Hauptmenü bis zum Spielende). -->
 
   <!-- ═══════════════════════════════════════════════════════════
        MAIN MENU — cozy countryside, dirender oleh js/mainmenu.js
@@ -397,107 +309,14 @@
        ENTRY POINT — main.js dibuat di Step 3
        ═══════════════════════════════════════════════════════════ -->
   <script type="module">
-    // === LOADING SCREEN BOOTSTRAP ===
-    // Step 1: progress dummy supaya loading screen kelihatan hidup
-    // sampai main.js (Step 3) ambil alih dan kirim event progress real.
-    //
-    // Saat main.js sudah ada, ia akan fire event:
-    //   window.dispatchEvent(new CustomEvent('loading:progress', { detail: { percent, status } }));
-    //   window.dispatchEvent(new CustomEvent('loading:complete'));
-    //
-    // dan kode di bawah akan otomatis bereaksi.
+    // === BOOTSTRAP ===
+    // Es gibt keinen Ladebildschirm mehr: js/mainmenu.js ist der erste
+    // Bildschirm und blendet aus dem Dunkeln auf. Die Three.js-Bootstrap
+    // in main.js läuft dabei im Hintergrund weiter und meldet ihren
+    // Fortschritt per 'loading:progress' / 'loading:complete' — das Menü
+    // zeigt ihn als dezente Zeile unter den Buttons.
 
-    const $progressFill = document.getElementById('loading-progress-fill');
-    const $progressPct  = document.getElementById('loading-percent');
-    const $progressStat = document.getElementById('loading-status');
-    const $loadingTip   = document.getElementById('loading-tip');
-    const $loadingScr   = document.getElementById('loading-screen');
-    const $gameContain  = document.getElementById('game-container');
-
-    // Tip rotasi setiap 4 detik
-    const TIPS = [
-      '💡 Tipp: Mit <kbd>WASD</kbd> bewegen, mit <kbd>E</kbd> sprechen, mit <kbd>TAB</kbd> Reisetagebuch öffnen.',
-      '🌅 Hamburg ist eine Hafenstadt im Norden Deutschlands.',
-      '📖 Lies die Texte im Reisetagebuch — sie helfen dir, Aufgaben zu lösen!',
-      '⭐ Antworte richtig beim ersten Versuch für Bonuspunkte.',
-      '🔥 Drei richtige Antworten in Folge = Combo-Streak!',
-      '🗺️ Sprich mit allen NPCs — manche geben geheime Hinweise.',
-    ];
-    let tipIdx = 0;
-    const tipTimer = setInterval(() => {
-      tipIdx = (tipIdx + 1) % TIPS.length;
-      $loadingTip.style.opacity = '0';
-      setTimeout(() => {
-        $loadingTip.innerHTML = TIPS[tipIdx];
-        $loadingTip.style.opacity = '1';
-      }, 300);
-    }, 4500);
-
-    // Status messages dummy untuk Step 1 (sementara, sebelum main.js ada)
-    const STATUS_MESSAGES = [
-      { until: 15,  text: 'Hamburg wird geladen…'        },
-      { until: 35,  text: 'Hafen wird vorbereitet…'      },
-      { until: 55,  text: 'Charaktere werden begrüßt…'   },
-      { until: 75,  text: 'Texte werden übersetzt…'      },
-      { until: 95,  text: 'Letzte Vorbereitungen…'       },
-      { until: 100, text: 'Bereit!'                       },
-    ];
-
-    function setProgress(pct, status) {
-      pct = Math.max(0, Math.min(100, pct));
-      $progressFill.style.width = pct + '%';
-      $progressPct.textContent  = Math.floor(pct) + '%';
-
-      if (status) {
-        $progressStat.textContent = status;
-      } else {
-        const msg = STATUS_MESSAGES.find(m => pct <= m.until);
-        if (msg) $progressStat.textContent = msg.text;
-      }
-
-      if (pct >= 100) revealMainMenu();
-    }
-
-    // === LOADING → MAIN MENU ===
-    let menuRevealed = false;
-
-    function revealMainMenu() {
-      if (menuRevealed) return;
-      menuRevealed = true;
-      clearInterval(tipTimer);
-
-      const showMenu = () => {
-        $loadingScr.style.display = 'none';
-        if (window.LukasMainMenu) {
-          window.LukasMainMenu.open();
-        } else {
-          // Fallback: Menü-Modul konnte nicht laden → direkt ins Story-Intro
-          openStoryIntro();
-        }
-      };
-
-      // Kurz "100% / Bereit!" zeigen, dann sanft ins Menü überblenden
-      setTimeout(() => {
-        if (window.gsap) {
-          window.gsap.to($loadingScr, {
-            opacity: 0, duration: 0.6, ease: 'power2.inOut', onComplete: showMenu
-          });
-        } else {
-          $loadingScr.style.transition = 'opacity 0.6s ease';
-          $loadingScr.style.opacity = '0';
-          setTimeout(showMenu, 600);
-        }
-      }, 700);
-    }
-
-    // Listen ke event dari main.js (akan dipakai mulai Step 3)
-    window.addEventListener('loading:progress', (e) => {
-      setProgress(e.detail.percent ?? 0, e.detail.status);
-    });
-
-    window.addEventListener('loading:complete', () => {
-      setProgress(100);
-    });
+    const $gameContain = document.getElementById('game-container');
 
     // === MAIN MENU: "Abenteuer beginnen" → story intro ===
     // js/mainmenu.js feuert 'menu:start' und schließt sich selbst.
@@ -548,13 +367,9 @@
       const startGameFromIntro = () => {
         document.getElementById('story-intro').style.display = 'none';
         window.dispatchEvent(new CustomEvent('game:start'));
-        
-        // Coba putar BGM
-        const audioEl = document.getElementById('bgm');
-        if (audioEl) {
-          audioEl.volume = 0.7; // Default volume
-          audioEl.play().catch(e => console.warn("Autoplay blocked:", e));
-        }
+
+        // Musik läuft bereits seit dem Hauptmenü durch (js/music.js) —
+        // hier ist nichts mehr zu starten.
 
         $gameContain.setAttribute('aria-hidden', 'false');
         $gameContain.classList.add('game-container-active');
@@ -564,14 +379,15 @@
       startIntroBtn.addEventListener('click', startGameFromIntro);
     }
 
-    // Cek browser compatibility (early warning)
+    // Cek browser compatibility (early warning) — erscheint im Menü
     if (!('WebGLRenderingContext' in window)) {
-      $progressStat.innerHTML = '⚠️ Dein Browser unterstützt kein WebGL.<br>Bitte nutze Chrome, Firefox oder Edge.';
-      $progressStat.style.color = '#ff6b35';
+      window.dispatchEvent(new CustomEvent('loading:progress', {
+        detail: { status: '⚠️ Dein Browser unterstützt kein WebGL — bitte Chrome, Firefox oder Edge nutzen.' }
+      }));
     }
   </script>
 
-  <!-- Main menu (berdiri sendiri — tetap tampil walau Three.js gagal) -->
+  <!-- Main menu = layar pertama (berdiri sendiri — tetap tampil walau Three.js gagal) -->
   <script type="module" src="js/mainmenu.js"></script>
 
   <!-- Entry point Three.js -->

@@ -78,6 +78,7 @@ export const Game = {
 
   // State
   isRunning:       false,
+  isBootReady:     false,
   isPaused:        false,
   delta:           0,
   elapsed:         0,
@@ -548,8 +549,10 @@ async function bootstrap() {
     setLoadingProgress(100, 'Bereit!');
     loadingComplete();
 
-    // Tunggu user klik "Abenteuer beginnen"
-    window.addEventListener(EVENTS.GAME_START, startGame, { once: true });
+    // Bootstrap fertig — falls der Spieler im Menü schon auf
+    // "Abenteuer beginnen" geklickt hat, jetzt nachholen.
+    Game.isBootReady = true;
+    if (startRequested) startGame();
 
     if (CONFIG.DEBUG) {
       console.log('[Lukas Abenteuer] Init complete.', Game);
@@ -562,7 +565,23 @@ async function bootstrap() {
 }
 
 
+/**
+ * Wird beim Klick auf "Abenteuer beginnen" gefeuert. Weil das Hauptmenü
+ * der erste Bildschirm ist, kann das passieren, bevor die Bootstrap durch
+ * ist — dann wird der Start gemerkt und am Ende der Bootstrap nachgeholt.
+ */
+let startRequested = false;
+
+function requestStart() {
+  if (Game.isBootReady) startGame();
+  else startRequested = true;
+}
+
+window.addEventListener(EVENTS.GAME_START, requestStart, { once: true });
+
+
 function startGame() {
+  if (Game.isRunning) return;
   Game.isRunning = true;
   Game.clock.start();
   requestAnimationFrame(gameLoop);
