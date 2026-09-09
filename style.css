@@ -476,12 +476,12 @@ body.input-touch .hud-hint-button {
    ═══════════════════════════════════════════════════════════ */
 .center-popup {
   position: fixed;
-  top: 38%;
+  top: 30%;
   left: 50%;
   transform: translate(-50%, -50%) scale(0.85);
-  padding: 26px 42px;
-  min-width: 360px;
-  max-width: 80vw;
+  padding: 18px 28px;
+  min-width: 0;
+  max-width: min(440px, 86vw);
   background: linear-gradient(135deg, rgba(40, 28, 18, 0.95), rgba(28, 18, 10, 0.97));
   border: 3px solid #f4c430;
   border-radius: 18px;
@@ -538,7 +538,10 @@ body.input-touch .hud-hint-button {
   pointer-events: none;
 }
 
-.hud-left-column > * { pointer-events: auto; }
+.hud-left-column > * {
+  pointer-events: auto;
+  flex: 0 0 auto;      /* nicht schrumpfen — sonst rollt jedes Panel selbst */
+}
 
 /* In der Spalte muss Verstecktes auch Platz freigeben — 'visibility'
    allein ließe eine Lücke stehen. */
@@ -740,7 +743,7 @@ body.dialog-open .hud-left-column {
   align-items: flex-start;
   min-width: 250px;
   max-width: min(330px, 42vw);
-  padding: 13px 18px 13px 16px;
+  padding: 13px 38px 13px 16px;
   border-radius: 10px;
   background:
     linear-gradient(180deg, rgba(58, 42, 22, 0.5) 0%, transparent 40%),
@@ -754,6 +757,55 @@ body.dialog-open .hud-left-column {
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
 }
+
+/* Während einer Meldung tritt die Auftragstafel zurück (nur dort, wo
+   sich beide denselben Platz teilen — auf schmalen Schirmen). */
+@media (max-width: 768px) {
+  body.toast-active .hud-quest-tracker {
+    opacity: 0.12;
+    /* Nicht anklickbar, solange sie verblasst darunter liegt — sonst
+       fängt sie Tipps ab, die der Meldung galten (und umgekehrt).
+       Ein Tipp auf die Meldung blendet sie sofort aus. */
+    pointer-events: none;
+    transition: opacity 0.2s var(--ease-out);
+  }
+}
+
+/* Pfeil zum Ein-/Ausklappen */
+.quest-collapse {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 26px;
+  height: 26px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  font-size: 12px;
+  line-height: 1;
+  color: var(--dlg-gold);
+  background: rgba(226, 188, 104, 0.08);
+  border: 1px solid rgba(201, 162, 39, 0.3);
+  transition: all var(--t-fast);
+}
+
+.quest-collapse:hover { background: rgba(226, 188, 104, 0.2); color: #ffeeb8; }
+.quest-collapse:focus-visible { outline: 2px solid var(--dlg-gold); outline-offset: 2px; }
+
+/* Eingeklappt: nur noch Symbol und Pfeil */
+body.hud-collapsed .hud-left-column { display: none; }
+
+body.hud-collapsed .hud-quest-tracker {
+  min-width: 0;
+  width: auto;
+  max-width: none;
+  padding: 9px 40px 9px 12px;
+  cursor: pointer;
+}
+
+body.hud-collapsed .quest-info,
+body.hud-collapsed .hud-quest-tracker::before { display: none; }
 
 /* Goldene Schnur am linken Rand — macht die Tafel zum "Auftrag" */
 .hud-quest-tracker::before {
@@ -926,7 +978,10 @@ body.dialog-open .hud-left-column {
 }
 
 /* ── Minimap (bottom-left) ── */
+/* Die Minikarte lag unten links genau auf dem Joystick und fing als
+   klickbare Fläche dessen Tipps ab. */
 .hud-minimap {
+  pointer-events: none;
   position: absolute;
   bottom: 24px;
   left: 24px;
@@ -986,6 +1041,7 @@ body.dialog-open .hud-left-column {
 /* ── Interaction prompt (E untuk berinteraksi) ── */
 .hud-interaction-prompt {
   position: absolute;
+  pointer-events: none;      /* rein informativ — nie klickbar */
   bottom: 28%;
   left: 50%;
   transform: translateX(-50%);
@@ -1020,36 +1076,45 @@ body.dialog-open .hud-left-column {
 
 .hud-toast-container {
   position: absolute;
-  top: 100px;
+  top: calc(env(safe-area-inset-top, 0px) + 14px);
   left: 50%;
   transform: translateX(-50%);
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  pointer-events: none;
+  align-items: center;
+  gap: 8px;
+  pointer-events: none;          /* der Rahmen fängt nie Tipps ab */
   z-index: 60;
   width: max-content;
-  max-width: 90vw;
+  max-width: min(420px, 86vw);
 }
 
 .toast {
   display: flex;
   align-items: center;
-  gap: 12px;
-  background: var(--c-dialog-bg);
-  backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
-  border: 1px solid var(--c-dialog-bd);
-  border-left-width: 4px;
-  border-radius: var(--r-md);
-  padding: 14px 20px;
-  font-size: 14px;
-  color: #fff5e0;
-  box-shadow: var(--sh-card);
-  pointer-events: auto;
-  min-width: 280px;
-  animation: toastIn 0.4s var(--ease-out) both;
+  gap: 10px;
+  max-width: 100%;
+  padding: 9px 15px;
+  border-radius: 9px;
+  font-size: 13px;
+  color: var(--dlg-ink);
+  background:
+    linear-gradient(180deg, rgba(58, 42, 22, 0.5) 0%, transparent 42%),
+    linear-gradient(160deg, rgba(36, 26, 15, 0.96), rgba(20, 14, 6, 0.97));
+  border: 1px solid var(--dlg-gold-d);
+  border-left-width: 3px;
+  box-shadow:
+    0 8px 22px rgba(0, 0, 0, 0.5),
+    inset 0 1px 0 rgba(255, 226, 160, 0.14);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  pointer-events: auto;          /* nur die Meldung selbst — zum Wischen */
+  touch-action: none;
+  cursor: pointer;
+  animation: toastIn 0.32s var(--ease-out) both;
 }
+
+.toast-copy { min-width: 0; }
 
 .toast-success { border-left-color: var(--c-success); }
 .toast-error   { border-left-color: var(--c-error); }
@@ -1057,21 +1122,21 @@ body.dialog-open .hud-left-column {
 .toast-vocab   { border-left-color: var(--c-accent); }
 
 .toast-icon {
-  font-size: 20px;
+  font-size: 16px;
   flex-shrink: 0;
 }
 
 .toast-title {
   font-weight: 700;
-  font-family: var(--font-display);
-  font-size: 15px;
-  margin-bottom: 2px;
+  font-size: 13px;
+  line-height: 1.35;
 }
 
 .toast-body {
-  font-size: 13px;
-  color: rgba(255, 245, 224, 0.85);
-  line-height: 1.5;
+  font-size: 11.5px;
+  color: rgba(242, 228, 196, 0.82);
+  line-height: 1.45;
+  margin-top: 1px;
 }
 
 .toast-out {
@@ -2441,7 +2506,7 @@ body.dialog-open .mobile-controls {
   left: 0;
   bottom: 0;
   width: min(46vw, 300px);
-  height: min(38vh, 280px);
+  height: min(30vh, 210px);
   padding:
     0 0
     calc(env(safe-area-inset-bottom, 0px) + 12px)
@@ -2654,9 +2719,72 @@ body.dialog-open .mobile-controls {
    ═══════════════════════════════════════════════════════════════════ */
 
 @media (max-width: 768px) {
-  .hud-left-column   { max-height: 42dvh; }
-  .hud-quest-tracker { top: 14px; left: 14px; max-width: min(300px, 62vw); padding: 11px 15px 11px 14px; }
-  .hud-left-column   { top: 112px; left: 14px; width: min(290px, 62vw); }
+  /* ── Kompaktere HUD-Maße: alles soll ohne Scrollen lesbar sein ── */
+  .hud-quest-tracker {
+    top: calc(env(safe-area-inset-top, 0px) + 12px);
+    left: 12px;
+    min-width: 0;
+    max-width: min(260px, 58vw);
+    padding: 10px 34px 10px 12px;
+    gap: 9px;
+    border-radius: 9px;
+  }
+  .quest-icon    { font-size: 17px; }
+  .quest-label   { font-size: 8.5px; letter-spacing: 0.2em; }
+  .quest-name    { font-size: 12.5px; line-height: 1.38; -webkit-line-clamp: 3; line-clamp: 3; }
+  .quest-collapse { width: 24px; height: 24px; top: 5px; right: 5px; }
+
+  /* Reihenfolge von oben: Auftragstafel → Meldung → Spalte.
+     Die Spalte endet weit über dem Joystick, damit sie ihn nie
+     überdeckt (auf kleinen Schirmen war das der Fall). */
+  .hud-left-column {
+    top: calc(env(safe-area-inset-top, 0px) + 120px);
+    left: 12px;
+    width: min(258px, 58vw);
+    /* So hoch wie möglich, ohne den Joystick zu erreichen */
+    max-height: calc(100dvh - 336px);
+    gap: 7px;
+  }
+
+  /* Kein eigener Rollbereich je Panel — die Spalte übernimmt das,
+     sonst steckt Text in zwei ineinander liegenden Scrollern. */
+  .hud-summary-panel { padding: 9px 10px; max-height: none; overflow: visible; }
+  .summary-title     { font-size: 11px; }
+  .summary-icon      { font-size: 15px; }
+  .summary-body      { font-size: 11px; line-height: 1.42; }
+  .summary-body li   { font-size: 11px; margin-bottom: 2px; padding-left: 14px; }
+  .summary-body p    { margin-bottom: 4px; }
+  .summary-header    { padding-bottom: 5px; margin-bottom: 6px; }
+
+  .hud-quest-list-panel  { padding: 9px 10px; }
+  .quest-list-header     { padding-bottom: 7px; margin-bottom: 5px; }
+  .quest-list-title      { font-size: 10.5px; }
+  .quest-list-icon       { font-size: 15px; }
+  .quest-list-items li   { font-size: 11px; padding: 3px 2px; gap: 6px; }
+  .quest-list-items .item-checkbox { width: 14px; height: 14px; }
+  .quest-list-items .item-emoji    { font-size: 12px; }
+  .quest-list-progress   { font-size: 10px; margin-top: 5px; padding-top: 5px; }
+
+  /* Meldungen unterhalb von Auftragstafel und Hinweis-Knopf, damit
+     sich nichts überlagert — und weit weg von Lukas in der Mitte. */
+  /* Meldungen ganz oben, wo sonst die Auftragstafel steht: die tritt
+     dafür kurz zurück. So verdeckt nie eine Meldung die Checkliste. */
+  .hud-toast-container {
+    top: calc(env(safe-area-inset-top, 0px) + 12px);
+    left: 12px;
+    transform: none;
+    align-items: flex-start;
+    max-width: calc(100vw - 92px);   /* rechts bleibt der Hinweis-Knopf frei */
+  }
+  .toast       { padding: 8px 12px; font-size: 12px; gap: 8px; }
+  .toast-title { font-size: 12px; }
+  .toast-body  { font-size: 11px; }
+  .toast-icon  { font-size: 15px; }
+
+  .center-popup { top: 26%; padding: 14px 18px; font-size: 15px; max-width: 88vw; }
+
+  .hud-onboarding-banner { top: 84px; padding: 10px 18px; font-size: 13px; gap: 8px; }
+  .hud-onboarding-banner .onb-icon { font-size: 20px; }
 
   .pause-card        { padding: 28px 24px; min-width: min(90vw, 360px); }
   .pause-sub-card    { min-width: min(95vw, 460px); }
