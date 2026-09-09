@@ -716,6 +716,60 @@ export function despawnAllNPCs() {
   ids.forEach(id => despawnNPC(id));
 }
 
+/** Set NPC mengikuti Lukas (mis. Leni pulang bersama). */
+export function setNPCFollowing(id, following = true) {
+  const rec = NPCs.get(id);
+  if (!rec) return false;
+  rec._following = following;
+
+  if (following) {
+    // PENTING: hapus collider NPC follower supaya TIDAK menjebak/menghalangi
+    // Lukas. Companion tidak boleh punya collision dengan player.
+    if (rec.collider) {
+      const idx = World.colliders.indexOf(rec.collider);
+      if (idx !== -1) World.colliders.splice(idx, 1);
+      rec._colliderRemoved = true;
+    }
+  } else {
+    // Restore collider saat berhenti mengikuti (mis. Leni berhenti/masuk rumah)
+    if (rec._colliderRemoved && rec.collider) {
+      // Update posisi collider ke posisi sekarang sebelum dipasang lagi
+      rec.collider.x = rec.group.position.x;
+      rec.collider.z = rec.group.position.z;
+      if (World.colliders.indexOf(rec.collider) === -1) {
+        World.colliders.push(rec.collider);
+      }
+      rec._colliderRemoved = false;
+    }
+  }
+  return true;
+}
+/**
+ * Scripted walk: NPC berjalan sendiri ke titik (x,z), lalu panggil onArrive.
+ * Dipakai mis. Leni berjalan masuk ke rumah Oma di akhir Quest 3.
+ */
+export function walkNPCTo(id, x, z, onArrive) {
+  const rec = NPCs.get(id);
+  if (!rec) return false;
+  // follower/scripted NPC tidak boleh menghalangi player
+  if (rec.collider) {
+    const idx = World.colliders.indexOf(rec.collider);
+    if (idx !== -1) World.colliders.splice(idx, 1);
+    rec._colliderRemoved = true;
+  }
+  rec._following = false;
+  rec._scriptTarget = { x, z, onArrive };
+  return true;
+}
+
+// Expose ke window untuk dipanggil dari quest.js tanpa import circular
+if (typeof window !== 'undefined') {
+  window.__setNPCFollowing__ = setNPCFollowing;
+  window.__despawnNPC__ = despawnNPC;
+  window.__walkNPCTo__ = walkNPCTo;
+  window.__spawnNPCAt__ = (npcId, x, z, facing = 0) => spawnNPCById(npcId, x, z, facing);
+}
+
 export function initNPCSystem() {
   // Daftar update ke loop
   registerUpdate(updateNPCs);
@@ -732,12 +786,18 @@ export function initNPCSystem() {
  * Spawn NPC tambahan saat quest tertentu selesai.
  * Dipanggil dari dialog.js / quest.js.
  */
-export function spawnNPCById(npcId) {
-  const { NPC_DATA } = window.__npcData__ || {};
-  // Fallback: cari dari data yang sudah di-load
-  import('./data/npcs.js').then(({ NPC_DATA: data }) => {
+export function spawnNPCById(npcId, atX = null, atZ = null, facing = 0) {
+  // Cari dari data yang sudah di-load; posisi bisa dioverride (spawn di luar
+  // zona aslinya, mis. Leni muncul di HAUS setelah ikut Lukas pulang)
+  return import('./data/npcs.js').then(({ NPC_DATA: data }) => {
     const npcData = data.find(n => n.id === npcId);
-    if (npcData) spawnNPC(npcData);
+    if (!npcData) return null;
+    if (atX !== null && atZ !== null) {
+      spawnNPC({ ...npcData, spawn: { x: atX, z: atZ, facing } });
+    } else {
+      spawnNPC(npcData);
+    }
+    return NPCs.get(npcId) || null;
   });
 }
 
@@ -754,6 +814,68 @@ export function updateNPCs(delta, elapsed) {
 
   NPCs.forEach((rec, id) => {
     const isFrozen = (id === activeId);
+
+    // ── SCRIPTED WALK (mis. Leni berjalan masuk rumah Oma) ──
+    if (rec._scriptTarget) {
+      const tgt = rec._scriptTarget;
+      const gx = rec.group.position.x;
+      const gz = rec.group.position.z;
+      const dx = tgt.x - gx;
+      const dz = tgt.z - gz;
+      const dist = Math.hypot(dx, dz);
+      if (dist > 0.5) {
+        const speed = 2.4;
+        const step = Math.min(speed * delta, dist);
+        rec.group.position.x = gx + (dx / dist) * step;
+        rec.group.position.z = gz + (dz / dist) * step;
+        rec.group.rotation.y = Math.atan2(dx, dz);
+        rec.walkCycle = (rec.walkCycle || 0) + delta * 8;
+        const swing = Math.sin(rec.walkCycle) * 0.5;
+        if (rec.leftLeg)  rec.leftLeg.rotation.x  =  swing;
+        if (rec.rightLeg) rec.rightLeg.rotation.x = -swing;
+        if (rec.leftArm)  rec.leftArm.rotation.x  = -swing * 0.6;
+        if (rec.rightArm) rec.rightArm.rotation.x =  swing * 0.6;
+      } else {
+        const cb = tgt.onArrive;
+        rec._scriptTarget = null;
+        if (typeof cb === 'function') cb();
+      }
+      return; // skip state machine normal saat scripted walk
+    }
+
+    // ── FOLLOW behavior (mis. Leni mengikuti Lukas pulang) ──
+    if (rec._following && Game.player) {
+      const px = Game.player.position.x;
+      const pz = Game.player.position.z;
+      const gx = rec.group.position.x;
+      const gz = rec.group.position.z;
+      const dx = px - gx;
+      const dz = pz - gz;
+      const dist = Math.hypot(dx, dz);
+      const FOLLOW_GAP = 1.6;       // jaga jarak di belakang Lukas
+      if (dist > FOLLOW_GAP) {
+        const speed = Math.min(3.2, 1.6 + dist * 0.4); // sedikit lebih cepat jika tertinggal
+        const step = speed * delta;
+        const nx = gx + (dx / dist) * step;
+        const nz = gz + (dz / dist) * step;
+        rec.group.position.x = nx;
+        rec.group.position.z = nz;
+        // hadap arah jalan
+        rec.group.rotation.y = Math.atan2(dx, dz);
+        // animasi kaki jalan
+        rec.walkCycle = (rec.walkCycle || 0) + delta * 8;
+        const swing = Math.sin(rec.walkCycle) * 0.5;
+        if (rec.leftLeg)  rec.leftLeg.rotation.x  =  swing;
+        if (rec.rightLeg) rec.rightLeg.rotation.x = -swing;
+        if (rec.leftArm)  rec.leftArm.rotation.x  = -swing * 0.6;
+        if (rec.rightArm) rec.rightArm.rotation.x =  swing * 0.6;
+        // update collider posisi
+        if (rec.collider) { rec.collider.x = nx; rec.collider.z = nz; }
+      } else {
+        animateNPCIdle(rec, elapsed);
+      }
+      return; // skip state machine normal saat following
+    }
 
     if (rec.data.activity === 'sitting') {
       animateNPCSitting(rec, elapsed);

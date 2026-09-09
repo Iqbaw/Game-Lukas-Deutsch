@@ -97,7 +97,7 @@ function setupPauseMenu() {
         <div class="pause-logo-icon">▶</div>
         <div>
           <h2 class="pause-title">Pause</h2>
-          <p class="pause-subtitle">Lukas Adventure</p>
+          <p class="pause-subtitle">Lukas Abenteuer</p>
         </div>
       </div>
 
@@ -203,7 +203,7 @@ function setupPauseMenu() {
       </div>
 
       <div class="help-about">
-        <p>Lukas Adventure — Willkommen in Hamburg!</p>
+        <p>Lukas Abenteuer — Willkommen in Hamburg!</p>
         <p class="help-credit">Lernspiel basierend auf Skripsi von Yemima · CTL-Ansatz</p>
       </div>
     </div>

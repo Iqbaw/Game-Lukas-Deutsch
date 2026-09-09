@@ -1,6 +1,6 @@
 // ═══════════════════════════════════════════════════════════════════
 // js/config.js — SEMUA konstanta & setting game di satu tempat
-// Lukas Adventure — Willkommen in Hamburg!
+// Lukas Abenteuer — Willkommen in Hamburg!
 // ═══════════════════════════════════════════════════════════════════
 
 export const CONFIG = {
@@ -121,7 +121,9 @@ export const EVENTS = {
 
 // ── ZONE IDs ──────────────────────────────────────────
 export const ZONES = {
-  HAUS:                 'haus',                 // Rumah kakek-nenek
+  HAUS:                 'haus',                 // Rumah kakek-nenek (eksterior)
+  HAUS_INTERIOR:        'haus_interior',        // Interior rumah Oma (Stage 1 — 7 ruangan)
+  STADT:                'stadt',                // Kota terpadu (Stage 2 — die Stadt)
   SUPERMARKT:           'supermarkt',           // EDEKA (Quest 1)
   SUPERMARKET_INTERIOR: 'supermarket_interior', // Bagian dalam EDEKA (Quest 1)
   SCHULE:               'schule',               // Sekolah Leni (Quest 2A)

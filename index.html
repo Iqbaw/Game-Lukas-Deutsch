@@ -3,9 +3,9 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta name="description" content="Lukas Adventure — Willkommen in Hamburg! Game 3D edukasi bahasa Jerman berbasis pendekatan CTL." />
+  <meta name="description" content="Lukas Abenteuer — Willkommen in Hamburg! Game 3D edukasi bahasa Jerman berbasis pendekatan CTL." />
   <meta name="theme-color" content="#b35c44" />
-  <title>Lukas Adventure — Willkommen in Hamburg!</title>
+  <title>Lukas Abenteuer — Willkommen in Hamburg!</title>
 
   <!-- ═══════════════════════════════════════════════════════════
        FONTS — Playfair (judul) + DM Sans (UI) + Caveat (Reisetagebuch)
@@ -115,7 +115,7 @@
       <!-- Title -->
       <div class="loading-title-block">
         <p class="loading-eyebrow">Ein interaktives Sprachabenteuer</p>
-        <h1 class="loading-title">Lukas Adventure</h1>
+        <h1 class="loading-title">Lukas Abenteuer</h1>
         <p class="loading-subtitle">— Willkommen in Hamburg! —</p>
         <p class="loading-tagline">In der Stadt &nbsp;•&nbsp; Wohnung &nbsp;•&nbsp; Reise</p>
       </div>
@@ -221,11 +221,17 @@
          ═══════════════════════════════════════════════════════ -->
     <div id="hud" class="hud">
 
+      <!-- TOP CENTER: Onboarding Banner (tampil sebelum monolog) -->
+      <div id="onboarding-banner" class="hud-onboarding-banner hud-hidden">
+        <span class="onb-icon">🌅</span>
+        <span class="onb-text">Du bist gerade aufgewacht. Schau dich um!</span>
+      </div>
+
       <!-- TOP LEFT: Quest Tracker -->
       <div id="quest-tracker" class="hud-quest-tracker hud-hidden">
         <div class="quest-icon">📜</div>
         <div class="quest-info">
-          <div class="quest-label">Aktuelle Aufgabe</div>
+          <div class="quest-label">Lektion</div>
           <div id="quest-name" class="quest-name">—</div>
           <div class="quest-progress-track">
             <div id="quest-progress-fill" class="quest-progress-fill"></div>
@@ -233,17 +239,50 @@
         </div>
       </div>
 
-      <!-- TOP RIGHT: Score & Streak -->
-      <div id="score-display" class="hud-score hud-hidden">
-        <div class="score-row">
-          <span class="score-label">Punkte</span>
-          <span id="score-value" class="score-value">0</span>
+      <!-- LEFT-MIDDLE: SUMMARY PANEL (Oma's instructions, Leseverstehen) -->
+      <div id="summary-panel" class="hud-summary-panel hud-hidden">
+        <div class="summary-header">
+          <span class="summary-icon">📞</span>
+          <span class="summary-title">Oma sagt:</span>
         </div>
-        <div id="streak-row" class="streak-row hud-hidden">
-          <span class="streak-icon">🔥</span>
-          <span id="streak-value" class="streak-value">×1</span>
+        <div id="summary-content" class="summary-body">
+          <!-- Diisi otomatis setelah telpon Oma selesai -->
         </div>
       </div>
+
+      <!-- HINT BUTTON — kanan-bawah, klik untuk dapat petunjuk arah berikutnya -->
+      <button id="hint-button" class="hud-hint-button hud-hidden" title="Hilfe (Hinweis)" aria-label="Hint">
+        💡
+      </button>
+
+      <!-- SMS MODAL — muncul saat Quest 2 step3_send_message (vertical 3 cards) -->
+      <div id="sms-modal" class="hud-sms-modal hud-hidden" role="dialog" aria-modal="true">
+        <div class="sms-modal-header">
+          <span class="sms-icon">📱</span>
+          <span class="sms-title">SMS an Tante — Welche Nachricht ist <b>richtig</b>?</span>
+        </div>
+        <div class="sms-cards" id="sms-cards">
+          <!-- 3 cards diisi dinamis oleh QuestSystem.showSmsModal() -->
+        </div>
+        <div class="sms-hint">💡 Lies sorgfältig! Nur EINE Nachricht hat keine Fehler.</div>
+      </div>
+
+      <!-- LEFT-LOWER: QUEST LIST PANEL (5 items checklist) -->
+      <div id="quest-list-panel" class="hud-quest-list-panel hud-hidden">
+        <div class="quest-list-header">
+          <span class="quest-list-icon">🧺</span>
+          <span class="quest-list-title">Sammle in der Küche:</span>
+        </div>
+        <ul id="quest-list-items" class="quest-list-items">
+          <!-- Diisi otomatis saat quest mulai -->
+        </ul>
+        <div class="quest-list-progress">
+          <span id="quest-list-count">0 / 5</span>
+        </div>
+      </div>
+
+      <!-- TOP RIGHT: Score & Streak — DIHILANGKAN sesuai permintaan.
+           Skor tetap dihitung internal (window.__score__) tapi TIDAK ditampilkan. -->
 
       <!-- BOTTOM LEFT: Minimap & Controls hint -->
       <div id="minimap-container" class="hud-minimap hud-hidden">

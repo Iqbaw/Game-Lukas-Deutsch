@@ -100,6 +100,27 @@ function buildGround(zoneId) {
     Game.worldGroup.add(g);
     World.ground = g;
     World.walkables = [g];
+  } else if (zoneId === ZONES.HAUS_INTERIOR) {
+    // Warna lantai dasar — akan ditimpa floor per-ruangan
+    const g = new THREE.Mesh(
+      new THREE.PlaneGeometry(40, 32),
+      lpMat(0xc9a880)  // wood-ish base
+    );
+    g.rotation.x = -Math.PI/2;
+    g.receiveShadow = true;
+    g.name = 'ground_haus_interior';
+    Game.worldGroup.add(g);
+    World.ground = g;
+    World.walkables = [g];
+  } else if (zoneId === ZONES.STADT) {
+    // Kota terpadu — ground rumput besar (84×64)
+    const g = new THREE.Mesh(
+      new THREE.PlaneGeometry(88, 68),
+      lpMat(MODERN_COLORS.GRASS)
+    );
+    g.rotation.x = -Math.PI/2; g.receiveShadow = true; g.name = 'ground_stadt';
+    Game.worldGroup.add(g); World.ground = g;
+    World.walkables = [g];
   } else {
     // Flat vibrant grass ground for modern city
     const g = new THREE.Mesh(
@@ -242,9 +263,9 @@ function bldg(o) {
 const _gM=new THREE.MeshStandardMaterial({color:0x88ccff,roughness:0.15,metalness:0.8});
 const _gW=new THREE.MeshStandardMaterial({color:0xffeecc,emissive:0xffcc88,emissiveIntensity:0.15,roughness:0.2,transparent:true,opacity:0.85});
 
-function makeGrundschule(x,z,r){const g=bldg({x,z,w:12,h:5,d:8,color:0xcc5533,rotY:r,name:'grundschule'});addWin(g,12,8,2,5,_gM);
+function makeGrundschule(x,z,r,color=0xcc5533,roof=0x993322){const g=bldg({x,z,w:12,h:5,d:8,color,rotY:r,name:'grundschule'});addWin(g,12,8,2,5,_gM);
   g.add(mP(new THREE.BoxGeometry(4,3,0.15),lpMat(0x222222),0,1.5,4.2));
-  g.add(mP(new THREE.BoxGeometry(12.4,0.3,8.4),lpMat(0x993322),0,5.15,0));
+  g.add(mP(new THREE.BoxGeometry(12.4,0.3,8.4),lpMat(roof),0,5.15,0));
   const s=makeSign('GRUNDSCHULE','#cc3311','#fff');s.position.set(0,4.2,4.1);g.add(s);return g;}
 
 function makeBuecherei(x,z,r){const g=bldg({x,z,w:10,h:7,d:8,color:0x4488aa,rotY:r,name:'buecherei'});addWin(g,10,8,3,4,_gM);
@@ -1049,6 +1070,18 @@ function buildHausDiorama() {
   Game.worldGroup.add(farBridgeLanding);
   World.walkables.push(farBridgeLanding);
 
+  // ── 4b. JALAN SISI KIRI RUMAH (cermin dari jalan sisi kanan/jembatan) ──
+  // Cobblestone path yang sama di sisi satunya rumah nenek, supaya kedua
+  // sisi rumah punya jalan (sesuai instruksi "nach links / nach rechts").
+  const leftPathNS = new THREE.Mesh(new THREE.BoxGeometry(2, 0.04, 8), pathMat);
+  leftPathNS.position.set(2, 0.03, 2); leftPathNS.receiveShadow = true;
+  Game.worldGroup.add(leftPathNS);
+  World.walkables.push(leftPathNS);
+  const leftPathEW = new THREE.Mesh(new THREE.BoxGeometry(8, 0.04, 2), pathMat);
+  leftPathEW.position.set(7, 0.03, 2); leftPathEW.receiveShadow = true;
+  Game.worldGroup.add(leftPathEW);
+  World.walkables.push(leftPathEW);
+
   // ── 5. WINDMILL (behind-right of house, like reference) ──
   const wmGrp = new THREE.Group();
   // Tower (tapered cylinder)
@@ -1217,6 +1250,51 @@ function buildHausDiorama() {
       b.rotation.y=-tt; b.scale.x=1+Math.sin(t*12)*0.4;
     });
   };
+
+  // ── QUEST ITEMS: Stage 1 ────────────────────────────────────────
+  // Item-item ini diletakkan di sekitar rumah Oma.
+  // Hanya bisa diambil saat quest yang sesuai sedang aktif.
+  if (!Game.itemsGroup) {
+    Game.itemsGroup = new THREE.Group();
+    Game.itemsGroup.name = 'itemsGroup';
+    Game.scene.add(Game.itemsGroup);
+  }
+
+  const spawnHausItem = (name, questTarget, x, z, color, symbol) => {
+    const geo = new THREE.BoxGeometry(0.5, 0.5, 0.5);
+    const mat = new THREE.MeshStandardMaterial({
+      color,
+      emissive: color,
+      emissiveIntensity: 0.35,
+      roughness: 0.4,
+    });
+    const mesh = new THREE.Mesh(geo, mat);
+    mesh.position.set(x, 0.5, z);
+    mesh.name = name;
+    mesh.castShadow = true;
+    mesh.userData = { isInteractable: true, questTarget, itemName: name };
+
+    // Label kecil di atas item (simbol teks)
+    if (symbol) {
+      const labelGeo = new THREE.PlaneGeometry(0.4, 0.4);
+      const canvas = document.createElement('canvas');
+      canvas.width = 64; canvas.height = 64;
+      const ctx = canvas.getContext('2d');
+      ctx.font = '36px Arial'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillText(symbol, 32, 32);
+      const tex = new THREE.CanvasTexture(canvas);
+      const label = new THREE.Mesh(labelGeo, new THREE.MeshBasicMaterial({ map: tex, transparent: true }));
+      label.position.set(0, 0.55, 0);
+      label.rotation.x = -Math.PI / 2;
+      mesh.add(label);
+    }
+
+    Game.itemsGroup.add(mesh);
+    return mesh;
+  };
+
+  // Quest items dipindah ke HAUS_INTERIOR (buildHausInterior).
+  // Eksterior tidak menyimpan item — Stage 1 quest sepenuhnya di dalam rumah.
 }
 
 // ═══════════════════════════════════════════════════════════════════
@@ -1608,28 +1686,41 @@ function buildSupermarktInterior() {
     Game.scene.add(Game.itemsGroup);
   }
 
-  const spawnQItem = (name, x, z, color) => {
-    const mesh = mP(new THREE.BoxGeometry(0.5, 0.5, 0.5), new THREE.MeshStandardMaterial({color}), x, 0.25, z);
+  const spawnQItem = (name, x, z, color, questTarget, symbol) => {
+    const mesh = mP(new THREE.BoxGeometry(0.5, 0.5, 0.5),
+      new THREE.MeshStandardMaterial({ color, emissive: color, emissiveIntensity: 0.35 }), x, 0.4, z);
     mesh.name = name;
-    mesh.userData = { isInteractable: true, questTarget: 'quest_1', itemName: name };
+    mesh.userData = { isInteractable: true, questTarget: questTarget || 'quest_4', itemName: name };
     Game.itemsGroup.add(mesh);
+    // Emoji billboard
+    if (symbol) {
+      const canvas = document.createElement('canvas');
+      canvas.width = 64; canvas.height = 64;
+      const ctx = canvas.getContext('2d');
+      ctx.font = '48px serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillText(symbol, 32, 32);
+      const tex = new THREE.CanvasTexture(canvas);
+      const spr = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true }));
+      spr.scale.set(0.6, 0.6, 1);
+      spr.position.set(x, 1.0, z);
+      Game.itemsGroup.add(spr);
+      mesh.userData.labelSprite = spr;
+    }
   };
 
   // LINKS VOM EINGANG: Obst und Gemüse (Green racks)
   const rack1 = createShelf(2, 2, 1, 0x44aa44); rack1.position.set(-6, 0, 4); Game.worldGroup.add(rack1);
   const rack2 = createShelf(2, 2, 1, 0x44aa44); rack2.position.set(-6, 0, 2); Game.worldGroup.add(rack2);
   World.colliders.push({type:'box', box:new THREE.Box3(new THREE.Vector3(-7,0,1.5), new THREE.Vector3(-5,2,4.5)), name:'obst'});
-  // Kartoffeln
-  spawnQItem('kartoffeln', -5, 3, 0xd4a017); 
+  // Gemüse (Quest 4)
+  spawnQItem('gemuese', -5, 3, 0x44aa44, 'quest_4', '🥬');
 
   // HINTEN RECHTS: Cooling rack (White shelves)
   const cool1 = createShelf(2, 3, 1, 0xeeeeee); cool1.position.set(6, 0, -6); Game.worldGroup.add(cool1);
   const cool2 = createShelf(2, 3, 1, 0xeeeeee); cool2.position.set(4, 0, -6); Game.worldGroup.add(cool2);
   World.colliders.push({type:'box', box:new THREE.Box3(new THREE.Vector3(3,0,-6.5), new THREE.Vector3(7,3,-5.5)), name:'cool'});
-  // Würstchen
-  spawnQItem('wuerstchen', 6, -5, 0xcc3333);
-  // Hähnchen
-  spawnQItem('haehnchen', 4.5, -5, 0xeeaa55);
+  // Fleisch (Quest 4)
+  spawnQItem('fleisch', 5.5, -5, 0xcc4444, 'quest_4', '🥩');
 
   // ZENTRUM: 2 rows of shelves
   const cRack1 = createShelf(4, 2, 1); cRack1.position.set(0, 0, -2); Game.worldGroup.add(cRack1);
@@ -1639,8 +1730,10 @@ function buildSupermarktInterior() {
   // Senf & Mayo placeholders
   Game.worldGroup.add(mP(new THREE.BoxGeometry(0.4, 0.6, 0.4), lpMat(0xdddd22), -1, 0.3, -0.5)); // Senf
   Game.worldGroup.add(mP(new THREE.BoxGeometry(0.4, 0.6, 0.4), lpMat(0xffffff), 1, 0.3, -0.5)); // Mayo
-  // Ketchup
-  spawnQItem('ketchup', 0, -0.5, 0xdd1111);
+  // Brot (Quest 4)
+  spawnQItem('brot', 0, -0.5, 0xc8965a, 'quest_4', '🍞');
+  // Eis (Quest 5) — di dekat kasir/freezer
+  spawnQItem('eis', 2, 5, 0xffccdd, 'quest_5', '🍦');
 
   // AM AUSGANG: Kasse and Zeitungsregal
   const kasse = createKasse(); kasse.position.set(-3, 0, 6); Game.worldGroup.add(kasse);
@@ -1654,17 +1747,2312 @@ function buildSupermarktInterior() {
   Game.worldGroup.add(exitDoor);
 }
 // ═══════════════════════════════════════════════════════════════════
+// 15.5  HAUS INTERIOR — 7 ruangan (3 Schlafzimmer, Küche, Wohnzimmer,
+//       Badezimmer, Flur) untuk Stage 1
+// ═══════════════════════════════════════════════════════════════════
+//
+// Tata letak (top-down, X horizontal, Z depth):
+//
+//   ┌──────────┬──────────┬──────────┐   z = -10
+//   │ Schlaf 1 │ Schlaf 2 │ Schlaf 3 │
+//   │  Lukas   │  Oma/Opa │  Tante   │
+//   │ (-13..-4)│  (-3..6) │  (6..13) │
+//   ├──────────┴──────────┴──────────┤   z = -3
+//   │           FLUR (lorong)        │
+//   ├──────────┬──────────┬──────────┤   z = 3
+//   │  Küche   │ Wohnzim. │ Badezim. │
+//   │ (-13..-2)│  (-2..8) │  (8..13) │
+//   └──────────┴──────────┴──────────┘   z = 10  (pintu depan)
+//
+// Quest 1 items diletakkan di Küche:
+//   • Pfanne          → di dalam Schrank
+//   • Pfannenwender   → di dalam Schublade
+//   • Gabel           → di dalam Schublade
+//   • Messer          → di dalam Schublade
+//   • Teller          → AUF dem Küchentisch
+//   • Eier            → UNTER dem kleinen Tisch
+//   • Wurst           → IN dem Kühlschrank
+
+function buildHausInterior() {
+  const lpMat = (c) => new THREE.MeshLambertMaterial({color:c, flatShading:true});
+
+  // ── PALETTE ──
+  const COL = {
+    FLOOR_BED:   0xc9a880, // wood for bedrooms
+    FLOOR_KITCH: 0xe8d8b8, // tile for kitchen
+    FLOOR_LIV:   0xb89978, // dark wood living room
+    FLOOR_BATH:  0xddeef0, // light blue tile
+    FLOOR_FLUR:  0xc4a472, // hallway wood
+    WALL_OUTER:  0xeae0d2, // outer walls
+    WALL_INNER:  0xf2e8d8, // inner walls
+    WOOD_DARK:   0x5a3a1f,
+    WOOD_MED:    0x8a6a3a,
+    WOOD_LIGHT:  0xc4956a,
+    BED_FRAME:   0x6b4226,
+    SHEETS:      0xe8e0d0,
+    PILLOW:      0xfff5e8,
+    BLANKET_L:   0x4a78aa,  // Lukas blanket — biru
+    BLANKET_O:   0xaa4a4a,  // Oma blanket — merah
+    BLANKET_T:   0x8a4aaa,  // Tante blanket — ungu
+    FRIDGE:      0xf0f0f0,
+    CABINET:     0xbb8855,
+    DRAWER:      0x9a6b3a,
+    STOVE:       0x444444,
+    SINK:        0xcccccc,
+    SOFA:        0x6a5a8a,
+    TV:          0x222222,
+    TOILET:      0xffffff,
+    TUB:         0xeef5fa,
+  };
+
+  // Layout BIGGER (36x28) — ruangan luas agar Lukas leluasa bergerak
+  const ROOMS = {
+    schlaf_lukas: { x1:-18, x2:-6,  z1:-14, z2:-4,  floor:COL.FLOOR_BED,   label:'Lukas Schlafzimmer' },
+    schlaf_oma:   { x1:-6,  x2:6,   z1:-14, z2:-4,  floor:COL.FLOOR_BED,   label:'Oma & Opa Schlafzimmer' },
+    schlaf_tante: { x1:6,   x2:18,  z1:-14, z2:-4,  floor:COL.FLOOR_BED,   label:'Tante Schlafzimmer' },
+    flur:         { x1:-18, x2:18,  z1:-4,  z2:4,   floor:COL.FLOOR_FLUR,  label:'Flur' },
+    kueche:       { x1:-18, x2:-3,  z1:4,   z2:14,  floor:COL.FLOOR_KITCH, label:'Küche' },
+    wohnzimmer:   { x1:-3,  x2:9,   z1:4,   z2:14,  floor:COL.FLOOR_LIV,   label:'Wohnzimmer' },
+    badezimmer:   { x1:9,   x2:18,  z1:4,   z2:14,  floor:COL.FLOOR_BATH,  label:'Badezimmer' },
+  };
+
+  // ── 1. FLOORS per ruangan ──
+  Object.values(ROOMS).forEach(r => {
+    const w = r.x2 - r.x1, d = r.z2 - r.z1;
+    const floor = new THREE.Mesh(
+      new THREE.PlaneGeometry(w, d),
+      lpMat(r.floor)
+    );
+    floor.rotation.x = -Math.PI/2;
+    floor.position.set((r.x1+r.x2)/2, 0.02, (r.z1+r.z2)/2);
+    floor.receiveShadow = true;
+    Game.worldGroup.add(floor);
+    World.walkables.push(floor);
+  });
+
+  // ── 2. CEILING (skip — pakai sky terbuka untuk isometric view) ──
+
+  // ── HELPER: build a wall segment ──
+  // wall(x1,z1,x2,z2) — wall from (x1,z1) to (x2,z2) with thickness 0.3, height 2.5
+  const WALL_H = 2.5, WALL_T = 0.3;
+  const wallMat = lpMat(COL.WALL_OUTER);
+  const innerWallMat = lpMat(COL.WALL_INNER);
+
+  const addWall = (x1, z1, x2, z2, mat = wallMat, doorGap = null) => {
+    // Wall is axis-aligned. doorGap = {start, end} along the axis to leave open
+    const isVertical = (x1 === x2);
+    if (doorGap) {
+      // Split wall into 2 segments around the gap
+      if (isVertical) {
+        if (z1 > z2) [z1, z2] = [z2, z1];
+        if (doorGap.start > z1) addWall(x1, z1, x1, doorGap.start, mat);
+        if (doorGap.end < z2)   addWall(x1, doorGap.end, x1, z2, mat);
+      } else {
+        if (x1 > x2) [x1, x2] = [x2, x1];
+        if (doorGap.start > x1) addWall(x1, z1, doorGap.start, z1, mat);
+        if (doorGap.end < x2)   addWall(doorGap.end, z1, x2, z1, mat);
+      }
+      return;
+    }
+    const w = Math.abs(x2 - x1) || WALL_T;
+    const d = Math.abs(z2 - z1) || WALL_T;
+    const cx = (x1 + x2) / 2;
+    const cz = (z1 + z2) / 2;
+    const geo = new THREE.BoxGeometry(w, WALL_H, d);
+    const mesh = new THREE.Mesh(geo, mat);
+    mesh.position.set(cx, WALL_H/2, cz);
+    mesh.castShadow = true;
+    mesh.receiveShadow = true;
+    Game.worldGroup.add(mesh);
+    // Collider
+    World.colliders.push({
+      type: 'box',
+      box: new THREE.Box3(
+        new THREE.Vector3(cx - w/2, 0, cz - d/2),
+        new THREE.Vector3(cx + w/2, WALL_H, cz + d/2),
+      ),
+      name: 'interior-wall',
+    });
+  };
+
+  // ── 3. OUTER WALLS (zona 36×28) ──
+  // North wall (z=-14) — solid
+  addWall(-18, -14, 18, -14);
+  // South wall (z=14) — PINTU DEPAN ada di Wohnzimmer (LEBAR x=1..5)
+  addWall(-18, 14, 18, 14, wallMat, { start: 1, end: 5 });
+  // West wall (x=-18) — solid
+  addWall(-18, -14, -18, 14);
+  // East wall (x=18) — solid
+  addWall(18, -14, 18, 14);
+
+  // ── 4. INNER WALLS — 1 pintu per kamar (kecuali Wohnzimmer 2 pintu) ──
+  // Tembok antar kamar tidur — SOLID (tidak ada pintu)
+  addWall(-6, -14, -6, -4, innerWallMat);   // Schlaf1 ↔ Schlaf2 solid
+  addWall(6,  -14, 6,  -4, innerWallMat);   // Schlaf2 ↔ Schlaf3 solid
+
+  // Tembok antara kamar tidur dan Flur (z=-4) — 1 pintu per kamar
+  //   Schlaf Lukas door: x=-13..-11
+  //   Schlaf Oma door:   x=-1..1
+  //   Schlaf Tante door: x=11..13
+  addWall(-18, -4, -13, -4, innerWallMat);
+  addWall(-11, -4, -1,  -4, innerWallMat);
+  addWall(1,   -4, 11,  -4, innerWallMat);
+  addWall(13,  -4, 18,  -4, innerWallMat);
+
+  // Tembok antara Flur dan ruangan depan (z=4) — 1 pintu per kamar
+  //   Küche door:       x=-13..-11
+  //   Wohnzimmer door:  x=2..4 (pintu UTARA — 1 dari 2 pintu Wohnzimmer)
+  //   Badezimmer door:  x=12..14
+  addWall(-18, 4, -13, 4, innerWallMat);
+  addWall(-11, 4, 2,   4, innerWallMat);
+  addWall(4,   4, 12,  4, innerWallMat);
+  addWall(14,  4, 18,  4, innerWallMat);
+
+  // Tembok antar ruangan depan — SOLID
+  addWall(-3, 4, -3, 14, innerWallMat); // Küche ↔ Wohnzimmer
+  addWall(9,  4, 9,  14, innerWallMat); // Wohnzimmer ↔ Badezimmer
+
+  // ── 4b. VISIBLE DOOR FRAMES + open doors di setiap pintu ──
+  const doorFrameMat = lpMat(COL.WOOD_DARK);
+  const doorPanelMat = new THREE.MeshStandardMaterial({color: 0x7a4a2a, roughness: 0.7});
+
+  // doorAt(x, z, axis) — axis 'x' = doorway parallel to X axis (wall along Z), axis 'z' inverse
+  const addDoorFrame = (cx, cz, axis, isOpen = true) => {
+    // axis 'x' means doorway opens N-S, wall runs E-W along x direction
+    const isXWall = (axis === 'x'); // wall runs along X, gap along X → frame visible on X
+    // Frame: 2 vertical posts + lintel
+    const postH = WALL_H;
+    const gapW = 2; // door width
+    if (isXWall) {
+      // posts at (cx-1, cz), (cx+1, cz)
+      const postL = new THREE.Mesh(new THREE.BoxGeometry(0.18, postH, 0.4), doorFrameMat);
+      postL.position.set(cx-1, postH/2, cz); postL.castShadow = true; Game.worldGroup.add(postL);
+      const postR = new THREE.Mesh(new THREE.BoxGeometry(0.18, postH, 0.4), doorFrameMat);
+      postR.position.set(cx+1, postH/2, cz); postR.castShadow = true; Game.worldGroup.add(postR);
+      const lintel = new THREE.Mesh(new THREE.BoxGeometry(2.3, 0.25, 0.4), doorFrameMat);
+      lintel.position.set(cx, postH - 0.1, cz); Game.worldGroup.add(lintel);
+      if (isOpen) {
+        // Open door panel — rotated 70° around left post
+        const panel = new THREE.Mesh(new THREE.BoxGeometry(1.85, 2.1, 0.05), doorPanelMat);
+        const grp = new THREE.Group();
+        panel.position.set(0.95, 0, 0);
+        grp.add(panel);
+        grp.position.set(cx-1, 1.05, cz);
+        grp.rotation.y = -1.1; // open angle
+        Game.worldGroup.add(grp);
+      }
+    } else {
+      // wall runs along Z, doorway gap is along Z (perpendicular to X axis through door center)
+      const postT = new THREE.Mesh(new THREE.BoxGeometry(0.4, postH, 0.18), doorFrameMat);
+      postT.position.set(cx, postH/2, cz-1); postT.castShadow = true; Game.worldGroup.add(postT);
+      const postB = new THREE.Mesh(new THREE.BoxGeometry(0.4, postH, 0.18), doorFrameMat);
+      postB.position.set(cx, postH/2, cz+1); postB.castShadow = true; Game.worldGroup.add(postB);
+      const lintel = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.25, 2.3), doorFrameMat);
+      lintel.position.set(cx, postH - 0.1, cz); Game.worldGroup.add(lintel);
+      if (isOpen) {
+        const panel = new THREE.Mesh(new THREE.BoxGeometry(0.05, 2.1, 1.85), doorPanelMat);
+        const grp = new THREE.Group();
+        panel.position.set(0, 0, 0.95);
+        grp.add(panel);
+        grp.position.set(cx, 1.05, cz-1);
+        grp.rotation.y = -1.1;
+        Game.worldGroup.add(grp);
+      }
+    }
+  };
+
+  // Pintu kamar tidur (TERBUKA)
+  addDoorFrame(-12, -4, 'x'); // Lukas Schlafzimmer → Flur
+  addDoorFrame(0,   -4, 'x'); // Oma Schlafzimmer → Flur
+  addDoorFrame(12,  -4, 'x'); // Tante Schlafzimmer → Flur
+
+  // Pintu ruangan depan → Flur
+  addDoorFrame(-12, 4, 'x'); // Küche
+  addDoorFrame(3,   4, 'x'); // Wohnzimmer (pintu UTARA)
+  addDoorFrame(13,  4, 'x'); // Badezimmer
+
+  // Pintu DEPAN rumah — DESAIN SAMA persis dengan pintu kamar tidur Lukas
+  // (semuanya pakai doorFrameMat = COL.WOOD_DARK, tidak ada trim terang)
+  // Posts di kedua tepi gap (x=1, x=5) + lintel di atas + swing panel
+  {
+    const frameMat = lpMat(COL.WOOD_DARK);
+    // POSTS — dimensi sama dengan addDoorFrame bedroom (0.18 × WALL_H × 0.4)
+    const postL = new THREE.Mesh(new THREE.BoxGeometry(0.18, WALL_H, 0.4), frameMat);
+    postL.position.set(1, WALL_H/2, 14); postL.castShadow = true;
+    Game.worldGroup.add(postL);
+    const postR = new THREE.Mesh(new THREE.BoxGeometry(0.18, WALL_H, 0.4), frameMat);
+    postR.position.set(5, WALL_H/2, 14); postR.castShadow = true;
+    Game.worldGroup.add(postR);
+    // LINTEL — sama tinggi 0.25, sama warna gelap (matching bedroom)
+    const lintel = new THREE.Mesh(new THREE.BoxGeometry(4.4, 0.25, 0.4), frameMat);
+    lintel.position.set(3, WALL_H - 0.1, 14);
+    lintel.castShadow = true;
+    Game.worldGroup.add(lintel);
+    // SWING PANEL — sama style dengan addDoorFrame bedroom (open angle -1.1 rad)
+    const panelMat = new THREE.MeshStandardMaterial({color: 0x7a4a2a, roughness: 0.7});
+    const panel = new THREE.Mesh(new THREE.BoxGeometry(3.6, 2.1, 0.05), panelMat);
+    const panelGroup = new THREE.Group();
+    panel.position.set(1.85, 0, 0);  // pivot di postL
+    panelGroup.add(panel);
+    panelGroup.position.set(1, 1.05, 14);
+    panelGroup.rotation.y = -1.1;  // swing terbuka
+    Game.worldGroup.add(panelGroup);
+  }
+
+  // ── 5. ROOM LABELS dihilangkan sesuai permintaan ──
+
+  // ═══════════════════════════════════════════════════════════════
+  // FURNITURE BUILDERS
+  // ═══════════════════════════════════════════════════════════════
+
+  // ── BED ──
+  const buildBed = (x, z, rotY, blanketCol) => {
+    const grp = new THREE.Group();
+    const frame = new THREE.Mesh(new THREE.BoxGeometry(2, 0.4, 3.4), lpMat(COL.BED_FRAME));
+    frame.position.y = 0.2; frame.castShadow = true; grp.add(frame);
+    const mattress = new THREE.Mesh(new THREE.BoxGeometry(1.9, 0.25, 3.2), lpMat(COL.SHEETS));
+    mattress.position.y = 0.55; mattress.castShadow = true; grp.add(mattress);
+    const blanket = new THREE.Mesh(new THREE.BoxGeometry(1.95, 0.08, 2.0), lpMat(blanketCol));
+    blanket.position.set(0, 0.72, 0.3); grp.add(blanket);
+    const pillow = new THREE.Mesh(new THREE.BoxGeometry(1.7, 0.18, 0.6), lpMat(COL.PILLOW));
+    pillow.position.set(0, 0.78, -1.2); grp.add(pillow);
+    // Headboard
+    const headboard = new THREE.Mesh(new THREE.BoxGeometry(2, 1.2, 0.18), lpMat(COL.WOOD_DARK));
+    headboard.position.set(0, 1.0, -1.7); grp.add(headboard);
+    grp.position.set(x, 0, z);
+    grp.rotation.y = rotY;
+    Game.worldGroup.add(grp);
+    World.colliders.push({
+      type:'box',
+      box: new THREE.Box3(new THREE.Vector3(x-1.1,0,z-1.8), new THREE.Vector3(x+1.1,1.2,z+1.8))
+    });
+    return grp;
+  };
+
+  // ── NIGHTSTAND ──
+  const buildNightstand = (x, z) => {
+    const grp = new THREE.Group();
+    const body = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.7, 0.7), lpMat(COL.WOOD_MED));
+    body.position.y = 0.35; body.castShadow = true; grp.add(body);
+    const top = new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.06, 0.8), lpMat(COL.WOOD_LIGHT));
+    top.position.y = 0.73; grp.add(top);
+    // Lamp
+    const lampBase = new THREE.Mesh(new THREE.CylinderGeometry(0.1,0.13,0.15,8), lpMat(0x444444));
+    lampBase.position.set(0, 0.82, 0); grp.add(lampBase);
+    const lampShade = new THREE.Mesh(new THREE.ConeGeometry(0.18,0.25,8,1,true),
+      new THREE.MeshStandardMaterial({color:0xffe8b0, emissive:0xffaa44, emissiveIntensity:0.4, side:THREE.DoubleSide}));
+    lampShade.position.set(0, 1.05, 0); grp.add(lampShade);
+    grp.position.set(x, 0, z);
+    Game.worldGroup.add(grp);
+    World.colliders.push({
+      type:'box', box: new THREE.Box3(new THREE.Vector3(x-0.45,0,z-0.45), new THREE.Vector3(x+0.45,0.85,z+0.45))
+    });
+    return grp;
+  };
+
+  // ── WARDROBE ──
+  const buildWardrobe = (x, z, rotY = 0) => {
+    const grp = new THREE.Group();
+    const body = new THREE.Mesh(new THREE.BoxGeometry(2.2, 2.4, 0.7), lpMat(COL.WOOD_MED));
+    body.position.y = 1.2; body.castShadow = true; grp.add(body);
+    // Doors
+    const doorL = new THREE.Mesh(new THREE.BoxGeometry(1.05, 2.2, 0.05), lpMat(COL.WOOD_DARK));
+    doorL.position.set(-0.55, 1.2, 0.38); grp.add(doorL);
+    const doorR = new THREE.Mesh(new THREE.BoxGeometry(1.05, 2.2, 0.05), lpMat(COL.WOOD_DARK));
+    doorR.position.set(0.55, 1.2, 0.38); grp.add(doorR);
+    // Handles
+    [-0.1, 0.1].forEach(hx => {
+      const h = new THREE.Mesh(new THREE.SphereGeometry(0.06,6,6), lpMat(0xddaa44));
+      h.position.set(hx, 1.2, 0.43); grp.add(h);
+    });
+    grp.position.set(x, 0, z);
+    grp.rotation.y = rotY;
+    Game.worldGroup.add(grp);
+    const cosR = Math.abs(Math.cos(rotY)), sinR = Math.abs(Math.sin(rotY));
+    const halfW = (2.2*cosR + 0.7*sinR)/2;
+    const halfD = (2.2*sinR + 0.7*cosR)/2;
+    World.colliders.push({
+      type:'box', box: new THREE.Box3(
+        new THREE.Vector3(x-halfW,0,z-halfD), new THREE.Vector3(x+halfW,2.4,z+halfD))
+    });
+  };
+
+  // ── BEDROOM: SCHREIBTISCH (study desk) ──
+  const buildSchreibtisch = (x, z, rotY = 0) => {
+    const grp = new THREE.Group();
+    // Top
+    const top = new THREE.Mesh(new THREE.BoxGeometry(1.8, 0.08, 0.85), lpMat(COL.WOOD_LIGHT));
+    top.position.y = 0.78; top.castShadow = true; grp.add(top);
+    // Legs (4)
+    [[-0.8,-0.35],[0.8,-0.35],[-0.8,0.35],[0.8,0.35]].forEach(([lx,lz]) => {
+      const leg = new THREE.Mesh(new THREE.BoxGeometry(0.1,0.78,0.1), lpMat(COL.WOOD_DARK));
+      leg.position.set(lx, 0.39, lz); grp.add(leg);
+    });
+    // Side drawer
+    const drawer = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.55, 0.7), lpMat(COL.WOOD_MED));
+    drawer.position.set(0.6, 0.4, 0); drawer.castShadow = true; grp.add(drawer);
+    const drawerFace = new THREE.Mesh(new THREE.BoxGeometry(0.46, 0.18, 0.04), lpMat(0x7a5a2a));
+    drawerFace.position.set(0.6, 0.5, 0.36); grp.add(drawerFace);
+    const drawerHandle = new THREE.Mesh(new THREE.SphereGeometry(0.05,6,6), lpMat(0xddaa44));
+    drawerHandle.position.set(0.6, 0.5, 0.4); grp.add(drawerHandle);
+
+    grp.position.set(x, 0, z);
+    grp.rotation.y = rotY;
+    Game.worldGroup.add(grp);
+    World.colliders.push({type:'box', box: new THREE.Box3(
+      new THREE.Vector3(x-0.95,0,z-0.5), new THREE.Vector3(x+0.95,0.85,z+0.5))});
+    return { x, y: 0.82, z }; // top surface for items
+  };
+
+  // ── BEDROOM: STUHL (chair) ──
+  const buildStuhl = (x, z, rotY = 0) => {
+    const grp = new THREE.Group();
+    // Seat
+    const seat = new THREE.Mesh(new THREE.BoxGeometry(0.55, 0.08, 0.55), lpMat(COL.WOOD_MED));
+    seat.position.y = 0.45; seat.castShadow = true; grp.add(seat);
+    // Backrest
+    const back = new THREE.Mesh(new THREE.BoxGeometry(0.55, 0.7, 0.08), lpMat(COL.WOOD_MED));
+    back.position.set(0, 0.78, -0.23); grp.add(back);
+    // Legs
+    [[-0.22,-0.22],[0.22,-0.22],[-0.22,0.22],[0.22,0.22]].forEach(([lx,lz]) => {
+      const leg = new THREE.Mesh(new THREE.BoxGeometry(0.06,0.45,0.06), lpMat(COL.WOOD_DARK));
+      leg.position.set(lx, 0.22, lz); grp.add(leg);
+    });
+    grp.position.set(x, 0, z);
+    grp.rotation.y = rotY;
+    Game.worldGroup.add(grp);
+    World.colliders.push({type:'cylinder', x, z, radius:0.35});
+  };
+
+  // ── DESK CLUTTER: books, pencil holder ──
+  const buildBook = (x, y, z, color, rotY = 0) => {
+    const book = new THREE.Mesh(new THREE.BoxGeometry(0.32, 0.08, 0.24), lpMat(color));
+    book.position.set(x, y, z);
+    book.rotation.y = rotY;
+    book.castShadow = true;
+    Game.worldGroup.add(book);
+  };
+
+  const buildPencilHolder = (x, y, z) => {
+    const grp = new THREE.Group();
+    const cup = new THREE.Mesh(new THREE.CylinderGeometry(0.1,0.1,0.18,10), lpMat(0x3a5a8a));
+    cup.position.y = 0.09; grp.add(cup);
+    // 4 pencils/pens sticking out
+    const colors = [0xffcc44, 0x44aaff, 0xff5544, 0x222222];
+    colors.forEach((c, i) => {
+      const pen = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.012, 0.22, 6), lpMat(c));
+      pen.position.set(Math.cos(i*1.5)*0.04, 0.22, Math.sin(i*1.5)*0.04);
+      pen.rotation.x = (Math.random()-0.5)*0.2;
+      pen.rotation.z = (Math.random()-0.5)*0.2;
+      grp.add(pen);
+    });
+    grp.position.set(x, y, z);
+    Game.worldGroup.add(grp);
+  };
+
+  // ═══════════════════════════════════════════════════════════════
+  // COZY BEDROOM DECOR HELPERS (untuk kamar Lukas diorama style)
+  // ═══════════════════════════════════════════════════════════════
+
+  // ── WALL-MOUNTED BOOKSHELF dengan 4 cubbies + buku merah/hijau + plant ──
+  const buildWallBookshelf = (cx, cz, rotY = 0) => {
+    const grp = new THREE.Group();
+    // Body
+    const body = new THREE.Mesh(
+      new THREE.BoxGeometry(1.0, 2.3, 0.35),
+      lpMat(COL.WOOD_LIGHT)
+    );
+    body.position.y = 1.15; body.castShadow = true; grp.add(body);
+    // Back panel sedikit lebih gelap
+    const back = new THREE.Mesh(
+      new THREE.BoxGeometry(0.92, 2.2, 0.03),
+      lpMat(COL.WOOD_DARK)
+    );
+    back.position.set(0, 1.15, -0.16); grp.add(back);
+    // 5 horizontal shelf dividers → 4 cubbies
+    for (let i = 0; i <= 4; i++) {
+      const shelf = new THREE.Mesh(
+        new THREE.BoxGeometry(0.94, 0.04, 0.32),
+        lpMat(COL.WOOD_DARK)
+      );
+      shelf.position.set(0, 0.1 + i * 0.55, 0);
+      grp.add(shelf);
+    }
+    // Books (merah & hijau) di 3 cubbies bawah; pot tanaman di cubby atas
+    const bookColors = [0xcc4444, 0x44aa55, 0xcc4444];
+    for (let cubby = 0; cubby < 3; cubby++) {
+      const cy = 0.4 + cubby * 0.55;
+      for (let b = 0; b < 4; b++) {
+        const bookH = 0.32 + (b % 2) * 0.05;
+        const book = new THREE.Mesh(
+          new THREE.BoxGeometry(0.13, bookH, 0.2),
+          lpMat(b % 2 === 0 ? 0xcc4444 : 0x44aa55)
+        );
+        book.position.set(-0.32 + b * 0.16, cy + bookH/2 - 0.15, 0);
+        book.rotation.z = (b - 1.5) * 0.05; // sedikit miring
+        grp.add(book);
+      }
+    }
+    // Pot tanaman di cubby paling atas (cubby 4)
+    const pot = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.13, 0.1, 0.18, 8),
+      lpMat(0xb86a3a)
+    );
+    pot.position.set(0, 2.05, 0); grp.add(pot);
+    const leaves = new THREE.Mesh(
+      new THREE.SphereGeometry(0.2, 8, 6),
+      lpMat(0x44aa55)
+    );
+    leaves.position.set(0, 2.28, 0); leaves.scale.y = 1.2; grp.add(leaves);
+    // Daun extra
+    for (let i = 0; i < 4; i++) {
+      const leaf = new THREE.Mesh(
+        new THREE.ConeGeometry(0.07, 0.18, 5),
+        lpMat(0x55bb66)
+      );
+      const a = (i / 4) * Math.PI * 2;
+      leaf.position.set(Math.cos(a) * 0.13, 2.35, Math.sin(a) * 0.13);
+      leaf.rotation.x = 0.4 * Math.sin(a);
+      leaf.rotation.z = 0.4 * Math.cos(a);
+      grp.add(leaf);
+    }
+
+    grp.position.set(cx, 0, cz);
+    grp.rotation.y = rotY;
+    Game.worldGroup.add(grp);
+    const cR = Math.abs(Math.cos(rotY)), sR = Math.abs(Math.sin(rotY));
+    const halfW = (1.0*cR + 0.35*sR)/2;
+    const halfD = (1.0*sR + 0.35*cR)/2;
+    World.colliders.push({type:'box', box: new THREE.Box3(
+      new THREE.Vector3(cx-halfW, 0, cz-halfD), new THREE.Vector3(cx+halfW, 2.5, cz+halfD))});
+  };
+
+  // ── FLOATING WALL SHELF dengan succulent ──
+  const buildFloatingShelf = (cx, cy, cz, rotY = 0) => {
+    const grp = new THREE.Group();
+    const shelf = new THREE.Mesh(
+      new THREE.BoxGeometry(0.7, 0.06, 0.22),
+      lpMat(COL.WOOD_LIGHT)
+    );
+    shelf.castShadow = true; grp.add(shelf);
+    // Pot kecil
+    const pot = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.08, 0.06, 0.1, 6),
+      lpMat(0xddaa88)
+    );
+    pot.position.y = 0.08; grp.add(pot);
+    // Succulent cluster (5 daun + center)
+    for (let i = 0; i < 5; i++) {
+      const a = (i / 5) * Math.PI * 2;
+      const leaf = new THREE.Mesh(
+        new THREE.ConeGeometry(0.05, 0.14, 5),
+        lpMat(0x66bb55)
+      );
+      leaf.position.set(Math.cos(a) * 0.055, 0.18, Math.sin(a) * 0.055);
+      leaf.rotation.x = 0.3;
+      leaf.rotation.z = -0.3 * Math.cos(a);
+      grp.add(leaf);
+    }
+    const top = new THREE.Mesh(
+      new THREE.SphereGeometry(0.05, 6, 4),
+      lpMat(0x77cc66)
+    );
+    top.position.y = 0.22; grp.add(top);
+
+    grp.position.set(cx, cy, cz);
+    grp.rotation.y = rotY;
+    Game.worldGroup.add(grp);
+  };
+
+  // ── PICTURE FRAME (white frame, green minimalist landscape art) ──
+  const buildPictureFrame = (cx, cy, cz, rotY = 0, w = 0.5, h = 0.6) => {
+    const grp = new THREE.Group();
+    const frameMat = lpMat(0xfafafa);
+    const frame = new THREE.Mesh(new THREE.BoxGeometry(w + 0.08, h + 0.08, 0.06), frameMat);
+    grp.add(frame);
+    // Generated art canvas — minimalist green landscape
+    const canvas = document.createElement('canvas');
+    canvas.width = 128; canvas.height = 128;
+    const ctx = canvas.getContext('2d');
+    // Sky cream
+    ctx.fillStyle = '#f8f0d8';
+    ctx.fillRect(0, 0, 128, 70);
+    // Sun (pale)
+    ctx.fillStyle = '#fae9b8';
+    ctx.beginPath(); ctx.arc(95, 35, 12, 0, Math.PI*2); ctx.fill();
+    // Background hills
+    ctx.fillStyle = '#88cc77';
+    ctx.beginPath();
+    ctx.moveTo(0, 80);
+    ctx.quadraticCurveTo(32, 65, 64, 75);
+    ctx.quadraticCurveTo(96, 85, 128, 70);
+    ctx.lineTo(128, 128); ctx.lineTo(0, 128);
+    ctx.fill();
+    // Foreground hills
+    ctx.fillStyle = '#5aa84a';
+    ctx.beginPath();
+    ctx.moveTo(0, 100);
+    ctx.quadraticCurveTo(48, 90, 80, 98);
+    ctx.quadraticCurveTo(110, 105, 128, 100);
+    ctx.lineTo(128, 128); ctx.lineTo(0, 128);
+    ctx.fill();
+    const tex = new THREE.CanvasTexture(canvas);
+    const art = new THREE.Mesh(
+      new THREE.PlaneGeometry(w, h),
+      new THREE.MeshBasicMaterial({ map: tex })
+    );
+    art.position.z = 0.035;
+    grp.add(art);
+
+    grp.position.set(cx, cy, cz);
+    grp.rotation.y = rotY;
+    Game.worldGroup.add(grp);
+  };
+
+  // ── WHITE RUG (soft fabric) ──
+  const buildWhiteRug = (cx, cz, w = 1.5, d = 1.0) => {
+    const rug = new THREE.Mesh(
+      new THREE.PlaneGeometry(w, d),
+      new THREE.MeshStandardMaterial({
+        color: 0xfaf5e8, roughness: 0.95, metalness: 0
+      })
+    );
+    rug.rotation.x = -Math.PI/2;
+    rug.position.set(cx, 0.04, cz);
+    rug.receiveShadow = true;
+    Game.worldGroup.add(rug);
+    // Outer border (slightly darker)
+    const border = new THREE.Mesh(
+      new THREE.PlaneGeometry(w + 0.12, d + 0.12),
+      new THREE.MeshStandardMaterial({
+        color: 0xe8dec8, roughness: 0.95
+      })
+    );
+    border.rotation.x = -Math.PI/2;
+    border.position.set(cx, 0.035, cz);
+    Game.worldGroup.add(border);
+  };
+
+  // ── YELLOW TASK LAMP (flexible-neck) ──
+  const buildTaskLamp = (cx, cy, cz) => {
+    const grp = new THREE.Group();
+    // Heavy circular base
+    const base = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.12, 0.14, 0.04, 14),
+      lpMat(0xbbbbbb)
+    );
+    grp.add(base);
+    // Flexible neck (3 articulated segments)
+    const segMat = lpMat(0xbbbbbb);
+    const seg1 = new THREE.Mesh(new THREE.CylinderGeometry(0.022, 0.022, 0.2, 8), segMat);
+    seg1.position.set(0, 0.12, 0);
+    seg1.rotation.z = 0.2;
+    grp.add(seg1);
+    const seg2 = new THREE.Mesh(new THREE.CylinderGeometry(0.022, 0.022, 0.22, 8), segMat);
+    seg2.position.set(0.06, 0.28, 0);
+    seg2.rotation.z = -0.4;
+    grp.add(seg2);
+    const seg3 = new THREE.Mesh(new THREE.CylinderGeometry(0.022, 0.022, 0.2, 8), segMat);
+    seg3.position.set(0.02, 0.42, 0);
+    seg3.rotation.z = 0.5;
+    grp.add(seg3);
+    // Yellow lamp shade (cone)
+    const shadeMat = new THREE.MeshStandardMaterial({
+      color: 0xffd44a, emissive: 0xffaa22, emissiveIntensity: 0.5,
+      side: THREE.DoubleSide, roughness: 0.5
+    });
+    const shade = new THREE.Mesh(
+      new THREE.ConeGeometry(0.13, 0.2, 10, 1, true),
+      shadeMat
+    );
+    shade.position.set(0.09, 0.55, 0);
+    shade.rotation.z = -0.7;
+    grp.add(shade);
+    // Cord
+    const cord = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.006, 0.006, 0.45, 4),
+      lpMat(0x222222)
+    );
+    cord.position.set(-0.08, 0.04, -0.05);
+    cord.rotation.x = Math.PI/2.5;
+    grp.add(cord);
+
+    grp.position.set(cx, cy, cz);
+    Game.worldGroup.add(grp);
+  };
+
+  // ── VENETIAN BLINDS (window with yellow horizontal slats) ──
+  const buildVenetianBlinds = (cx, cz, rotY = 0, w = 1.4, h = 1.0) => {
+    const grp = new THREE.Group();
+    const frameMat = lpMat(0x6a4a2a);
+    // Outer frame
+    const ft = new THREE.Mesh(new THREE.BoxGeometry(w+0.16, 0.1, 0.12), frameMat);
+    ft.position.y = h/2+0.05; grp.add(ft);
+    const fb = new THREE.Mesh(new THREE.BoxGeometry(w+0.16, 0.1, 0.12), frameMat);
+    fb.position.y = -h/2-0.05; grp.add(fb);
+    const fl = new THREE.Mesh(new THREE.BoxGeometry(0.1, h+0.2, 0.12), frameMat);
+    fl.position.x = -w/2-0.05; grp.add(fl);
+    const fr = new THREE.Mesh(new THREE.BoxGeometry(0.1, h+0.2, 0.12), frameMat);
+    fr.position.x = w/2+0.05; grp.add(fr);
+    // Window glass (subtle behind blinds)
+    const glassMat = new THREE.MeshStandardMaterial({
+      color: 0xbfe2f5, emissive: 0xa0d0e8, emissiveIntensity: 0.3,
+      transparent: true, opacity: 0.55
+    });
+    const glass = new THREE.Mesh(new THREE.BoxGeometry(w, h, 0.04), glassMat);
+    grp.add(glass);
+    // Yellow horizontal venetian slats
+    const slatMat = new THREE.MeshStandardMaterial({
+      color: 0xffd860, roughness: 0.4, metalness: 0.08
+    });
+    const slatCount = Math.floor(h / 0.085);
+    for (let i = 0; i < slatCount; i++) {
+      const slat = new THREE.Mesh(
+        new THREE.BoxGeometry(w - 0.06, 0.045, 0.045),
+        slatMat
+      );
+      slat.position.set(0, h/2 - 0.07 - i * 0.085, 0.065);
+      slat.rotation.x = 0.18; // slight tilt to show 3D effect
+      grp.add(slat);
+    }
+    // Pull cord at right side
+    const cord = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.006, 0.006, 0.35, 4),
+      lpMat(0xeeeeee)
+    );
+    cord.position.set(w/2 - 0.12, -h/2 + 0.05, 0.1);
+    grp.add(cord);
+    const cordBall = new THREE.Mesh(
+      new THREE.SphereGeometry(0.018, 6, 6),
+      lpMat(0xddaa44)
+    );
+    cordBall.position.set(w/2 - 0.12, -h/2 - 0.12, 0.1);
+    grp.add(cordBall);
+
+    grp.position.set(cx, 1.5, cz);
+    grp.rotation.y = rotY;
+    Game.worldGroup.add(grp);
+  };
+
+  // ── KITCHEN: KÜCHENSCHRANK (cabinet) — for Pfanne ──
+  const buildSchrank = (x, z, withItem) => {
+    const grp = new THREE.Group();
+    const body = new THREE.Mesh(new THREE.BoxGeometry(1.6, 1.8, 0.7), lpMat(COL.CABINET));
+    body.position.y = 0.9; body.castShadow = true; grp.add(body);
+    const doorL = new THREE.Mesh(new THREE.BoxGeometry(0.78, 1.7, 0.04), lpMat(0x8a5a3a));
+    doorL.position.set(-0.4, 0.9, 0.37); grp.add(doorL);
+    const doorR = new THREE.Mesh(new THREE.BoxGeometry(0.78, 1.7, 0.04), lpMat(0x8a5a3a));
+    doorR.position.set(0.4, 0.9, 0.37); grp.add(doorR);
+    [-0.08, 0.08].forEach(hx => {
+      const h = new THREE.Mesh(new THREE.SphereGeometry(0.05,6,6), lpMat(0xddaa44));
+      h.position.set(hx, 0.9, 0.4); grp.add(h);
+    });
+    grp.position.set(x, 0, z);
+    Game.worldGroup.add(grp);
+    World.colliders.push({type:'box', box: new THREE.Box3(
+      new THREE.Vector3(x-0.85,0,z-0.4), new THREE.Vector3(x+0.85,1.8,z+0.4))});
+    // mark anchor for spawning item "in" the cabinet (at door position so visible)
+    return { x, z: z + 0.45, y: 1.0 };
+  };
+
+  // ── KITCHEN: SCHUBLADE (drawer block) — for Besteck (Pfannenwender + Gabel + Messer) ──
+  const buildSchublade = (x, z) => {
+    const grp = new THREE.Group();
+    const body = new THREE.Mesh(new THREE.BoxGeometry(1.8, 0.95, 0.7), lpMat(COL.DRAWER));
+    body.position.y = 0.48; body.castShadow = true; grp.add(body);
+    // 3 drawer faces
+    for (let i = 0; i < 3; i++) {
+      const drawer = new THREE.Mesh(new THREE.BoxGeometry(1.7, 0.27, 0.04), lpMat(0x7a5a2a));
+      drawer.position.set(0, 0.15 + i*0.3, 0.37); grp.add(drawer);
+      const handle = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.04, 0.06), lpMat(0xddaa44));
+      handle.position.set(0, 0.15 + i*0.3, 0.42); grp.add(handle);
+    }
+    // top counter
+    const top = new THREE.Mesh(new THREE.BoxGeometry(1.95, 0.06, 0.85), lpMat(0x3a2a1a));
+    top.position.y = 0.98; grp.add(top);
+    grp.position.set(x, 0, z);
+    Game.worldGroup.add(grp);
+    World.colliders.push({type:'box', box: new THREE.Box3(
+      new THREE.Vector3(x-0.9,0,z-0.4), new THREE.Vector3(x+0.9,1.0,z+0.4))});
+    return { x, z: z + 0.45, y: 0.55 };
+  };
+
+  // ── KITCHEN: KÜCHENTISCH (table) — Teller AUF ──
+  const buildKuechentisch = (x, z) => {
+    const grp = new THREE.Group();
+    const top = new THREE.Mesh(new THREE.BoxGeometry(2.4, 0.1, 1.4), lpMat(COL.WOOD_LIGHT));
+    top.position.y = 0.85; top.castShadow = true; grp.add(top);
+    [[-1.1,-0.6],[1.1,-0.6],[-1.1,0.6],[1.1,0.6]].forEach(([lx,lz]) => {
+      const leg = new THREE.Mesh(new THREE.BoxGeometry(0.12,0.85,0.12), lpMat(COL.WOOD_DARK));
+      leg.position.set(lx,0.42,lz); grp.add(leg);
+    });
+    grp.position.set(x, 0, z);
+    Game.worldGroup.add(grp);
+    World.colliders.push({type:'box', box: new THREE.Box3(
+      new THREE.Vector3(x-1.2,0,z-0.7), new THREE.Vector3(x+1.2,0.95,z+0.7))});
+    return { x, z, y: 0.95 }; // top surface
+  };
+
+  // ── KITCHEN: KLEINER TISCH (small side table) — Eier UNTER ──
+  const buildKleinerTisch = (x, z) => {
+    const grp = new THREE.Group();
+    const top = new THREE.Mesh(new THREE.BoxGeometry(1.0, 0.08, 0.8), lpMat(COL.WOOD_MED));
+    top.position.y = 0.7; top.castShadow = true; grp.add(top);
+    [[-0.4,-0.3],[0.4,-0.3],[-0.4,0.3],[0.4,0.3]].forEach(([lx,lz]) => {
+      const leg = new THREE.Mesh(new THREE.BoxGeometry(0.08,0.7,0.08), lpMat(COL.WOOD_DARK));
+      leg.position.set(lx,0.35,lz); grp.add(leg);
+    });
+    grp.position.set(x, 0, z);
+    Game.worldGroup.add(grp);
+    World.colliders.push({type:'box', box: new THREE.Box3(
+      new THREE.Vector3(x-0.5,0,z-0.4), new THREE.Vector3(x+0.5,0.78,z+0.4))});
+    return { x, z, y: 0.15 }; // UNDER the table — low Y
+  };
+
+  // ── KITCHEN: KÜHLSCHRANK (fridge) — Wurst IN ──
+  const buildKuehlschrank = (x, z) => {
+    const grp = new THREE.Group();
+    const body = new THREE.Mesh(new THREE.BoxGeometry(1.0, 2.2, 0.8), lpMat(COL.FRIDGE));
+    body.position.y = 1.1; body.castShadow = true; grp.add(body);
+    // split door line
+    const split = new THREE.Mesh(new THREE.BoxGeometry(1.0, 0.04, 0.82), lpMat(0xaaaaaa));
+    split.position.y = 1.45; grp.add(split);
+    // Handles
+    [0.7, 1.6].forEach(hy => {
+      const h = new THREE.Mesh(new THREE.BoxGeometry(0.05,0.4,0.06), lpMat(0xcccccc));
+      h.position.set(0.4, hy, 0.42); grp.add(h);
+    });
+    grp.position.set(x, 0, z);
+    Game.worldGroup.add(grp);
+    World.colliders.push({type:'box', box: new THREE.Box3(
+      new THREE.Vector3(x-0.55,0,z-0.45), new THREE.Vector3(x+0.55,2.2,z+0.45))});
+    return { x, z: z + 0.5, y: 1.2 };
+  };
+
+  // ── KITCHEN: STOVE (decorative) ──
+  const buildStove = (x, z) => {
+    const grp = new THREE.Group();
+    const body = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.9, 0.7), lpMat(COL.STOVE));
+    body.position.y = 0.45; body.castShadow = true; grp.add(body);
+    const cooktop = new THREE.Mesh(new THREE.BoxGeometry(1.15, 0.05, 0.65), lpMat(0x222222));
+    cooktop.position.y = 0.93; grp.add(cooktop);
+    // 4 burners
+    [[-0.3,-0.18],[0.3,-0.18],[-0.3,0.18],[0.3,0.18]].forEach(([bx,bz]) => {
+      const b = new THREE.Mesh(new THREE.CylinderGeometry(0.18,0.18,0.03,12), lpMat(0x111111));
+      b.position.set(bx, 0.95, bz); grp.add(b);
+    });
+    grp.position.set(x, 0, z);
+    Game.worldGroup.add(grp);
+    World.colliders.push({type:'box', box: new THREE.Box3(
+      new THREE.Vector3(x-0.65,0,z-0.4), new THREE.Vector3(x+0.65,1.0,z+0.4))});
+  };
+
+  // ── KITCHEN: SINK ──
+  const buildSink = (x, z) => {
+    const grp = new THREE.Group();
+    const body = new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.9, 0.7), lpMat(COL.CABINET));
+    body.position.y = 0.45; body.castShadow = true; grp.add(body);
+    const basin = new THREE.Mesh(new THREE.BoxGeometry(1.1, 0.15, 0.55), lpMat(COL.SINK));
+    basin.position.y = 0.92; grp.add(basin);
+    const faucet = new THREE.Mesh(new THREE.CylinderGeometry(0.04,0.04,0.4,6), lpMat(0xaaaaaa));
+    faucet.position.set(0, 1.15, -0.2); grp.add(faucet);
+    const spout = new THREE.Mesh(new THREE.CylinderGeometry(0.04,0.04,0.25,6), lpMat(0xaaaaaa));
+    spout.position.set(0, 1.3, -0.08); spout.rotation.x = Math.PI/2; grp.add(spout);
+    grp.position.set(x, 0, z);
+    Game.worldGroup.add(grp);
+    World.colliders.push({type:'box', box: new THREE.Box3(
+      new THREE.Vector3(x-0.75,0,z-0.4), new THREE.Vector3(x+0.75,1.0,z+0.4))});
+  };
+
+  // ── LIVING ROOM: SOFA ──
+  const buildSofa = (x, z, rotY = 0) => {
+    const grp = new THREE.Group();
+    const seat = new THREE.Mesh(new THREE.BoxGeometry(3.0, 0.5, 1.2), lpMat(COL.SOFA));
+    seat.position.y = 0.4; seat.castShadow = true; grp.add(seat);
+    const back = new THREE.Mesh(new THREE.BoxGeometry(3.0, 0.9, 0.3), lpMat(COL.SOFA));
+    back.position.set(0, 0.85, -0.45); grp.add(back);
+    [-1.35, 1.35].forEach(ax => {
+      const arm = new THREE.Mesh(new THREE.BoxGeometry(0.25, 0.75, 1.2), lpMat(COL.SOFA));
+      arm.position.set(ax, 0.55, 0); grp.add(arm);
+    });
+    // Cushions
+    [-1.0, 0, 1.0].forEach(cx => {
+      const c = new THREE.Mesh(new THREE.BoxGeometry(0.85, 0.18, 1.0), lpMat(0x8474a4));
+      c.position.set(cx, 0.74, 0.05); grp.add(c);
+    });
+    grp.position.set(x, 0, z);
+    grp.rotation.y = rotY;
+    Game.worldGroup.add(grp);
+    const cosR = Math.abs(Math.cos(rotY)), sinR = Math.abs(Math.sin(rotY));
+    const halfW = (3.0*cosR + 1.5*sinR)/2;
+    const halfD = (3.0*sinR + 1.5*cosR)/2;
+    World.colliders.push({type:'box', box: new THREE.Box3(
+      new THREE.Vector3(x-halfW,0,z-halfD), new THREE.Vector3(x+halfW,1.0,z+halfD))});
+  };
+
+  // ── LIVING ROOM: TV STAND ──
+  const buildTVStand = (x, z, rotY = 0) => {
+    const grp = new THREE.Group();
+    const stand = new THREE.Mesh(new THREE.BoxGeometry(2.5, 0.55, 0.5), lpMat(COL.WOOD_DARK));
+    stand.position.y = 0.27; stand.castShadow = true; grp.add(stand);
+    const tv = new THREE.Mesh(new THREE.BoxGeometry(2.0, 1.2, 0.1), lpMat(COL.TV));
+    tv.position.set(0, 1.3, 0); grp.add(tv);
+    const screen = new THREE.Mesh(new THREE.BoxGeometry(1.85, 1.05, 0.02),
+      new THREE.MeshStandardMaterial({color:0x224488, emissive:0x4488cc, emissiveIntensity:0.35}));
+    screen.position.set(0, 1.3, 0.06); grp.add(screen);
+    grp.position.set(x, 0, z);
+    grp.rotation.y = rotY;
+    Game.worldGroup.add(grp);
+    // Rough collider — TV is roughly 2.5x0.5 (rotation-aware via abs cos/sin)
+    const cR = Math.abs(Math.cos(rotY)), sR = Math.abs(Math.sin(rotY));
+    const halfW = (2.5*cR + 0.5*sR)/2;
+    const halfD = (2.5*sR + 0.5*cR)/2;
+    World.colliders.push({type:'box', box: new THREE.Box3(
+      new THREE.Vector3(x-halfW,0,z-halfD), new THREE.Vector3(x+halfW,2.0,z+halfD))});
+  };
+
+  // ── LIVING ROOM: COFFEE TABLE ──
+  const buildCoffeeTable = (x, z) => {
+    const top = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.08, 0.9), lpMat(COL.WOOD_LIGHT));
+    top.position.set(x, 0.45, z); top.castShadow = true;
+    Game.worldGroup.add(top);
+    [[-0.7,-0.4],[0.7,-0.4],[-0.7,0.4],[0.7,0.4]].forEach(([lx,lz]) => {
+      const leg = new THREE.Mesh(new THREE.BoxGeometry(0.08,0.45,0.08), lpMat(COL.WOOD_DARK));
+      leg.position.set(x+lx, 0.22, z+lz);
+      Game.worldGroup.add(leg);
+    });
+    World.colliders.push({type:'box', box: new THREE.Box3(
+      new THREE.Vector3(x-0.8,0,z-0.45), new THREE.Vector3(x+0.8,0.5,z+0.45))});
+  };
+
+  // ── LIVING ROOM: CARPET ──
+  const buildCarpet = (x, z, w, d, col) => {
+    const c = new THREE.Mesh(new THREE.PlaneGeometry(w, d), lpMat(col));
+    c.rotation.x = -Math.PI/2;
+    c.position.set(x, 0.03, z);
+    Game.worldGroup.add(c);
+  };
+
+  // ── BATHROOM: TOILET ──
+  const buildToilet = (x, z, rotY=0) => {
+    const grp = new THREE.Group();
+    const base = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.45, 0.7), lpMat(COL.TOILET));
+    base.position.y = 0.22; grp.add(base);
+    const seat = new THREE.Mesh(new THREE.CylinderGeometry(0.28,0.28,0.08,16), lpMat(COL.TOILET));
+    seat.position.set(0, 0.5, 0.05); grp.add(seat);
+    const tank = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.6, 0.2), lpMat(COL.TOILET));
+    tank.position.set(0, 0.75, -0.35); grp.add(tank);
+    grp.position.set(x, 0, z);
+    grp.rotation.y = rotY;
+    Game.worldGroup.add(grp);
+    World.colliders.push({type:'box', box: new THREE.Box3(
+      new THREE.Vector3(x-0.35,0,z-0.5), new THREE.Vector3(x+0.35,1.1,z+0.5))});
+  };
+
+  // ── BATHROOM: BATHTUB ──
+  const buildBathtub = (x, z) => {
+    const grp = new THREE.Group();
+    const tub = new THREE.Mesh(new THREE.BoxGeometry(2.0, 0.55, 0.9), lpMat(COL.TUB));
+    tub.position.y = 0.27; grp.add(tub);
+    // inner basin (darker)
+    const inner = new THREE.Mesh(new THREE.BoxGeometry(1.85, 0.05, 0.78), lpMat(0xc8dde8));
+    inner.position.y = 0.55; grp.add(inner);
+    grp.position.set(x, 0, z);
+    Game.worldGroup.add(grp);
+    World.colliders.push({type:'box', box: new THREE.Box3(
+      new THREE.Vector3(x-1.05,0,z-0.5), new THREE.Vector3(x+1.05,0.6,z+0.5))});
+  };
+
+  // ── BATHROOM: WASHBASIN ──
+  const buildWashbasin = (x, z, rotY = 0) => {
+    const grp = new THREE.Group();
+    const pedestal = new THREE.Mesh(new THREE.CylinderGeometry(0.18,0.22,0.85,8), lpMat(COL.TOILET));
+    pedestal.position.y = 0.42; grp.add(pedestal);
+    const basin = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.18, 0.5), lpMat(COL.TOILET));
+    basin.position.y = 0.92; grp.add(basin);
+    const mirror = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.7, 0.04),
+      new THREE.MeshStandardMaterial({color:0xddeeff, emissive:0x88aacc, emissiveIntensity:0.4}));
+    mirror.position.set(0, 1.65, -0.25); grp.add(mirror);
+    grp.position.set(x, 0, z);
+    grp.rotation.y = rotY;
+    Game.worldGroup.add(grp);
+    World.colliders.push({type:'box', box: new THREE.Box3(
+      new THREE.Vector3(x-0.4,0,z-0.4), new THREE.Vector3(x+0.4,1.0,z+0.4))});
+  };
+
+  // ── WIRED PHONE (wall-mounted) ──
+  // Param rotY: hadap mana phone (0=hadap +Z south, PI=hadap -Z north).
+  const buildWiredPhone = (x, z, rotY = 0) => {
+    const grp = new THREE.Group();
+    // Backplate (mount on wall)
+    const backplate = new THREE.Mesh(
+      new THREE.BoxGeometry(0.55, 0.85, 0.08),
+      lpMat(0x2a2a2a)
+    );
+    backplate.position.y = 1.3;
+    backplate.castShadow = true;
+    grp.add(backplate);
+    // Number-pad area (yellow)
+    const pad = new THREE.Mesh(
+      new THREE.BoxGeometry(0.45, 0.4, 0.06),
+      lpMat(0xeebb33)
+    );
+    pad.position.set(0, 1.15, -0.08);
+    grp.add(pad);
+    // 12 dots for numpad
+    for (let row = 0; row < 4; row++) {
+      for (let col = 0; col < 3; col++) {
+        const dot = new THREE.Mesh(
+          new THREE.BoxGeometry(0.08, 0.06, 0.02),
+          lpMat(0x222222)
+        );
+        dot.position.set(-0.14 + col * 0.14, 1.27 - row * 0.09, -0.12);
+        grp.add(dot);
+      }
+    }
+    // Receiver (handset, red)
+    const receiver = new THREE.Mesh(
+      new THREE.BoxGeometry(0.5, 0.13, 0.18),
+      lpMat(0xcc2222)
+    );
+    receiver.position.set(0, 1.6, -0.05);
+    grp.add(receiver);
+    const earpiece = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.06, 0.06, 0.04, 8),
+      lpMat(0xaa1818)
+    );
+    earpiece.position.set(-0.18, 1.6, -0.05);
+    earpiece.rotation.x = Math.PI/2;
+    grp.add(earpiece);
+    const mouthpiece = earpiece.clone();
+    mouthpiece.position.x = 0.18;
+    grp.add(mouthpiece);
+    // Spiral cord (toroidal coils)
+    for (let i = 0; i < 5; i++) {
+      const coil = new THREE.Mesh(
+        new THREE.TorusGeometry(0.05, 0.012, 6, 10),
+        lpMat(0x111111)
+      );
+      coil.position.set(0.18, 1.4 - i * 0.1, 0);
+      coil.rotation.x = Math.PI/2;
+      grp.add(coil);
+    }
+
+    // Glowing ring di lantai sebagai trigger indicator
+    const triggerRing = new THREE.Mesh(
+      new THREE.RingGeometry(0.7, 0.95, 24),
+      new THREE.MeshStandardMaterial({
+        color: 0x44aaee, emissive: 0x2266aa, emissiveIntensity: 0.6,
+        transparent: true, opacity: 0.55, side: THREE.DoubleSide
+      })
+    );
+    triggerRing.rotation.x = -Math.PI/2;
+    triggerRing.position.set(0, 0.06, 0.8);  // ring di depan phone
+    grp.add(triggerRing);
+
+    // Floating "📞" sprite above phone
+    const phoneCanvas = document.createElement('canvas');
+    phoneCanvas.width = 64; phoneCanvas.height = 64;
+    const phoneCtx = phoneCanvas.getContext('2d');
+    phoneCtx.font = '48px serif';
+    phoneCtx.textAlign = 'center';
+    phoneCtx.textBaseline = 'middle';
+    phoneCtx.fillText('📞', 32, 32);
+    const phoneTex = new THREE.CanvasTexture(phoneCanvas);
+    const phoneSprite = new THREE.Sprite(
+      new THREE.SpriteMaterial({ map: phoneTex, transparent: true, depthTest: false })
+    );
+    phoneSprite.scale.set(0.6, 0.6, 1);
+    phoneSprite.position.set(0, 2.1, 0);
+    phoneSprite.renderOrder = 999;
+    grp.add(phoneSprite);
+    grp.userData.phoneSprite = phoneSprite;
+
+    // Animate the ring pulse (registered globally via World._updateAmbient hook)
+    grp.userData.tickRing = (t) => {
+      const s = 1 + Math.sin(t * 3) * 0.15;
+      triggerRing.scale.set(s, s, 1);
+      triggerRing.material.opacity = 0.4 + Math.sin(t * 3) * 0.25;
+    };
+
+    grp.position.set(x, 0, z);
+    grp.rotation.y = rotY;
+    Game.worldGroup.add(grp);
+
+    // Save trigger zone info for quest.js to read
+    if (!window.__sceneTriggers__) window.__sceneTriggers__ = {};
+    window.__sceneTriggers__.wired_phone = {
+      x: x,
+      z: z,
+      radius: 2.0,         // trigger when player within 2m
+      mesh: grp,
+      triggered: false,
+    };
+    // Animate
+    const prevUpdate = World._updateAmbient;
+    World._updateAmbient = (delta, t) => {
+      if (prevUpdate) prevUpdate(delta, t);
+      if (grp.userData.tickRing) grp.userData.tickRing(t);
+    };
+    return grp;
+  };
+  // Phone di Flur NORTH wall, SEBELAH KIRI (west) pintu kamar Oma (door gap x=-1..1)
+  // Position x=-2 (tepat di sebelah kiri pintu kamar #2)
+  // Rotation 0 → hadap SOUTH (+Z), terlihat dari Flur.
+  buildWiredPhone(-2, -3.85, 0);
+
+  // ── BATHROOM: SHOWER (visible glass stall) ──
+  const buildShower = (x, z, rotY = 0) => {
+    const grp = new THREE.Group();
+    const tray = new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.08, 1.4), lpMat(0xa8c5d0));
+    tray.position.y = 0.04; grp.add(tray);
+    const backWall = new THREE.Mesh(new THREE.BoxGeometry(1.4, 2.0, 0.06), lpMat(0xc8dde8));
+    backWall.position.set(0, 1.04, -0.7); grp.add(backWall);
+    const sideWall = new THREE.Mesh(new THREE.BoxGeometry(0.06, 2.0, 1.4), lpMat(0xc8dde8));
+    sideWall.position.set(-0.7, 1.04, 0); grp.add(sideWall);
+    const glassMat = new THREE.MeshStandardMaterial({
+      color: 0xddeef0, transparent: true, opacity: 0.35,
+      roughness: 0.05, metalness: 0.0
+    });
+    const glassFront = new THREE.Mesh(new THREE.BoxGeometry(1.4, 1.9, 0.04), glassMat);
+    glassFront.position.set(0, 1.0, 0.7); grp.add(glassFront);
+    const frameMat = lpMat(0x888888);
+    const fTop = new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.06, 0.08), frameMat);
+    fTop.position.set(0, 1.97, 0.7); grp.add(fTop);
+    const fBot = new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.06, 0.08), frameMat);
+    fBot.position.set(0, 0.08, 0.7); grp.add(fBot);
+    const head = new THREE.Mesh(new THREE.CylinderGeometry(0.12,0.16,0.06,8), lpMat(0xcccccc));
+    head.rotation.x = Math.PI/2;
+    head.position.set(0, 1.8, -0.6); grp.add(head);
+    const pipe = new THREE.Mesh(new THREE.CylinderGeometry(0.04,0.04,0.45,6), lpMat(0xaaaaaa));
+    pipe.position.set(0, 1.6, -0.65); grp.add(pipe);
+    grp.position.set(x, 0, z);
+    grp.rotation.y = rotY;
+    Game.worldGroup.add(grp);
+    World.colliders.push({type:'box', box: new THREE.Box3(
+      new THREE.Vector3(x-0.75,0,z-0.75), new THREE.Vector3(x+0.75,2.0,z+0.75))});
+  };
+
+  // ── PAINTING (wall art for Flur) ──
+  const buildPainting = (cx, cz, axis, w = 1.2, h = 0.85, palette = ['#b35c44','#f4c430','#3a5a8a']) => {
+    // axis 'x' = painting hangs on a wall running along X (so painting faces +Z or -Z direction)
+    // Canvas with simple abstract art
+    const canvas = document.createElement('canvas');
+    canvas.width = 256; canvas.height = 192;
+    const ctx = canvas.getContext('2d');
+    ctx.fillStyle = palette[0]; ctx.fillRect(0,0,256,192);
+    ctx.fillStyle = palette[1]; ctx.fillRect(30, 40, 80, 100);
+    ctx.fillStyle = palette[2]; ctx.beginPath(); ctx.arc(180, 100, 50, 0, Math.PI*2); ctx.fill();
+    ctx.fillStyle = '#fff'; ctx.fillRect(0, 160, 256, 8);
+    const tex = new THREE.CanvasTexture(canvas);
+    const artMat = new THREE.MeshBasicMaterial({ map: tex });
+    const frameMat = lpMat(0x3a2a1a);
+    const grp = new THREE.Group();
+    if (axis === 'x') {
+      // Frame
+      const frame = new THREE.Mesh(new THREE.BoxGeometry(w+0.1, h+0.1, 0.06), frameMat);
+      grp.add(frame);
+      // Art
+      const art = new THREE.Mesh(new THREE.PlaneGeometry(w, h), artMat);
+      art.position.z = 0.04; grp.add(art);
+    } else {
+      const frame = new THREE.Mesh(new THREE.BoxGeometry(0.06, h+0.1, w+0.1), frameMat);
+      grp.add(frame);
+      const art = new THREE.Mesh(new THREE.PlaneGeometry(w, h), artMat);
+      art.rotation.y = Math.PI/2;
+      art.position.x = 0.04; grp.add(art);
+    }
+    grp.position.set(cx, 1.4, cz);
+    Game.worldGroup.add(grp);
+  };
+
+  // ── WINDOW (rectangular cutout look) on outer walls ──
+  const buildWindow = (cx, cz, axis, w = 1.4, h = 1.0) => {
+    // Window = light blue glass + dark frame, mounted on wall
+    const grp = new THREE.Group();
+    const glassMat = new THREE.MeshStandardMaterial({
+      color: 0xbfe2f5, emissive: 0xa0d0e8, emissiveIntensity: 0.45,
+      transparent: true, opacity: 0.85, roughness: 0.1
+    });
+    const frameMat = lpMat(0x6a4a2a);
+    if (axis === 'x') {
+      // Window on a wall running along X (faces ±Z)
+      const glass = new THREE.Mesh(new THREE.BoxGeometry(w, h, 0.06), glassMat);
+      grp.add(glass);
+      // Cross frame
+      const fH = new THREE.Mesh(new THREE.BoxGeometry(w, 0.06, 0.1), frameMat);
+      fH.position.y = 0; grp.add(fH);
+      const fV = new THREE.Mesh(new THREE.BoxGeometry(0.06, h, 0.1), frameMat);
+      fV.position.x = 0; grp.add(fV);
+      // Outer frame
+      const ft = new THREE.Mesh(new THREE.BoxGeometry(w+0.16, 0.1, 0.12), frameMat); ft.position.y = h/2+0.05; grp.add(ft);
+      const fb = new THREE.Mesh(new THREE.BoxGeometry(w+0.16, 0.1, 0.12), frameMat); fb.position.y = -h/2-0.05; grp.add(fb);
+      const fl = new THREE.Mesh(new THREE.BoxGeometry(0.1, h+0.2, 0.12), frameMat); fl.position.x = -w/2-0.05; grp.add(fl);
+      const fr = new THREE.Mesh(new THREE.BoxGeometry(0.1, h+0.2, 0.12), frameMat); fr.position.x = w/2+0.05; grp.add(fr);
+    } else {
+      const glass = new THREE.Mesh(new THREE.BoxGeometry(0.06, h, w), glassMat);
+      grp.add(glass);
+      const fH = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.06, w), frameMat); grp.add(fH);
+      const fV = new THREE.Mesh(new THREE.BoxGeometry(0.1, h, 0.06), frameMat); grp.add(fV);
+      const ft = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.1, w+0.16), frameMat); ft.position.y = h/2+0.05; grp.add(ft);
+      const fb = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.1, w+0.16), frameMat); fb.position.y = -h/2-0.05; grp.add(fb);
+      const fl = new THREE.Mesh(new THREE.BoxGeometry(0.12, h+0.2, 0.1), frameMat); fl.position.z = -w/2-0.05; grp.add(fl);
+      const fr = new THREE.Mesh(new THREE.BoxGeometry(0.12, h+0.2, 0.1), frameMat); fr.position.z = w/2+0.05; grp.add(fr);
+    }
+    grp.position.set(cx, 1.5, cz);
+    Game.worldGroup.add(grp);
+  };
+
+  // ═══════════════════════════════════════════════════════════════
+  // HOMEY DECORATIONS — supaya rumah terasa lebih "hidup" tidak kaku
+  // ═══════════════════════════════════════════════════════════════
+
+  // ── WALL CLOCK (jam dinding bundar) ──
+  const buildWallClock = (cx, cy, cz, rotY = 0) => {
+    const grp = new THREE.Group();
+    const ring = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.22, 0.22, 0.04, 16),
+      lpMat(0xfafafa)
+    );
+    ring.rotation.x = Math.PI/2;
+    grp.add(ring);
+    const face = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.19, 0.19, 0.03, 16),
+      lpMat(0xeeeeee)
+    );
+    face.rotation.x = Math.PI/2;
+    face.position.z = 0.025;
+    grp.add(face);
+    // 4 hour markers (12, 3, 6, 9)
+    for (let i = 0; i < 4; i++) {
+      const a = i * Math.PI / 2;
+      const m = new THREE.Mesh(new THREE.BoxGeometry(0.015, 0.04, 0.01), lpMat(0x222222));
+      m.position.set(Math.sin(a) * 0.15, Math.cos(a) * 0.15, 0.05);
+      grp.add(m);
+    }
+    // Hour hand (pointing ~10 o'clock)
+    const hour = new THREE.Mesh(new THREE.BoxGeometry(0.02, 0.12, 0.01), lpMat(0x222222));
+    hour.position.set(-0.03, 0.05, 0.06);
+    hour.rotation.z = 0.5;
+    grp.add(hour);
+    // Minute hand (pointing ~2 o'clock)
+    const min = new THREE.Mesh(new THREE.BoxGeometry(0.015, 0.17, 0.01), lpMat(0x444444));
+    min.position.set(0.04, 0.07, 0.06);
+    min.rotation.z = -0.4;
+    grp.add(min);
+    // Center dot (red)
+    const dot = new THREE.Mesh(new THREE.CircleGeometry(0.02, 8), lpMat(0xcc4444));
+    dot.position.z = 0.07;
+    grp.add(dot);
+    grp.position.set(cx, cy, cz);
+    grp.rotation.y = rotY;
+    Game.worldGroup.add(grp);
+  };
+
+  // ── CURTAIN (fabric drape next to window) ──
+  const buildCurtain = (cx, cz, axis = 'x', sideOffset = 0.7, col = 0xbf6577) => {
+    const curtainMat = lpMat(col);
+    const w = axis === 'x' ? 0.35 : 0.05;
+    const d = axis === 'x' ? 0.05 : 0.35;
+    const drape = new THREE.Mesh(new THREE.BoxGeometry(w, 1.3, d), curtainMat);
+    if (axis === 'x') {
+      drape.position.set(cx + sideOffset, 1.85, cz);
+    } else {
+      drape.position.set(cx, 1.85, cz + sideOffset);
+    }
+    Game.worldGroup.add(drape);
+  };
+
+  // ── STANDING PHOTO FRAME (small framed photo on table) ──
+  const buildStandingPhoto = (cx, y, cz, col = 0xff88aa) => {
+    const grp = new THREE.Group();
+    const frame = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.22, 0.025), lpMat(0xfafafa));
+    grp.add(frame);
+    const photo = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.18, 0.005), lpMat(col));
+    photo.position.z = 0.015;
+    grp.add(photo);
+    const stand = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.12, 0.04), lpMat(0xcccccc));
+    stand.position.set(0, -0.05, -0.07);
+    stand.rotation.x = 0.3;
+    grp.add(stand);
+    grp.position.set(cx, y + 0.11, cz);
+    Game.worldGroup.add(grp);
+  };
+
+  // ── FLOOR RUNNER (long narrow rug for Flur) ──
+  const buildFloorRunner = (cx, cz, length = 8, width = 1.2, col = 0x884444) => {
+    // Outer border
+    const border = new THREE.Mesh(
+      new THREE.PlaneGeometry(width + 0.15, length + 0.15),
+      new THREE.MeshStandardMaterial({ color: (col * 0.7) | 0, roughness: 0.95 })
+    );
+    border.rotation.x = -Math.PI/2;
+    border.position.set(cx, 0.02, cz);
+    Game.worldGroup.add(border);
+    // Inner rug
+    const rug = new THREE.Mesh(
+      new THREE.PlaneGeometry(width, length),
+      new THREE.MeshStandardMaterial({ color: col, roughness: 0.95 })
+    );
+    rug.rotation.x = -Math.PI/2;
+    rug.position.set(cx, 0.025, cz);
+    Game.worldGroup.add(rug);
+  };
+
+  // ═══════════════════════════════════════════════════════════════
+  // PLACE FURNITURE
+  // ═══════════════════════════════════════════════════════════════
+
+  // Helper untuk setup kamar tidur (semua kamar punya layout serupa, beda warna)
+  const buildBedroomSet = (cfg) => {
+    // cfg: { x1, x2, z1, z2, blanketCol, deskAccent, plantSide }
+    const { x1, x2, z1, z2, blanketCol, deskAccent } = cfg;
+    const cx = (x1 + x2) / 2;
+    // Kasur di sisi BARAT/dalam (x1 + 3)
+    buildBed(x1 + 3, z1 + 5, 0, blanketCol);
+    // Nightstand di samping kasur
+    buildNightstand(x1 + 5, z1 + 5);
+    // Lemari di tembok utara, pojok kanan
+    buildWardrobe(x2 - 3, z1 + 1.5, 0);
+    // Meja belajar + kursi di sebelah lemari
+    const deskAnchor = buildSchreibtisch(x2 - 6, z1 + 1.5, 0);
+    buildStuhl(x2 - 6, z1 + 3.2, Math.PI);
+    // Buku-buku berserakan di atas meja (warna sesuai accent kamar)
+    buildBook(deskAnchor.x - 0.5, deskAnchor.y, deskAnchor.z + 0.15, deskAccent[0], 0.2);
+    buildBook(deskAnchor.x - 0.45, deskAnchor.y + 0.08, deskAnchor.z + 0.1, deskAccent[1], -0.15);
+    buildBook(deskAnchor.x + 0.2, deskAnchor.y, deskAnchor.z + 0.25, deskAccent[2], 0.5);
+    buildPencilHolder(deskAnchor.x + 0.6, deskAnchor.y, deskAnchor.z + 0.1);
+  };
+
+  // ── SCHLAFZIMMER 1 (Lukas) — biru, lemari & meja di kanan-atas ──
+  buildBedroomSet({
+    x1:-18, x2:-6, z1:-14, z2:-4,
+    blanketCol: COL.BLANKET_L,
+    deskAccent: [0xcc4444, 0x4488cc, 0x44aa55],
+  });
+
+  // ── SCHLAFZIMMER 2 (Oma & Opa) — merah, lemari & meja di kanan ──
+  buildBedroomSet({
+    x1:-6, x2:6, z1:-14, z2:-4,
+    blanketCol: COL.BLANKET_O,
+    deskAccent: [0xeeaa44, 0x884466, 0x666622],
+  });
+
+  // ── SCHLAFZIMMER 3 (Tante) — ungu, lemari & meja di kanan ──
+  buildBedroomSet({
+    x1:6, x2:18, z1:-14, z2:-4,
+    blanketCol: COL.BLANKET_T,
+    deskAccent: [0xaa66cc, 0xddaa77, 0x4488aa],
+  });
+
+  // ═══════════════════════════════════════════════════════════════
+  // KÜCHE — area x=-18..-3, z=4..14 (15 wide × 10 deep)
+  // Pintu: x=-13..-11, z=4
+  // ATURAN: SEMUA furnitur TEMPEL TEMBOK. Hanya meja makan di TENGAH.
+  // Pintu (x=-13..-11) area sampai z=6 dijamin BEBAS dari furnitur.
+  //
+  //  ┌──Schrank──[ DOOR x=-13..-11 ]──Schublade─Stove─Sink─Kühlschrank──┐ z=4 (north wall)
+  //  │                                                                   │
+  //  │ Sink(W)                                                           │
+  //  │ (-17.3, 9)            Küchentisch + 2 kursi                       │
+  //  │  flush W              di TENGAH ruangan (-10, 9)                  │
+  //  │                                                                   │
+  //  │ Stove(W)                                                          │
+  //  │ (-17.3,11.5)                                                      │
+  //  │                                  Kleiner Tisch (-7, 13.15)        │
+  //  │                                  flush S wall (untuk Eier UNTER)  │
+  //  └───────────────────────────────────────────────────────────────────┘ z=14
+  //
+  // FLUSH calculation: wall thickness 0.3, wall center at z=4 → wall extends
+  // z=3.85..4.15. Furniture center at z = 4 + depth/2 + 0.05 buffer.
+  // ═══════════════════════════════════════════════════════════════
+
+  // ── NORTH wall, WEST of door (x=-18..-13, 5 unit lebar) ──
+  // Schrank: depth 0.7. Flush center z = 4 + 0.35 + 0.1 = 4.45 → z=4.45
+  const schrankAnchor   = buildSchrank(-16, 4.45);          // Pfanne IN
+  // ── NORTH wall, EAST of door (x=-11..-3) ──
+  // Schublade DIPINDAHKAN ke x=-7.5 (jauh dari pintu) supaya Lukas tidak stuck
+  // Door east edge x=-11, Schublade west edge x=-8.4 → clearance 2.6m (sangat aman)
+  const schubladeAnchor = buildSchublade(-7.5, 4.45);       // Besteck IN
+  buildStove(-5.5, 4.45);                                   // dekorasi kompor
+  // Kühlschrank di pojok NE — flush ke wall timur Küche (x=-3 inner)
+  const kuehlAnchor     = buildKuehlschrank(-4, 4.5);       // Wurst IN
+  // Sink dipindahkan ke pojok BARAT-SELATAN (jauh dari jendela dan kleiner Tisch)
+  buildSink(-16.5, 13.5);                                   // dekorasi wastafel
+  // ── WEST wall (x=-18) — 2 furnitur tambahan untuk variasi visual ──
+  // (perlu rotation; sementara kosongkan agar furnitur tidak overlap dengan window di (-17.85, 8))
+  // Window already at (-17.85, 8) — leave west wall empty/decorative.
+  // ── Kleiner Tisch di ANTARA pintu Küche (x=-13..-11) dan Schublade (x=-8.4..-6.6) ──
+  // Posisi tengah-tengah: x=-9.7, flush north wall z=4.45 (in-line dengan Schublade)
+  // Collider x=-10.2..-9.2 → 0.8m clearance dari pintu (-11) DAN dari Schublade (-8.4)
+  const kleinAnchor     = buildKleinerTisch(-9.7, 4.45);
+  // ── CENTER: Meja makan (Küchentisch) + 2 kursi ──
+  const tischAnchor     = buildKuechentisch(-10, 9);        // Teller AUF
+  buildStuhl(-11.6, 9, Math.PI/2);   // kursi barat menghadap timur (ke meja)
+  buildStuhl(-8.4,  9, -Math.PI/2);  // kursi timur menghadap barat (ke meja)
+
+  // ═══════════════════════════════════════════════════════════════
+  // WOHNZIMMER — area x=-3..9, z=4..14 (12 wide × 10 deep)
+  // 2 pintu: UTARA (x=2..4, z=4) ke Flur + SELATAN (x=1..5, z=14) ke LUAR
+  //
+  // LAYOUT SIDEWAYS (sofa di kiri ↔ TV di kanan):
+  // - Sofa MENEMPEL WEST wall (x=-3), hadap timur
+  // - TV MENEMPEL EAST wall (x=9), hadap barat
+  // - Coffee table di depan sofa (west-half), TIDAK menghalangi kolom pintu (x=1..5)
+  // - Carpet di bawah area duduk
+  //
+  //   z=4  ──────[ DOOR ke Flur x=2..4 ]──────────────
+  //                                                          ┌─ TV ─┐
+  //   [Sofa] ──→ [Coffee Tbl]    (path)           ←──        │ stand│
+  //   x=-2,z=9    x=0.5,z=9                                  │x=8.6 │
+  //   face EAST   face NORTH                                  │z=9   │
+  //                                                          └──────┘
+  //                                                          face WEST
+  //   z=14 ──────[ DOOR ke LUAR x=1..5 ]──────────────
+  //
+  // Kolom pintu (x=1..5) di tengah TETAP BERSIH dari semua furnitur.
+  // ═══════════════════════════════════════════════════════════════
+
+  // ── TV-Sofa-Table cluster di WEST half — semua DEKAT supaya masuk akal ──
+  // TV di NORTH (z=5.5) menghadap selatan; Sofa-CoffeeTable-Carpet 2-3m di SELATAN TV
+  // Path tengah (x=1..5) tetap BERSIH untuk lintasan 2 pintu
+
+  // TV STAND — TIDAK BERUBAH posisinya (di NW, hadap selatan)
+  buildTVStand(-1, 5.5, 0);
+  // CARPET di bawah area duduk
+  buildCarpet(-1, 7.5, 4, 3.5, 0x884444);
+  // COFFEE TABLE — di tengah antara sofa & TV
+  buildCoffeeTable(-1.5, 7.0);
+  // SOFA — 3m dari TV, HADAP NORTH (Math.PI) ke arah TV
+  buildSofa(-1.5, 8.5, Math.PI);
+
+  // ═══════════════════════════════════════════════════════════════
+  // BADEZIMMER — area x=9..18, z=4..14 (9 wide × 10 deep)
+  // Pintu: x=12..14, z=4
+  //
+  // SEMUA FURNITUR TERLIHAT (tidak ada yang stacking visually):
+  // - Items kecil di NORTH (background): Toilet, Washbasin
+  // - Items besar di SOUTH (foreground): Bathtub, Shower
+  // - Horizontal spread agar tidak occlude satu sama lain
+  //
+  //   z=4  ── Toilet ──[ DOOR x=12..14 ]── Washbasin ──
+  //         (10.5, 6)                    (15, 5.5)
+  //         (NW corner)                  (NE area, mirror N)
+  //
+  //                              Shower (16.3, 11)
+  //                              east wall, hadap barat
+  //
+  //         Bathtub (12, 12.5)
+  //         (SW area, horizontal)
+  //   z=14  ─────────────────────────────────────────
+  // ═══════════════════════════════════════════════════════════════
+
+  // Toilet di NW corner — flush north & west walls
+  // Toilet depth 0.7. Flush north (z=4): z = 4 + 0.35 + 0.1 = 4.45 → pakai z=5 agar lebih masuk
+  buildToilet(10.3, 5.5, 0);
+  // Washbasin di NE area — flush north wall, hadap selatan (default rot 0)
+  // Washbasin depth 0.5 (mirror at z=-0.25). Flush north: z = 4 + 0.4 = 4.4 → pakai z=5.0
+  buildWashbasin(15.5, 4.8, 0);   // default rot — mirror facing north wall
+  // Shower di east-tengah-selatan — flush east wall, hadap barat (rot +π/2)
+  // Shower 1.4×1.4. Flush east (x=18): cx = 18 - 0.7 = 17.3
+  buildShower(17.0, 11, Math.PI/2);
+  // Bathtub di SW area — flush south wall
+  // Bathtub 2.0w × 0.9d. Flush south (z=14): cz = 14 - 0.45 - 0.1 = 13.45 → 13.0
+  buildBathtub(12, 13.0);
+
+  // ═══════════════════════════════════════════════════════════════
+  // FLUR — décor: pot tanaman di PINGGIR (tidak menghalangi lorong)
+  // ═══════════════════════════════════════════════════════════════
+  const buildPlant = (x, z) => {
+    const pot = new THREE.Mesh(new THREE.CylinderGeometry(0.25,0.2,0.3,8), lpMat(0x8a4a2a));
+    pot.position.set(x, 0.15, z); pot.castShadow = true;
+    Game.worldGroup.add(pot);
+    const leaf = new THREE.Mesh(new THREE.SphereGeometry(0.4,8,6), lpMat(0x3a8a3a));
+    leaf.position.set(x, 0.55, z); leaf.scale.y = 1.3;
+    Game.worldGroup.add(leaf);
+    World.colliders.push({type:'cylinder', x, z, radius:0.3});
+  };
+  // Pot HANYA di pinggir tembok (jangan di tengah lorong)
+  buildPlant(-17.3, -3);   // pinggir kiri-utara
+  buildPlant(-17.3, 3);    // pinggir kiri-selatan
+  buildPlant(17.3,  -3);   // pinggir kanan-utara
+  buildPlant(17.3,  3);    // pinggir kanan-selatan
+
+  // ═══════════════════════════════════════════════════════════════
+  // LUKISAN di tembok Flur (utara z=-4 dan selatan z=4)
+  // ═══════════════════════════════════════════════════════════════
+  // Tembok utara Flur (z=-4) — di antara pintu kamar tidur
+  buildPainting(-7,  -3.85, 'x', 1.2, 0.85, ['#b35c44','#f4c430','#3a5a8a']);  // antara Lukas & Oma
+  buildPainting(7,   -3.85, 'x', 1.2, 0.85, ['#3a8a3a','#ffe080','#a04050']);  // antara Oma & Tante
+  // Tembok selatan Flur (z=4) — di antara pintu ruangan depan
+  buildPainting(-7,   3.85, 'x', 1.2, 0.85, ['#4a6aaa','#f0a0c0','#88c450']);  // antara Küche & Wohnz.
+  buildPainting(8,    3.85, 'x', 1.2, 0.85, ['#aa4444','#ddaa66','#226688']);  // antara Wohnz. & Badez.
+  // Tembok barat & timur (ujung Flur)
+  buildPainting(-17.7,  0,  'z', 1.0, 0.7, ['#884a2a','#ccaa66','#3a5a3a']);
+  buildPainting( 17.7,  0,  'z', 1.0, 0.7, ['#445599','#ee8855','#aabb33']);
+
+  // ═══════════════════════════════════════════════════════════════
+  // JENDELA di tembok luar (SKIP Badezimmer)
+  // North wall (z=-14): 3 jendela, 1 per kamar tidur
+  // South wall (z=14): 1 jendela di Küche, 1 di Wohnzimmer (NO Badezimmer)
+  // West wall (x=-18): 1 jendela di Lukas Schlafzimmer, 1 di Küche
+  // East wall (x=18): 1 jendela di Tante Schlafzimmer
+  // ═══════════════════════════════════════════════════════════════
+  buildWindow(-12, -13.85, 'x'); // Lukas bedroom north
+  buildWindow(0,   -13.85, 'x'); // Oma bedroom north
+  buildWindow(12,  -13.85, 'x'); // Tante bedroom north
+  buildWindow(-10,  13.85, 'x'); // Küche south
+  buildWindow(7,    13.85, 'x'); // Wohnzimmer south — di SEBELAH pintu (gap x=1..5, jendela aman di x=7)
+  buildWindow(-17.85, -9, 'z');  // Lukas bedroom west
+  buildWindow(-17.85, 8,  'z');  // Küche west
+  buildWindow( 17.85, -9, 'z');  // Tante bedroom east
+
+  // ═══════════════════════════════════════════════════════════════
+  // QUEST 1 ITEMS — 7 benda di posisi furniture yang tepat
+  // ═══════════════════════════════════════════════════════════════
+
+  const spawnInteriorItem = (name, label, questTarget, x, y, z, color, symbol) => {
+    const geo = new THREE.BoxGeometry(0.35, 0.35, 0.35);
+    const mat = new THREE.MeshStandardMaterial({
+      color, emissive: color, emissiveIntensity: 0.5,
+      metalness: 0.2, roughness: 0.4
+    });
+    const mesh = new THREE.Mesh(geo, mat);
+    mesh.position.set(x, y, z);
+    mesh.castShadow = true;
+    mesh.userData = {
+      isInteractable: true,
+      questTarget,
+      itemName: name,
+      itemLabelDE: label
+    };
+    Game.itemsGroup.add(mesh);
+
+    // Emoji billboard
+    const canvas = document.createElement('canvas');
+    canvas.width = 64; canvas.height = 64;
+    const ctx = canvas.getContext('2d');
+    ctx.font = '48px serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(symbol, 32, 32);
+    const tex = new THREE.CanvasTexture(canvas);
+    const sprMat = new THREE.SpriteMaterial({ map: tex, transparent: true });
+    const sprite = new THREE.Sprite(sprMat);
+    sprite.scale.set(0.6, 0.6, 1);
+    sprite.position.set(x, y + 0.6, z);
+    Game.itemsGroup.add(sprite);
+    mesh.userData.labelSprite = sprite;
+
+    // Bob + pulse animation untuk item supaya mencolok (different per item)
+    mesh.userData.bobBase = y;
+    mesh.userData.spriteBobBase = y + 0.6;
+    mesh.userData.bobPhase = Math.random() * Math.PI * 2; // random phase so items don't sync
+    mesh.userData.bobActive = true;
+    // Register tick if not already registered globally
+    if (!World._itemBobTick) {
+      World._itemBobTick = (t) => {
+        Game.itemsGroup?.children?.forEach(c => {
+          if (!c.userData?.bobActive || !c.visible) return;
+          if (c.userData.itemName) {  // mesh, not sprite
+            c.position.y = c.userData.bobBase + Math.sin(t * 2.2 + c.userData.bobPhase) * 0.08;
+            // Subtle rotation
+            c.rotation.y = t * 0.4 + c.userData.bobPhase;
+            // Sprite follow
+            if (c.userData.labelSprite) {
+              c.userData.labelSprite.position.y = c.userData.spriteBobBase + Math.sin(t * 2.2 + c.userData.bobPhase) * 0.08;
+            }
+          }
+        });
+      };
+      // Inject into update loop via World._updateAmbient hook
+      const prevAmbient = World._updateAmbient;
+      World._updateAmbient = (delta, t) => {
+        if (prevAmbient) prevAmbient(delta, t);
+        World._itemBobTick(t);
+      };
+    }
+  };
+
+  // 5 ITEMS (sesuai instruksi Oma di telepon):
+  // Pfanne → IN dem Schrank
+  spawnInteriorItem('pfanne', 'die Pfanne', 'quest_1',
+    schrankAnchor.x, schrankAnchor.y, schrankAnchor.z, 0x999999, '🍳');
+  // Wurst → IN dem Kühlschrank
+  spawnInteriorItem('wurst', 'die Wurst', 'quest_1',
+    kuehlAnchor.x, kuehlAnchor.y, kuehlAnchor.z, 0xcc5544, '🌭');
+  // Eier → UNTER dem kleinen Tisch
+  spawnInteriorItem('eier', 'die Eier', 'quest_1',
+    kleinAnchor.x, kleinAnchor.y, kleinAnchor.z, 0xfff0c0, '🥚');
+  // Teller → AUF dem Küchentisch
+  spawnInteriorItem('teller', 'der Teller', 'quest_1',
+    tischAnchor.x, tischAnchor.y + 0.05, tischAnchor.z, 0xfafafa, '🍽');
+  // Besteck (Gabel + Messer) → IN der Schublade — direpresentasikan sebagai 1 item visual
+  spawnInteriorItem('besteck', 'das Besteck', 'quest_1',
+    schubladeAnchor.x, schubladeAnchor.y, schubladeAnchor.z, 0xdddddd, '🍴');
+
+  // ═══════════════════════════════════════════════════════════════
+  // QUEST 2 ITEMS — Disembunyikan (visible=false) sampai Quest 2 mulai
+  // (Lukas tidak diberi petunjuk lokasi → harus mencari sendiri)
+  // ═══════════════════════════════════════════════════════════════
+
+  // Socken → IN dem Schrank (Oma's wardrobe di kamar 2)
+  // Oma wardrobe pos (buildBedroomSet): x=x2-3=3, z=z1+1.5=-12.5
+  // Socken IN wardrobe → y=1.0 (mid-height inside wardrobe)
+  const sockenMesh = (() => {
+    spawnInteriorItem('socken', 'die Socken', 'quest_2', 3, 1.0, -12.5, 0xddcc44, '🧦');
+    return Game.itemsGroup.children[Game.itemsGroup.children.length - 2]; // mesh (sprite is last)
+  })();
+  // Papier → AUF Coffee Table di Wohnzimmer (-1.5, 7.0)
+  // Coffee table top y=0.5 → papier sits at y=0.55
+  const papierMesh = (() => {
+    spawnInteriorItem('papier', 'das Papier', 'quest_2', -1.5, 0.55, 7.0, 0xffffff, '📄');
+    return Game.itemsGroup.children[Game.itemsGroup.children.length - 2];
+  })();
+  // Spielzeug → UNTER dem Küchentisch (-10, 9)
+  // Under table → y=0.1 (close to floor)
+  const spielzeugMesh = (() => {
+    spawnInteriorItem('spielzeug', 'das Spielzeug', 'quest_2', -10, 0.1, 9, 0xff8844, '🧸');
+    return Game.itemsGroup.children[Game.itemsGroup.children.length - 2];
+  })();
+
+  // Initially HIDE Quest 2 items + their sprite labels (revealed when Quest 2 starts)
+  ['socken', 'papier', 'spielzeug'].forEach(name => {
+    Game.itemsGroup.children.forEach(c => {
+      if (c.userData?.itemName === name) {
+        c.visible = false;
+        if (c.userData.labelSprite) c.userData.labelSprite.visible = false;
+      }
+    });
+  });
+
+  // ── BRIEF VON OMA (Stage 3 Quest 2) — surat di atas Küchentisch ──
+  // Muncul hanya SETELAH quest_3 selesai dan SEBELUM quest_4 selesai.
+  const qs = (typeof window !== 'undefined' && window.__questState__) || {};
+  if (qs['quest_3'] === 'completed' && qs['quest_4'] !== 'completed') {
+    const briefGrp = new THREE.Group();
+    // Kertas surat (putih krem) di atas meja
+    const paper = new THREE.Mesh(new THREE.BoxGeometry(0.55, 0.02, 0.4), lpMat(0xfff6e0));
+    paper.position.y = 0.92; briefGrp.add(paper);
+    // Garis tulisan halus
+    for (let i = 0; i < 3; i++) {
+      const line = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.005, 0.03), lpMat(0x8a7a5a));
+      line.position.set(0, 0.935, -0.1 + i * 0.1); briefGrp.add(line);
+    }
+    // Sprite ✉️ melayang
+    const bc = document.createElement('canvas'); bc.width = 64; bc.height = 64;
+    const bctx = bc.getContext('2d'); bctx.font = '48px serif';
+    bctx.textAlign = 'center'; bctx.textBaseline = 'middle'; bctx.fillText('✉️', 32, 32);
+    const bspr = new THREE.Sprite(new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(bc), transparent: true }));
+    bspr.scale.set(0.6, 0.6, 1); bspr.position.set(0, 1.6, 0); briefGrp.add(bspr);
+    briefGrp.position.set(-10, 0, 8.5); // di atas Küchentisch (-10, 9)
+    Game.worldGroup.add(briefGrp);
+    if (!window.__sceneTriggers__) window.__sceneTriggers__ = {};
+    window.__sceneTriggers__.brief_oma = {
+      x: -10, z: 8.5, radius: 2.0, mesh: briefGrp, triggered: false,
+    };
+  }
+
+  // ═══════════════════════════════════════════════════════════════
+  // DECOY/CLUTTER — Detail benda di setiap ruangan untuk MENGKECOH Lukas
+  // (semua decorative, no questTarget, simple visual representations)
+  // ═══════════════════════════════════════════════════════════════
+
+  // ── DECOY HELPER FUNCTIONS ──
+  const buildBookPile = (x, z, count = 3) => {
+    for (let i = 0; i < count; i++) {
+      const col = [0xcc4444, 0x4488cc, 0x44aa55, 0xddaa44, 0x884466][i % 5];
+      const book = new THREE.Mesh(
+        new THREE.BoxGeometry(0.25, 0.08, 0.18),
+        lpMat(col)
+      );
+      book.position.set(x + (i-1) * 0.08, 0.04 + i * 0.085, z + (i-1) * 0.05);
+      book.rotation.y = (i * 0.3) - 0.4;
+      book.castShadow = true;
+      Game.worldGroup.add(book);
+    }
+  };
+  const buildClothesPile = (x, z, col = 0x6688aa) => {
+    const grp = new THREE.Group();
+    const pile = new THREE.Mesh(
+      new THREE.SphereGeometry(0.22, 8, 6),
+      lpMat(col)
+    );
+    pile.scale.set(1.4, 0.5, 1);
+    pile.position.y = 0.12;
+    grp.add(pile);
+    const fold = new THREE.Mesh(
+      new THREE.BoxGeometry(0.4, 0.08, 0.25),
+      lpMat(col * 0.85 | 0)
+    );
+    fold.position.set(0.1, 0.18, -0.05);
+    fold.rotation.y = 0.3;
+    grp.add(fold);
+    grp.position.set(x, 0, z);
+    Game.worldGroup.add(grp);
+  };
+  const buildCup = (x, y, z, col = 0xffffff) => {
+    const cup = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.05, 0.04, 0.1, 8),
+      lpMat(col)
+    );
+    cup.position.set(x, y + 0.05, z);
+    cup.castShadow = true;
+    Game.worldGroup.add(cup);
+    // handle
+    const handle = new THREE.Mesh(
+      new THREE.TorusGeometry(0.04, 0.01, 4, 8, Math.PI),
+      lpMat(col)
+    );
+    handle.position.set(x + 0.06, y + 0.05, z);
+    handle.rotation.y = -Math.PI/2;
+    Game.worldGroup.add(handle);
+  };
+  const buildMagazine = (x, y, z, col = 0xffaa44, rotY = 0) => {
+    const mag = new THREE.Mesh(
+      new THREE.BoxGeometry(0.3, 0.02, 0.22),
+      lpMat(col)
+    );
+    mag.position.set(x, y + 0.01, z);
+    mag.rotation.y = rotY;
+    Game.worldGroup.add(mag);
+    // small text-line detail
+    const line = new THREE.Mesh(
+      new THREE.BoxGeometry(0.22, 0.025, 0.04),
+      lpMat(0x222222)
+    );
+    line.position.set(x, y + 0.022, z);
+    line.rotation.y = rotY;
+    Game.worldGroup.add(line);
+  };
+  const buildRemote = (x, y, z) => {
+    const remote = new THREE.Mesh(
+      new THREE.BoxGeometry(0.18, 0.03, 0.06),
+      lpMat(0x222222)
+    );
+    remote.position.set(x, y + 0.015, z);
+    Game.worldGroup.add(remote);
+    // 3 button dots
+    for (let i = 0; i < 3; i++) {
+      const btn = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.01, 0.01, 0.005, 4),
+        lpMat(0xcc4444)
+      );
+      btn.position.set(x - 0.05 + i * 0.05, y + 0.035, z);
+      Game.worldGroup.add(btn);
+    }
+  };
+  const buildVase = (x, z, col = 0x4488aa) => {
+    const grp = new THREE.Group();
+    const body = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.07, 0.1, 0.22, 10),
+      lpMat(col)
+    );
+    body.position.y = 0.11;
+    grp.add(body);
+    // 3 flower bulbs
+    const flowerCol = [0xff6699, 0xffcc44, 0xff8844];
+    for (let i = 0; i < 3; i++) {
+      const stem = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.005, 0.005, 0.18, 4),
+        lpMat(0x44aa55)
+      );
+      stem.position.set((i-1) * 0.03, 0.3, 0);
+      stem.rotation.z = (i-1) * 0.15;
+      grp.add(stem);
+      const flower = new THREE.Mesh(
+        new THREE.SphereGeometry(0.035, 6, 4),
+        lpMat(flowerCol[i])
+      );
+      flower.position.set((i-1) * 0.05, 0.4 + i*0.02, 0);
+      grp.add(flower);
+    }
+    grp.position.set(x, 0, z);
+    Game.worldGroup.add(grp);
+    World.colliders.push({type:'cylinder', x, z, radius:0.15});
+  };
+  const buildBasket = (x, z) => {
+    const grp = new THREE.Group();
+    const body = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.2, 0.15, 0.25, 8),
+      lpMat(0xa66a3a)
+    );
+    body.position.y = 0.13;
+    grp.add(body);
+    // wicker pattern (rings)
+    for (let i = 0; i < 3; i++) {
+      const ring = new THREE.Mesh(
+        new THREE.TorusGeometry(0.18, 0.012, 4, 12),
+        lpMat(0x884a2a)
+      );
+      ring.position.y = 0.05 + i * 0.07;
+      ring.rotation.x = Math.PI/2;
+      grp.add(ring);
+    }
+    grp.position.set(x, 0, z);
+    Game.worldGroup.add(grp);
+    World.colliders.push({type:'cylinder', x, z, radius:0.25});
+  };
+  const buildBread = (x, y, z) => {
+    const bread = new THREE.Mesh(
+      new THREE.BoxGeometry(0.35, 0.18, 0.18),
+      lpMat(0xc8965a)
+    );
+    bread.position.set(x, y + 0.09, z);
+    bread.castShadow = true;
+    Game.worldGroup.add(bread);
+    // 3 slits
+    for (let i = 0; i < 3; i++) {
+      const slit = new THREE.Mesh(
+        new THREE.BoxGeometry(0.04, 0.02, 0.16),
+        lpMat(0x8a5a2a)
+      );
+      slit.position.set(x - 0.1 + i * 0.1, y + 0.18, z);
+      slit.rotation.y = 0.3;
+      Game.worldGroup.add(slit);
+    }
+  };
+  const buildShoes = (x, z, col = 0x222222) => {
+    for (let i = 0; i < 2; i++) {
+      const shoe = new THREE.Mesh(
+        new THREE.BoxGeometry(0.13, 0.06, 0.22),
+        lpMat(col)
+      );
+      shoe.position.set(x + (i === 0 ? -0.08 : 0.08), 0.03, z + (i === 0 ? 0 : 0.05));
+      shoe.rotation.y = i === 0 ? 0.15 : -0.2;
+      shoe.castShadow = true;
+      Game.worldGroup.add(shoe);
+    }
+  };
+  const buildPillow = (x, y, z, col = 0xfaf0d8, rotY = 0) => {
+    const p = new THREE.Mesh(
+      new THREE.BoxGeometry(0.4, 0.12, 0.25),
+      lpMat(col)
+    );
+    p.position.set(x, y + 0.06, z);
+    p.rotation.y = rotY;
+    p.castShadow = true;
+    Game.worldGroup.add(p);
+  };
+
+  // ── KAMAR OMA (bedroom 2, x=-6..6, z=-14..-4) — decoys ──
+  // (bed at -3, -9; nightstand at -1, -9; wardrobe at 3, -12.5; desk at 0, -12.5)
+  buildBookPile(-5, -6, 4);                  // books on floor near west wall
+  buildClothesPile(-5, -11, 0xaa4040);       // red shirt pile near corner
+  buildPillow(2, 0.85, -10, 0xffe0d0, 0.3);  // extra pillow on bed
+  buildVase(-1.5, -13, 0x886aaa);            // purple vase on north wall
+
+  // ── KAMAR LUKAS (bedroom 1, x=-18..-6) — decoys ──
+  buildBookPile(-16, -6, 3);                 // books near west wall
+  buildClothesPile(-16, -11.5, 0x4488aa);    // blue clothes pile
+
+  // ── KAMAR TANTE (bedroom 3, x=6..18) — decoys ──
+  buildBookPile(8, -6, 3);
+  buildClothesPile(15, -11, 0x8866aa);
+
+  // ── WOHNZIMMER decoys (around sofa/table area) ──
+  buildCup(-1.0, 0.5, 7.0, 0xffffff);        // cup on coffee table
+  buildMagazine(-2.0, 0.5, 7.0, 0xff8844, 0.3); // magazine on coffee table
+  buildRemote(-1.5, 0.5, 7.4);                // remote on coffee table edge
+  buildVase(0.5, 5.8, 0x6aaa44);              // vase near TV stand
+  buildPillow(-2.5, 0.8, 8.7, 0xddaa66, 0.5); // throw pillow on sofa
+
+  // ── KÜCHE decoys ──
+  buildBasket(-13.5, 12);                     // basket near dining table SW corner
+  buildBread(-10, 0.9, 9.5, 0xc8965a);        // bread on Küchentisch (decoy near where teller is)
+  buildCup(-9, 0.9, 9, 0xeeddcc);             // cup on Küchentisch
+  buildMagazine(-11, 0.9, 9, 0xddaa44, 0.2);  // newspaper on Küchentisch
+
+  // ── FLUR decoys ──
+  buildShoes(-14, 3.5, 0x553a22);             // pair of brown shoes near Küche door
+  buildShoes(2, 3.5, 0x222222);               // black shoes near Wohnzimmer door
+
+  // ═══════════════════════════════════════════════════════════════
+  // HOMEY DECORATIONS — membuat rumah terasa lebih hidup, tidak kaku
+  // (semua dipanggil SETELAH decoy helpers didefinisikan agar tidak TDZ error)
+  // ═══════════════════════════════════════════════════════════════
+
+  // ── FLUR: jam dinding (di antara pintu Lukas dan painting di -7) ──
+  // Posisi x=-9 → AMAN: Lukas door (x=-13..-11) di kiri, painting di x=-7
+  // TIDAK menghalangi pintu apapun (gap 2m dari pintu Lukas, 2m dari painting)
+  buildWallClock(-9, 2.4, -3.85, 0);                      // jam dinding Flur
+  // Floor runner DIHAPUS (sesuai permintaan)
+
+  // ── KAMAR LUKAS: wall art (tanpa foto nightstand) ──
+  buildPictureFrame(-17.85, 1.6, -7, Math.PI/2, 0.5, 0.65);   // wall art west wall
+
+  // ── KAMAR OMA: wall art (tanpa foto nightstand) ──
+  buildPictureFrame(-5.85, 1.6, -8, Math.PI/2, 0.5, 0.65);    // wall art inner wall
+
+  // ── KAMAR TANTE: wall art (tanpa foto nightstand) ──
+  buildPictureFrame(6.15, 1.6, -8, -Math.PI/2, 0.5, 0.65);    // wall art inner wall
+
+  // ── WOHNZIMMER: plant corner + pillow tambahan ──
+  buildPlant(8, 6);                                            // pohon di pojok NE
+  buildPillow(-1.5, 0.85, 7.8, 0xddaa66, -0.2);                // pillow extra di sofa
+
+  // ── KÜCHE: basket dekoratif (jam dinding DIHAPUS sesuai permintaan) ──
+  buildBasket(-15, 9);                                        // basket dekoratif di tengah
+
+  // ── LUKISAN TAMBAHAN di dinding setiap ruangan (palette berbeda-beda) ──
+  // Format: buildPainting(cx, cz, axis, w, h, palette[3])
+  // axis 'x' = wall along X (faces ±Z); axis 'z' = wall along Z (faces ±X)
+
+  // KAMAR LUKAS — 2 lukisan tambahan (selain wall art barat di -17.85)
+  buildPainting(-12, -13.85, 'x', 0.9, 0.7, ['#4488cc', '#ffd070', '#cc7755']);  // north wall (kiri jendela)
+  buildPainting(-7,  -13.85, 'x', 0.7, 0.55, ['#aa6644', '#88cc88', '#ddaa44']); // north wall (kanan jendela)
+
+  // KAMAR OMA — 2 lukisan tambahan
+  buildPainting(2,   -13.85, 'x', 1.0, 0.7, ['#bf6577', '#f4c430', '#3a8a3a']);  // north wall east
+  buildPainting(5.85, -10,   'z', 0.7, 0.55, ['#553377', '#ccaa66', '#88bb55']); // east inner wall
+
+  // KAMAR TANTE — 2 lukisan tambahan
+  buildPainting(9,   -13.85, 'x', 0.9, 0.65, ['#226688', '#eeaa88', '#aabb55']); // north wall west
+  buildPainting(14,  -13.85, 'x', 0.7, 0.55, ['#884466', '#ddaa77', '#5a8a4a']); // north wall east
+
+  // WOHNZIMMER — 2 lukisan
+  buildPainting(7,   13.85, 'x', 1.0, 0.7, ['#4a6aaa', '#ee8855', '#88aa66']);   // south wall east of pintu exit
+  buildPainting(-3,  13.85, 'x', 0.7, 0.6, ['#aa4444', '#f0e0a0', '#5a8888']);   // south wall west corner
+
+  // KÜCHE — 2 lukisan
+  buildPainting(-14, 13.85, 'x', 0.9, 0.65, ['#88aa55', '#ccaa44', '#5a4a8a']);  // south wall west
+  buildPainting(-6,  13.85, 'x', 0.7, 0.55, ['#aa6633', '#ccaa66', '#3a8a55']);  // south wall east
+
+  // BADEZIMMER — 2 lukisan
+  buildPainting(9.15,  7, 'z', 0.7, 0.5, ['#88ccdd', '#fafafa', '#aabb88']);     // inner wall west
+  buildPainting(13,  13.85, 'x', 0.6, 0.5, ['#bbddaa', '#5588aa', '#ddccbb']);   // south wall
+
+  // ── CURTAINS pada jendela utama (kanan-kiri tiap jendela) ──
+  buildCurtain(-12, -13.85, 'x', -0.9, 0xb87a8a);             // Lukas bedroom — kiri
+  buildCurtain(-12, -13.85, 'x',  0.9, 0xb87a8a);             // Lukas bedroom — kanan
+  buildCurtain(0,   -13.85, 'x', -0.9, 0xaa7788);             // Oma bedroom
+  buildCurtain(0,   -13.85, 'x',  0.9, 0xaa7788);
+  buildCurtain(12,  -13.85, 'x', -0.9, 0x9988aa);             // Tante bedroom
+  buildCurtain(12,  -13.85, 'x',  0.9, 0x9988aa);
+  buildCurtain(-10, 13.85,  'x', -0.9, 0xcca888);             // Küche south
+  buildCurtain(-10, 13.85,  'x',  0.9, 0xcca888);
+
+  // ── EXIT GLOW: tanda jelas di lantai dekat pintu depan (LEBAR x=1..5) ──
+  const exitGlow = new THREE.Mesh(
+    new THREE.PlaneGeometry(3.6, 0.5),
+    new THREE.MeshStandardMaterial({
+      color: 0xffcc44, emissive: 0xffaa00, emissiveIntensity: 0.85,
+      transparent: true, opacity: 0.85
+    })
+  );
+  exitGlow.rotation.x = -Math.PI/2;
+  exitGlow.position.set(3, 0.05, 13.6);
+  Game.worldGroup.add(exitGlow);
+
+  // Sprite text "AUSGANG" di atas
+  const exitCanvas = document.createElement('canvas');
+  exitCanvas.width = 256; exitCanvas.height = 64;
+  const exitCtx = exitCanvas.getContext('2d');
+  exitCtx.fillStyle = 'rgba(60,30,15,0.92)';
+  exitCtx.fillRect(0,0,256,64);
+  exitCtx.fillStyle = '#ffd070';
+  exitCtx.font = 'bold 30px DM Sans, sans-serif';
+  exitCtx.textAlign = 'center';
+  exitCtx.textBaseline = 'middle';
+  exitCtx.fillText('↓ AUSGANG ↓', 128, 32);
+  const exitTex = new THREE.CanvasTexture(exitCanvas);
+  const exitSprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: exitTex, transparent: true, depthTest: false }));
+  exitSprite.scale.set(3.0, 0.75, 1);
+  exitSprite.position.set(3, 3.0, 13.5);
+  exitSprite.renderOrder = 999;
+  Game.worldGroup.add(exitSprite);
+
+  if (CONFIG.DEBUG) console.log('[world] buildHausInterior done — 7 items spawned in Küche');
+}
+
+
+// ═══════════════════════════════════════════════════════════════════
+// 15.9  STADT — Kota terpadu (Stage 2). Satu peta besar dengan jaringan
+//       jalan ber-perempatan, ~18 gedung berpapan nama, Stadtpark,
+//       Kirche landmark, nama jalan tokoh Jerman. Hanya 1 portal.
+// ═══════════════════════════════════════════════════════════════════
+
+function buildStadt() {
+  const roadMat = lpMat(MODERN_COLORS.ASPHALT);
+  const lineMat = lpMat(MODERN_COLORS.LINE);
+  const sideMat = lpMat(MODERN_COLORS.SIDEWALK);
+
+  // Registry gedung untuk quest reach_building (diisi saat gedung dibuat)
+  window.__stadtBuildings__ = {};
+  const reg = (name, x, z, r) => { window.__stadtBuildings__[name] = { x, z, r }; };
+
+  // ── VARIAN LAYOUT PER-QUEST (Stage 3) ──
+  // Setiap quest kota punya tata letak berbeda supaya siswa TIDAK menghafal
+  // peta, melainkan membaca teks deskriptif dengan teliti.
+  //   'A' = Quest 1 (Der Weg zur Schule): Ampel, Apotheke, Gutenbergstraße,
+  //         Schule kuning gegenüber EDEKA, neben Bäckerei.
+  //   'B' = Quest 2 (Ein Brief von Oma): Blumenstraße, Wolfgangstraße,
+  //         Bank an der Kreuzung, EDEKA gegenüber dem Mall.
+  //   'C' = Quest 3 (Weg nach Tantes Haus): Kreuzung → rechts → Brücke →
+  //         Park → alte Bibliothek → Tantes Haus daneben.
+  const variant = (typeof window !== 'undefined' && window.__stadtVariant__) || 'A';
+
+  // ── HELPER: segmen jalan aspal E-W atau N-S ──
+  const roadEW = (cx, cz, len, w = 6) => {
+    const r = mP(new THREE.PlaneGeometry(len, w), roadMat, cx, 0.02, cz);
+    r.rotation.x = -Math.PI/2; r.receiveShadow = true; Game.worldGroup.add(r); World.walkables.push(r);
+    // garis tengah putus-putus
+    for (let i = -len/2 + 2; i <= len/2 - 2; i += 4) {
+      const d = mP(new THREE.PlaneGeometry(2, 0.18), lineMat, cx + i, 0.03, cz);
+      d.rotation.x = -Math.PI/2; Game.worldGroup.add(d);
+    }
+  };
+  const roadNS = (cx, cz, len, w = 6) => {
+    const r = mP(new THREE.PlaneGeometry(w, len), roadMat, cx, 0.02, cz);
+    r.rotation.x = -Math.PI/2; r.receiveShadow = true; Game.worldGroup.add(r); World.walkables.push(r);
+    for (let i = -len/2 + 2; i <= len/2 - 2; i += 4) {
+      const d = mP(new THREE.PlaneGeometry(0.18, 2), lineMat, cx, 0.03, cz + i);
+      d.rotation.x = -Math.PI/2; Game.worldGroup.add(d);
+    }
+  };
+
+  // ── HELPER: papan nama jalan (Straßenschild biru) ──
+  const streetSign = (x, z, text, rotY = 0) => {
+    const g = new THREE.Group();
+    const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 2.6, 8), lpMat(0x777777));
+    pole.position.y = 1.3; pole.castShadow = true; g.add(pole);
+    const sign = makeSign(text, '#2a5a9a', '#ffffff', 2.6, 0.55);
+    sign.position.set(0, 2.4, 0); g.add(sign);
+    const sign2 = makeSign(text, '#2a5a9a', '#ffffff', 2.6, 0.55);
+    sign2.position.set(0, 2.4, 0); sign2.rotation.y = Math.PI; g.add(sign2);
+    g.position.set(x, 0, z); g.rotation.y = rotY;
+    Game.worldGroup.add(g);
+    World.colliders.push({ type:'cylinder', x, z, radius:0.2 });
+  };
+
+  // ── HELPER: gedung generic + papan nama (untuk gedung tanpa maker) ──
+  const namedBldg = (name, x, z, w, h, d, color, rotY, signText, signBg) => {
+    const g = bldg({ x, z, w, h, d, color, rotY, name });
+    addWin(g, w, d, Math.max(1, Math.floor(h / 2.5)), Math.max(2, Math.floor(w / 2.5)), _gM);
+    // atap trim
+    g.add(mP(new THREE.BoxGeometry(w + 0.3, 0.3, d + 0.3), lpMat((color * 0.7) & 0xffffff), 0, h + 0.15, 0));
+    // papan nama di depan (+z lokal)
+    const s = makeSign(signText, signBg || '#333333', '#ffffff', Math.min(w - 0.5, 5), 0.9);
+    s.position.set(0, h - 0.8, d / 2 + 0.12); g.add(s);
+    return g;
+  };
+
+  // ═══════════════════════════════════════════════════════════════
+  // JARINGAN JALAN — 1 utama E-W + 2 vertikal (perempatan)
+  // ═══════════════════════════════════════════════════════════════
+  roadEW(0, 0, 84);        // Jalan utama E-W
+  roadNS(-24, 0, 58);      // Jalan vertikal barat (rute dari rumah Oma)
+  if (variant === 'C') {
+    // Varian C: Bachstraße berhenti di tepi kanal (jembatan menyambungnya)
+    roadNS(18, 9, 40);     // z -11..29
+  } else {
+    roadNS(18, 0, 58);     // Bachstraße penuh
+  }
+  // Jalan ke KIRI (barat) di samping gerbang rumah Oma — supaya di pintu masuk
+  // kota ada dua arah (kiri & kanan) dan instruksi "nach links/rechts" bermakna.
+  // Pendek saja (berhenti sebelum Kino di x=-31), tidak mengubah peta lain.
+  roadEW(-25, 26, 8);
+  // Trotoar sepanjang jalan utama (dipotong di perempatan)
+  for (const seg of [[-40, -25], [-23, 17], [19, 40]]) {
+    const len = seg[1] - seg[0], cx = (seg[0] + seg[1]) / 2;
+    for (const dz of [-1, 1]) {
+      const sw = mP(new THREE.BoxGeometry(len, 0.12, 1.6), sideMat, cx, 0.06, (3 + 0.8) * dz);
+      sw.receiveShadow = true; Game.worldGroup.add(sw); World.walkables.push(sw);
+    }
+  }
+  // Zebra cross di 2 perempatan
+  const zebra = (cx, cz) => {
+    for (let i = -2; i <= 2; i++) {
+      const zb = mP(new THREE.PlaneGeometry(0.5, 3), lpMat(MODERN_COLORS.CROSSWALK), cx + i * 0.9, 0.04, cz - 4.2);
+      zb.rotation.x = -Math.PI/2; Game.worldGroup.add(zb);
+      const zb2 = mP(new THREE.PlaneGeometry(0.5, 3), lpMat(MODERN_COLORS.CROSSWALK), cx + i * 0.9, 0.04, cz + 4.2);
+      zb2.rotation.x = -Math.PI/2; Game.worldGroup.add(zb2);
+    }
+  };
+  zebra(-24, 0); zebra(18, 0);
+
+  // ── HELPER: Ampel (lampu lalu lintas) ──
+  const makeAmpel = (x, z, rotY = 0) => {
+    const g = new THREE.Group();
+    const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.11, 3.6, 8), lpMat(0x444444));
+    pole.position.y = 1.8; pole.castShadow = true; g.add(pole);
+    const box = new THREE.Mesh(new THREE.BoxGeometry(0.55, 1.4, 0.35), lpMat(0x222222));
+    box.position.set(0, 3.6, 0); box.castShadow = true; g.add(box);
+    // 3 lampu: merah, kuning, hijau (hijau menyala)
+    const lamps = [[0xaa2222, 0.45, 0.12], [0xaaaa22, 0, 0.12], [0x22ff44, -0.45, 0.9]];
+    for (const [col, dy, glow] of lamps) {
+      const lamp = new THREE.Mesh(new THREE.CylinderGeometry(0.14, 0.14, 0.08, 12),
+        new THREE.MeshStandardMaterial({ color: col, emissive: col, emissiveIntensity: glow }));
+      lamp.rotation.x = Math.PI / 2; lamp.position.set(0, 3.6 + dy, 0.2); g.add(lamp);
+    }
+    g.position.set(x, 0, z); g.rotation.y = rotY;
+    Game.worldGroup.add(g);
+    World.colliders.push({ type:'cylinder', x, z, radius:0.25 });
+    return g;
+  };
+  if (variant === 'A') {
+    // Ampel di perempatan Schillerstraße × Gutenbergstraße (hanya varian A)
+    makeAmpel(-20, 4, Math.PI);   // sudut tenggara, menghadap jalan
+    makeAmpel(-28, -4, 0);        // sudut barat-laut
+    window.__stadtBuildings__['ampel'] = { x: -24, z: 0, r: 6 };
+  }
+
+  // Papan nama jalan di sudut-sudut (nama berbeda per varian)
+  const ewName = variant === 'B' ? 'Wolfgangstr.' : (variant === 'C' ? 'Hauptstr.' : 'Gutenbergstr.');
+  const nsName = variant === 'B' ? 'Blumenstr.'   : 'Schillerstr.';
+  streetSign(-30, 4, ewName, 0);
+  streetSign(6,   4, ewName, 0);
+  streetSign(-27, -8, nsName, Math.PI/2);
+  streetSign(15, -8, 'Bachstr.', Math.PI/2);
+  streetSign(-27, 10, variant === 'B' ? 'Blumenstr.' : 'Kantstr.', Math.PI/2);
+  streetSign(15, 10, 'Dürergasse', Math.PI/2);
+  streetSign(-40, -6, 'Humboldtallee', 0);
+
+  // ═══════════════════════════════════════════════════════════════
+  // GEDUNG — UTARA jalan (rotY=0, depan menghadap selatan/jalan)
+  // ═══════════════════════════════════════════════════════════════
+  namedBldg('bahnhof', -36, -16, 14, 6, 8, 0xb0857a, 0, 'BAHNHOF', '#884433');
+  reg('bahnhof', -36, -16, 8);
+  if (variant === 'A') {
+    // GRUNDSCHULE — gedung KUNING besar, tepat di seberang EDEKA
+    // ("Direkt gegenüber dem Supermarkt ... ein großes gelbes Gebäude")
+    makeGrundschule(-7, -16, 0, 0xf2c94c, 0xd4a017); reg('grundschule', -7, -16, 6);
+    // BÄCKEREI kecil — persis di samping sekolah ("neben einer kleinen Bäckerei")
+    makeBaeckerei(-17, -16, 0); reg('baeckerei', -17, -16, 5);
+    // APOTHEKE besar — di perempatan dekat Ampel
+    makeApotheke(-31, -8, 0); reg('apotheke', -31, -8, 6);
+  } else if (variant === 'B') {
+    // ── VARIAN B (Quest 2: Ein Brief von Oma) ──
+    // MALL besar — TEPAT di seberang EDEKA (-2,14), bebas dari semua jalan
+    // ("Der Supermarkt liegt gegenüber dem Mall")
+    namedBldg('mall', -7, -16, 12, 8, 10, 0xcc7788, 0, 'MALL', '#993355');
+    reg('mall', -7, -16, 7);
+    // BANK — terlihat dari Kreuzung ("An der Kreuzung siehst du eine Bank")
+    namedBldg('bank', -31, -8, 8, 6, 6, 0xaabbcc, 0, 'BANK', '#335577');
+    reg('bank', -31, -8, 6);
+    // Apotheke kembali ke timur (jauh dari rute)
+    makeApotheke(37, -13, 0); reg('apotheke', 37, -13, 6);
+  } else {
+    // ── VARIAN C (Quest 3: Weg nach Tantes Haus) ──
+    // Apotheke di barat (netral, bukan bagian rute)
+    makeApotheke(-31, -8, 0); reg('apotheke', -31, -8, 6);
+  }
+  namedBldg('rathaus', 6, -16, 12, 7, 8, 0xd8c8a8, 0, 'RATHAUS', '#8a6a2a');
+  reg('rathaus', 6, -16, 8);
+  if (variant !== 'C') {
+    // Hotel & bank timur hanya varian A/B — di varian C area ini jadi kanal+taman
+    namedBldg('hotel', 26, -17, 10, 8, 8, 0xccaa88, 0, 'HOTEL', '#775533');
+    reg('hotel', 26, -17, 7);
+  }
+  if (variant === 'A') {
+    namedBldg('bank', 37, -24, 8, 6, 7, 0xaabbcc, 0, 'BANK', '#335577');
+    reg('bank', 37, -24, 6);
+  }
+  if (variant !== 'C') {
+    // Bücherei barat-laut hanya A/B — di varian C, Bibliothek tua ada di
+    // seberang taman (bagian dari rute Quest 3)
+    makeBuecherei(-36, -25, 0); reg('buecherei', -36, -25, 7);
+  }
+
+  // ═══════════════════════════════════════════════════════════════
+  // VARIAN C — KANAL + BRÜCKE + PARK + ALTE BIBLIOTHEK + TANTES HAUS
+  // Rute: Hauptstr. → große Kreuzung (18,0) → rechts (nach Norden) →
+  // Brücke über den Kanal → Park → hindurch → Bibliothek → Tantes Haus
+  // ═══════════════════════════════════════════════════════════════
+  if (variant === 'C') {
+    // ── KANAL (air) melintang timur, z -16..-12, x 13..43 ──
+    const water = mP(new THREE.PlaneGeometry(30, 4), new THREE.MeshStandardMaterial({
+      color: 0x35b7ef, emissive: 0x0b6fa8, emissiveIntensity: 0.3, roughness: 0.2,
+    }), 28, 0.05, -14);
+    water.rotation.x = -Math.PI/2; Game.worldGroup.add(water);
+    // Tepian kanal
+    for (const dz of [-2.3, 2.3]) {
+      const bank = mP(new THREE.BoxGeometry(30, 0.25, 0.5), lpMat(0x9a9a8a), 28, 0.12, -14 + dz);
+      Game.worldGroup.add(bank);
+    }
+    // Collider air: blokir masuk kanal KECUALI celah jembatan (x 16..20)
+    World.colliders.push({ type:'box', box:new THREE.Box3(new THREE.Vector3(13, 0, -16.3), new THREE.Vector3(16.2, 2, -11.7)), name:'kanal-west' });
+    World.colliders.push({ type:'box', box:new THREE.Box3(new THREE.Vector3(19.8, 0, -16.3), new THREE.Vector3(43, 2, -11.7)), name:'kanal-ost' });
+
+    // ── BRÜCKE (jembatan kayu) di Bachstraße, melintasi kanal ──
+    const deck = mP(new THREE.BoxGeometry(3.6, 0.22, 8), lpMat(0xb08a5a), 18, 0.14, -14);
+    deck.receiveShadow = true; Game.worldGroup.add(deck); World.walkables.push(deck);
+    for (const dx of [-1.7, 1.7]) {
+      const rail = mP(new THREE.BoxGeometry(0.14, 0.5, 8), lpMat(0x8a6a42), 18 + dx, 0.62, -14);
+      Game.worldGroup.add(rail);
+      for (let pz = -17.5; pz <= -10.5; pz += 1.75) {
+        const post = mP(new THREE.BoxGeometry(0.16, 0.9, 0.16), lpMat(0x7a5a38), 18 + dx, 0.45, pz);
+        Game.worldGroup.add(post);
+      }
+    }
+    // Jalur pendek dari jembatan ke taman
+    const walk = mP(new THREE.BoxGeometry(3, 0.05, 3), lpMat(0xd4c4a0), 18, 0.03, -17.5);
+    walk.receiveShadow = true; Game.worldGroup.add(walk); World.walkables.push(walk);
+
+    // ── PARK — setelah jembatan ("Nach der Brücke siehst du einen Park") ──
+    buildStadtpark(18, -22.5, 12, 7);
+
+    // ── ALTE BIBLIOTHEK — di seberang taman ("auf der anderen Seite") ──
+    makeBuecherei(12, -30, 0); reg('buecherei', 12, -30, 6);
+    // ── TANTES HAUS — persis di sebelah Bibliothek ("gleich daneben") ──
+    const th = namedBldg('tantes_haus', 22, -30, 7, 4.5, 6, 0xe8b4b8, 0, 'TANTES HAUS', '#aa5566');
+    // atap pelana kecil supaya tampak seperti rumah
+    const roof = new THREE.Mesh(new THREE.ConeGeometry(5.2, 2.2, 4), lpMat(0x8a4533));
+    roof.rotation.y = Math.PI/4; roof.position.set(0, 5.6, 0); th.add(roof);
+    reg('tantes_haus', 22, -30, 6.5);
+  }
+
+  // ═══════════════════════════════════════════════════════════════
+  // GEDUNG — SELATAN jalan (rotY=π, depan menghadap utara/jalan)
+  // ═══════════════════════════════════════════════════════════════
+  // KIRCHE — landmark menara tinggi (pindah ke barat-daya, bekas lokasi sekolah)
+  const kirche = makeKirche(-36, 15, Math.PI);
+  { const spire = new THREE.Mesh(new THREE.ConeGeometry(1.6, 6, 6), lpMat(0x8a6a4a));
+    spire.position.set(0, 11, 4); kirche.add(spire);
+    const tower = new THREE.Mesh(new THREE.BoxGeometry(3, 6, 3), lpMat(0xbbaa88));
+    tower.position.set(0, 8, 4); kirche.add(tower);
+    const cross = new THREE.Mesh(new THREE.BoxGeometry(0.2, 1.2, 0.2), lpMat(0xffd700));
+    cross.position.set(0, 14.5, 4); kirche.add(cross);
+    const s = makeSign('KIRCHE', '#665544', '#fff'); s.position.set(0, 6, 6.1); kirche.add(s); }
+  reg('kirche', -36, 15, 7);
+  namedBldg('kino', -36, 27, 10, 6, 7, 0x554466, Math.PI, 'KINO', '#332244');
+  reg('kino', -36, 27, 5);
+  // EDEKA — JAUH dari perempatan (22 unit ke timur), bebas dari semua jalan.
+  // r=10 supaya reach_building terpicu SEBELUM player masuk portal interior
+  makeEdeka(-2, 14, Math.PI); reg('edeka', -2, 14, 10);
+  makeCafe(10, 14, Math.PI); reg('cafe', 10, 14, 5);
+  makeRestaurant(32, 16, Math.PI); reg('restaurant', 32, 16, 7);
+  makeBlumenladen(24, 15, Math.PI); reg('blumenladen', 24, 15, 5);
+  makePost(24, 26, Math.PI); reg('post', 24, 26, 6);
+  namedBldg('tourismusbuero', 34, 26, 8, 4.5, 6, 0x66aacc, Math.PI, 'TOURISMUS', '#2266aa');
+  reg('tourismusbuero', 34, 26, 6);
+
+  // ── EISSTAND (kios kecil, "neben dem Café") ──
+  {
+    const g = new THREE.Group();
+    const body = new THREE.Mesh(new THREE.BoxGeometry(2.4, 2.2, 2.0), lpMat(0xffd0e0));
+    body.position.y = 1.1; body.castShadow = true; g.add(body);
+    const roof = new THREE.Mesh(new THREE.CylinderGeometry(1.7, 1.7, 0.3, 8, 1, false, 0, Math.PI), lpMat(0xdd4477));
+    roof.rotation.z = Math.PI/2; roof.position.set(0, 2.4, 1.0); g.add(roof);
+    // payung
+    const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 3, 6), lpMat(0x8a8a8a));
+    pole.position.set(1.6, 1.5, 0); g.add(pole);
+    const umbrella = new THREE.Mesh(new THREE.ConeGeometry(1.5, 0.8, 8), lpMat(0xff6688));
+    umbrella.position.set(1.6, 3.1, 0); g.add(umbrella);
+    const s = makeSign('EIS', '#ff4488', '#fff', 1.6, 0.7); s.position.set(0, 2.0, 1.02); g.add(s);
+    g.position.set(12, 20, 0);
+    Game.worldGroup.add(g);
+    World.colliders.push({ type:'box', box:new THREE.Box3(new THREE.Vector3(11, 0, 19), new THREE.Vector3(13, 2.4, 21)), name:'eisstand' });
+    reg('eisstand', 12, 20, 4);
+    // (Item Eis lama DIHAPUS — Quest 5 sekarang "Weg nach Tantes Haus",
+    //  Eisstand tinggal sebagai dekorasi kota.)
+  }
+
+  // ═══════════════════════════════════════════════════════════════
+  // STADTPARK + MARKTPLATZ — pusat kota (dekat pintu masuk selatan)
+  // ═══════════════════════════════════════════════════════════════
+  buildStadtpark(0, 24, 16, 9);
+  reg('stadtpark', 0, 24, 8);
+  reg('marktplatz', 0, 24, 8);
+
+  // ── Pohon jalanan (sedikit, di trotoar; hindari jalan) ──
+  const trunkMat = lpMat(0x5a3a1f), leafMat = lpMat(0x3a7a2c);
+  const treeSpots = [[-30,6],[6,6],[30,6],[34,-6],[8,-6],[30,-6],[-10,10],[40,-14]]
+    .filter(([tx,tz]) => !(variant === 'C' && tz < -10 && tx > 12)); // hindari kanal/taman C
+  treeSpots.forEach(([tx,tz]) => {
+    const t = new THREE.Group();
+    const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.16,0.22,2.2,6), trunkMat);
+    trunk.position.y = 1.1; trunk.castShadow = true; t.add(trunk);
+    const leaf = new THREE.Mesh(new THREE.IcosahedronGeometry(1.1,1), leafMat);
+    leaf.position.y = 2.6; leaf.castShadow = true; t.add(leaf);
+    t.position.set(tx, 0, tz); Game.worldGroup.add(t);
+    World.colliders.push({ type:'cylinder', x:tx, z:tz, radius:0.35 });
+  });
+
+  // ── Pintu EDEKA glow + tanda masuk ──
+  {
+    const glow = mP(new THREE.PlaneGeometry(2.4, 0.5), new THREE.MeshStandardMaterial({
+      color:0x44cc44, emissive:0x22aa22, emissiveIntensity:0.7, transparent:true, opacity:0.85
+    }), -2, 0.05, 7.5);
+    glow.rotation.x = -Math.PI/2; Game.worldGroup.add(glow);
+  }
+
+  if (CONFIG.DEBUG) console.log('[world] buildStadt done — buildings:', Object.keys(window.__stadtBuildings__).length);
+}
+
+// Stadtpark — taman kota: rumput, air mancur, bangku, pohon, bunga, jalur
+function buildStadtpark(cx, cz, w, d) {
+  const lp = (c) => lpMat(c);
+  // rumput
+  const grass = mP(new THREE.PlaneGeometry(w, d), new THREE.MeshStandardMaterial({ color:0x6ab04a, roughness:0.95 }), cx, 0.03, cz);
+  grass.rotation.x = -Math.PI/2; grass.receiveShadow = true; Game.worldGroup.add(grass); World.walkables.push(grass);
+  // jalur setapak salib (beige)
+  const pathH = mP(new THREE.PlaneGeometry(w, 1.6), lp(0xd4c4a0), cx, 0.04, cz); pathH.rotation.x = -Math.PI/2; Game.worldGroup.add(pathH);
+  const pathV = mP(new THREE.PlaneGeometry(1.6, d), lp(0xd4c4a0), cx, 0.04, cz); pathV.rotation.x = -Math.PI/2; Game.worldGroup.add(pathV);
+  // air mancur (Brunnen)
+  const basin = new THREE.Mesh(new THREE.CylinderGeometry(1.5, 1.7, 0.5, 16), lp(0xbbbbbb));
+  basin.position.set(cx, 0.25, cz); basin.castShadow = true; Game.worldGroup.add(basin);
+  const water = new THREE.Mesh(new THREE.CylinderGeometry(1.25, 1.25, 0.1, 16), new THREE.MeshStandardMaterial({ color:0x44aadd, emissive:0x2288bb, emissiveIntensity:0.3 }));
+  water.position.set(cx, 0.5, cz); Game.worldGroup.add(water);
+  const spout = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.15, 1.2, 8), lp(0xcccccc));
+  spout.position.set(cx, 1.1, cz); Game.worldGroup.add(spout);
+  const drop = new THREE.Mesh(new THREE.SphereGeometry(0.35, 8, 6), new THREE.MeshStandardMaterial({ color:0x66ccee, emissive:0x3399cc, emissiveIntensity:0.4, transparent:true, opacity:0.8 }));
+  drop.position.set(cx, 1.9, cz); Game.worldGroup.add(drop);
+  World.colliders.push({ type:'cylinder', x:cx, z:cz, radius:1.7 });
+  // 4 bangku mengelilingi
+  [[cx, cz - 3, 0], [cx, cz + 3, 0], [cx - 4, cz, Math.PI/2], [cx + 4, cz, Math.PI/2]].forEach(([bx, bz, rot]) => {
+    const b = new THREE.Group();
+    const seat = new THREE.Mesh(new THREE.BoxGeometry(1.8, 0.12, 0.5), lp(0x8a5a2a)); seat.position.y = 0.45; b.add(seat);
+    const back = new THREE.Mesh(new THREE.BoxGeometry(1.8, 0.5, 0.1), lp(0x8a5a2a)); back.position.set(0, 0.7, -0.2); b.add(back);
+    b.position.set(bx, 0, bz); b.rotation.y = rot; Game.worldGroup.add(b);
+    World.colliders.push({ type:'cylinder', x:bx, z:bz, radius:0.5 });
+  });
+  // pohon di 4 sudut taman
+  const trunkMat = lp(0x5a3a1f), leafMat = lp(0x3a8a3a);
+  [[-1, -1], [1, -1], [-1, 1], [1, 1]].forEach(([sx, sz]) => {
+    const tx = cx + sx * (w/2 - 1.2), tz = cz + sz * (d/2 - 1.2);
+    const t = new THREE.Group();
+    const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.14, 0.2, 2, 6), trunkMat); trunk.position.y = 1; t.add(trunk);
+    for (let l = 0; l < 3; l++) {
+      const cone = new THREE.Mesh(new THREE.ConeGeometry(1.1 - l*0.28, 1.2, 6), lp([0x2d7a1e, 0x3a9a2c, 0x2a6a18][l]));
+      cone.position.y = 1.9 + l*0.7; cone.castShadow = true; t.add(cone);
+    }
+    t.position.set(tx, 0, tz); Game.worldGroup.add(t);
+    World.colliders.push({ type:'cylinder', x:tx, z:tz, radius:0.3 });
+  });
+  // petak bunga (patch warna) di tepi
+  [[cx - w/2 + 1, cz], [cx + w/2 - 1, cz]].forEach(([fx, fz], i) => {
+    const col = [0xff5577, 0xffcc33][i % 2];
+    const bed = mP(new THREE.PlaneGeometry(1.4, 2.2), lp(0x5a8a3a), fx, 0.04, fz); bed.rotation.x = -Math.PI/2; Game.worldGroup.add(bed);
+    for (let k = 0; k < 6; k++) {
+      const fl = new THREE.Mesh(new THREE.SphereGeometry(0.12, 5, 4), lp(col));
+      fl.position.set(fx + (Math.random()-0.5), 0.15, fz + (Math.random()-0.5)*1.6); Game.worldGroup.add(fl);
+    }
+  });
+  // pagar hedge rendah keliling
+  const hedgeMat = lp(0x2f6a2a);
+  const hedge = (hx, hz, hw, hd) => { const m = mP(new THREE.BoxGeometry(hw, 0.5, hd), hedgeMat, hx, 0.25, hz); Game.worldGroup.add(m); };
+  hedge(cx, cz - d/2, w, 0.3); hedge(cx, cz + d/2, w, 0.3);
+  hedge(cx - w/2, cz, 0.3, d); hedge(cx + w/2, cz, 0.3, d);
+}
+
+
+// ═══════════════════════════════════════════════════════════════════
 // 16. API PUBLIK
 // ═══════════════════════════════════════════════════════════════════
 
 export function buildZone(zoneId, def) {
   // Cleanup is now handled by zone.js (unloadCurrentZone)
-  
+
   buildGround(zoneId);
 
-  if (zoneId === ZONES.HAUS) {
+  if (zoneId === ZONES.STADT) {
+    buildStadt();
+  } else if (zoneId === ZONES.HAUS) {
     buildMainHouse();
     buildHausDiorama();
+  } else if (zoneId === ZONES.HAUS_INTERIOR) {
+    buildHausInterior();
   } else if (zoneId === ZONES.SUPERMARKET_INTERIOR) {
     buildSupermarktInterior();
   } else if (zoneId === ZONES.SUPERMARKT) {
