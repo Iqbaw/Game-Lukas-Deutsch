@@ -7,6 +7,7 @@ import { CONFIG, EVENTS }       from './config.js';
 import { Player, setInputEnabled, teleportPlayer } from './player.js';
 import { setMusicVolume, setMusicEnabled }        from './music.js';
 import { setSfxVolume, setSfxEnabled, playSfx }   from './sfx.js';
+import { migrateSettings }                        from './mainmenu.js';
 
 const UI = {
   // Pause state
@@ -17,7 +18,8 @@ const UI = {
 
   // Settings state (synced to localStorage)
   settings: {
-    volume:       0.7,
+    musicVolume:  0.7,     // Hintergrundmusik
+    sfxVolume:    0.4,     // Menü-Effekte
     graphicLevel: 'high',  // 'low'|'medium'|'high'
     musicOn:      true,
     sfxOn:        true,
@@ -54,8 +56,10 @@ export { UI };
 export function initUI() {
   // Load settings dari localStorage
   try {
-    const saved = localStorage.getItem('lukas_settings');
-    if (saved) Object.assign(UI.settings, JSON.parse(saved));
+    const raw = localStorage.getItem('lukas_settings');
+    // Migration auf dem rohen Stand — sonst überdecken die Defaults
+    // das alte gemeinsame 'volume'.
+    if (raw) Object.assign(UI.settings, migrateSettings(JSON.parse(raw)));
   } catch (_) {}
 
   // Detect mobile
@@ -139,12 +143,23 @@ function setupPauseMenu() {
       <h3 class="pause-sub-title">Einstellungen</h3>
 
       <div class="setting-row">
-        <label class="setting-label">
-          <span>🔊 Lautstärke</span>
-          <span id="vol-display" class="setting-value">${Math.round(UI.settings.volume*100)}%</span>
+        <label class="setting-label" for="slider-music">
+          <span>🎵 Musik</span>
+          <span id="music-vol-display" class="setting-value">${Math.round(UI.settings.musicVolume*100)}%</span>
         </label>
-        <input type="range" class="setting-slider" id="slider-volume"
-               min="0" max="100" value="${Math.round(UI.settings.volume*100)}" />
+        <input type="range" class="setting-slider" id="slider-music"
+               min="0" max="100" value="${Math.round(UI.settings.musicVolume*100)}"
+               aria-label="Lautstärke der Musik" />
+      </div>
+
+      <div class="setting-row">
+        <label class="setting-label" for="slider-sfx">
+          <span>🔔 Soundeffekte</span>
+          <span id="sfx-vol-display" class="setting-value">${Math.round(UI.settings.sfxVolume*100)}%</span>
+        </label>
+        <input type="range" class="setting-slider" id="slider-sfx"
+               min="0" max="100" value="${Math.round(UI.settings.sfxVolume*100)}"
+               aria-label="Lautstärke der Soundeffekte" />
       </div>
 
       <div class="setting-row">
@@ -259,12 +274,18 @@ function setupPauseMenu() {
   document.getElementById('btn-confirm-yes')?.addEventListener('click', restartGame);
 
   // Volume slider live preview
-  document.getElementById('slider-volume')?.addEventListener('input', (e) => {
-    const v = parseInt(e.target.value) / 100;
-    document.getElementById('vol-display').textContent = e.target.value + '%';
-    UI.settings.volume = v;
+  document.getElementById('slider-music')?.addEventListener('input', (e) => {
+    UI.settings.musicVolume = parseInt(e.target.value) / 100;
+    document.getElementById('music-vol-display').textContent = e.target.value + '%';
     applyAudioSettings();
   });
+
+  document.getElementById('slider-sfx')?.addEventListener('input', (e) => {
+    UI.settings.sfxVolume = parseInt(e.target.value) / 100;
+    document.getElementById('sfx-vol-display').textContent = e.target.value + '%';
+    applyAudioSettings();
+  });
+  document.getElementById('slider-sfx')?.addEventListener('change', () => playSfx('toggle'));
 
   // Graphic quality buttons
   document.querySelectorAll('[data-gfx]').forEach(btn => {
@@ -312,12 +333,15 @@ function setupPauseMenu() {
  * Nötig, weil das Hauptmenü dieselben Einstellungen schreiben kann.
  */
 function syncSettingsUI() {
-  const vol = Math.round(UI.settings.volume * 100);
-
-  const slider = document.getElementById('slider-volume');
-  if (slider) slider.value = vol;
-  const volDisplay = document.getElementById('vol-display');
-  if (volDisplay) volDisplay.textContent = vol + '%';
+  const setSlider = (sliderId, displayId, value) => {
+    const pct = Math.round(value * 100);
+    const slider = document.getElementById(sliderId);
+    if (slider) slider.value = pct;
+    const display = document.getElementById(displayId);
+    if (display) display.textContent = pct + '%';
+  };
+  setSlider('slider-music', 'music-vol-display', UI.settings.musicVolume);
+  setSlider('slider-sfx',   'sfx-vol-display',   UI.settings.sfxVolume);
 
   const musicBtn = document.getElementById('toggle-music');
   if (musicBtn) {
@@ -350,9 +374,9 @@ function syncSettingsUI() {
  */
 function applyAudioSettings() {
   setMusicEnabled(UI.settings.musicOn !== false);
-  setMusicVolume(UI.settings.volume);
+  setMusicVolume(UI.settings.musicVolume);
   setSfxEnabled(UI.settings.sfxOn !== false);
-  setSfxVolume(UI.settings.volume * 0.55);
+  setSfxVolume(UI.settings.sfxVolume);
 }
 
 function showSubPanel(panel) {
@@ -416,7 +440,6 @@ export function closePauseMenu() {
 }
 
 function saveSettings() {
-  UI.settings.volume = parseInt(document.getElementById('slider-volume')?.value || 70) / 100;
   try { localStorage.setItem('lukas_settings', JSON.stringify(UI.settings)); } catch (_) {}
   applyAudioSettings();
   applyGraphicQuality(UI.settings.graphicLevel);
