@@ -107,15 +107,35 @@
         </div>
       </div>
 
-      <!-- LEFT-MIDDLE: SUMMARY PANEL (Oma's instructions, Leseverstehen) -->
-      <div id="summary-panel" class="hud-summary-panel hud-hidden">
-        <div class="summary-header">
-          <span class="summary-icon">📞</span>
-          <span class="summary-title">Oma sagt:</span>
+      <!-- LEFT COLUMN: Summary + Quest-Checkliste stapeln sich hier.
+           Beide werden von quest.js zusammen eingeblendet. -->
+      <div class="hud-left-column">
+
+        <!-- LEFT-MIDDLE: SUMMARY PANEL (Oma's instructions, Leseverstehen) -->
+        <div id="summary-panel" class="hud-summary-panel hud-hidden">
+          <div class="summary-header">
+            <span class="summary-icon">📞</span>
+            <span class="summary-title">Oma sagt:</span>
+          </div>
+          <div id="summary-content" class="summary-body">
+            <!-- Diisi otomatis setelah telpon Oma selesai -->
+          </div>
         </div>
-        <div id="summary-content" class="summary-body">
-          <!-- Diisi otomatis setelah telpon Oma selesai -->
+
+        <!-- LEFT-LOWER: QUEST LIST PANEL (5 items checklist) -->
+        <div id="quest-list-panel" class="hud-quest-list-panel hud-hidden">
+          <div class="quest-list-header">
+            <span class="quest-list-icon">🧺</span>
+            <span class="quest-list-title">Sammle in der Küche:</span>
+          </div>
+          <ul id="quest-list-items" class="quest-list-items">
+            <!-- Diisi otomatis saat quest mulai -->
+          </ul>
+          <div class="quest-list-progress">
+            <span id="quest-list-count">0 / 5</span>
+          </div>
         </div>
+
       </div>
 
       <!-- HINT BUTTON — kanan-bawah, klik untuk dapat petunjuk arah berikutnya -->
@@ -133,20 +153,6 @@
           <!-- 3 cards diisi dinamis oleh QuestSystem.showSmsModal() -->
         </div>
         <div class="sms-hint">💡 Lies sorgfältig! Nur EINE Nachricht hat keine Fehler.</div>
-      </div>
-
-      <!-- LEFT-LOWER: QUEST LIST PANEL (5 items checklist) -->
-      <div id="quest-list-panel" class="hud-quest-list-panel hud-hidden">
-        <div class="quest-list-header">
-          <span class="quest-list-icon">🧺</span>
-          <span class="quest-list-title">Sammle in der Küche:</span>
-        </div>
-        <ul id="quest-list-items" class="quest-list-items">
-          <!-- Diisi otomatis saat quest mulai -->
-        </ul>
-        <div class="quest-list-progress">
-          <span id="quest-list-count">0 / 5</span>
-        </div>
       </div>
 
       <!-- TOP RIGHT: Score & Streak — DIHILANGKAN sesuai permintaan.
@@ -233,10 +239,11 @@
     </div>
 
     <!-- ═══════════════════════════════════════════════════════
-         MOBILE CONTROLS — joystick analog + action buttons
-         (disembunyikan di desktop via CSS, tampil di mobile)
+         TOUCH CONTROLS — joystick analog + action buttons
+         Sichtbarkeit steuert allein CSS über body.input-touch
+         (gesetzt von js/ui.js) — nie per inline display.
          ═══════════════════════════════════════════════════════ -->
-    <div id="mobile-controls" class="mobile-controls" aria-hidden="true" style="display:none">
+    <div id="mobile-controls" class="mobile-controls" aria-hidden="true">
 
       <!-- Joystick kiri -->
       <div id="joystick-zone" class="joystick-zone">

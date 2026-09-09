@@ -28,8 +28,8 @@ const UI = {
 
   // Mobile joystick state
   joystick: {
-    active:  false,
-    touchId: null,
+    active:    false,
+    pointerId: null,
     baseX:   0,   baseY:   0,
     currX:   0,   currY:   0,
     dx:      0,   dy:      0,   // normalized -1..1
@@ -62,16 +62,11 @@ export function initUI() {
     if (raw) Object.assign(UI.settings, migrateSettings(JSON.parse(raw)));
   } catch (_) {}
 
-  // Detect mobile
-  UI.isMobile = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
-
   // Wire up pause menu buttons
   setupPauseMenu();
 
-  // Setup mobile controls
-  if (UI.isMobile) setupMobileControls();
-  // Juga tampilkan di desktop kalau ada touch screen
-  if (window.matchMedia('(pointer: coarse)').matches) setupMobileControls();
+  // Eingabemodus bestimmen (Touch vs. Maus/Tastatur) und überwachen
+  initInputMode();
 
   // ESC toggle pause — nicht, solange das Hauptmenü offen ist
   window.addEventListener('keydown', (e) => {
@@ -396,6 +391,7 @@ export function openPauseMenu() {
   showSubPanel('main');
   overlay.classList.remove('hud-hidden');
   overlay.classList.add('pause-active');
+  releaseAllInput();
 
   // Stop game (tapi jangan dispatch event lagi untuk hindari loop)
   if (!Game.isPaused) {
@@ -475,135 +471,208 @@ function restartGame() {
 
 
 // ═══════════════════════════════════════════════════════════════════
-// MOBILE ANALOG JOYSTICK
+// EINGABEMODUS — Touch-Steuerung nur auf echten Touch-Geräten
+//
+// 'ontouchstart' und maxTouchPoints sind auf Laptops mit Touchscreen
+// ebenfalls gesetzt — danach zu gehen blendete den Joystick auf dem
+// Desktop ein. Ausschlaggebend ist der PRIMÄRE Zeiger: grob und ohne
+// Hover = Handy/Tablet.
 // ═══════════════════════════════════════════════════════════════════
 
-function setupMobileControls() {
-  const container = document.getElementById('mobile-controls');
-  if (!container) return;
+const TOUCH_MODE_QUERY = '(pointer: coarse) and (hover: none)';
 
-  container.style.display = 'flex';
-  container.setAttribute('aria-hidden', 'false');
+function initInputMode() {
+  const mq = window.matchMedia(TOUCH_MODE_QUERY);
+  applyInputMode(mq.matches);
 
-  const stick    = document.getElementById('joystick-stick');
-  const base     = document.getElementById('joystick-base');
-  const jumpBtn  = document.getElementById('mobile-jump');
-  const runBtn   = document.getElementById('mobile-run');
-  const interBtn = document.getElementById('mobile-interact');
-  const pauseBtn = document.getElementById('mobile-pause-btn');
-
-  if (!stick || !base) return;
-
-  const RADIUS = 55;  // maksimal jarak stick dari tengah
-
-  function getBaseCenter() {
-    const rect = base.getBoundingClientRect();
-    return { x: rect.left + rect.width/2, y: rect.top + rect.height/2 };
+  // Moderne Browser: 'change'; ältere WebKit-Versionen: addListener
+  if (typeof mq.addEventListener === 'function') {
+    mq.addEventListener('change', (e) => applyInputMode(e.matches));
+  } else if (typeof mq.addListener === 'function') {
+    mq.addListener((e) => applyInputMode(e.matches));
   }
 
-  base.addEventListener('touchstart', (e) => {
-    e.preventDefault();
-    const touch = e.changedTouches[0];
-    UI.joystick.touchId = touch.identifier;
-    UI.joystick.active = true;
-    UI.joystick.baseX = touch.clientX;
-    UI.joystick.baseY = touch.clientY;
-
-    // Reposisi base ke titik touch
-    const cRect = container.getBoundingClientRect();
-    base.style.left = (touch.clientX - cRect.left - 60) + 'px';
-    base.style.top  = (touch.clientY - cRect.top  - 60) + 'px';
-    base.classList.add('joystick-active');
-    updateStickPos(touch.clientX, touch.clientY);
-  }, { passive: false });
-
-  window.addEventListener('touchmove', (e) => {
-    if (!UI.joystick.active) return;
-    const touch = Array.from(e.changedTouches).find(t => t.identifier === UI.joystick.touchId);
-    if (!touch) return;
-    e.preventDefault();
-    updateStickPos(touch.clientX, touch.clientY);
-  }, { passive: false });
-
-  window.addEventListener('touchend', (e) => {
-    const touch = Array.from(e.changedTouches).find(t => t.identifier === UI.joystick.touchId);
-    if (!touch) return;
-    UI.joystick.active = false;
-    UI.joystick.touchId = null;
-    UI.joystick.dx = 0;
-    UI.joystick.dy = 0;
-    stick.style.transform = 'translate(-50%, -50%)';
-    stick.style.left = '50%';
-    stick.style.top  = '50%';
-    base.classList.remove('joystick-active');
-
-    // Reset player input
-    Player.input.fwd = Player.input.back = Player.input.left = Player.input.right = 0;
+  // Während eines Dialogs liegt die Sprechblase über den Touch-Knöpfen
+  // (z-index 70 vs. 55) — sie wären unerreichbar. Also ausblenden und
+  // die Bewegung stoppen, solange geredet wird.
+  window.addEventListener(EVENTS.DIALOG_OPEN, () => {
+    document.body.classList.add('dialog-open');
+    releaseAllInput();
+  });
+  window.addEventListener(EVENTS.DIALOG_CLOSE, () => {
+    document.body.classList.remove('dialog-open');
   });
 
-  function updateStickPos(cx, cy) {
-    const bx = UI.joystick.baseX;
-    const by = UI.joystick.baseY;
-    let dx = cx - bx;
-    let dy = cy - by;
-    const dist = Math.hypot(dx, dy);
+  // Steckengebliebene Eingaben lösen, wenn das Spiel den Fokus verliert
+  window.addEventListener('blur', releaseAllInput);
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) releaseAllInput();
+  });
+}
+
+function applyInputMode(isTouch) {
+  UI.isMobile = isTouch;
+
+  // Sichtbarkeit liegt allein bei CSS (body.input-touch) — sonst
+  // gewinnt ein inline gesetztes display gegen jede Media Query.
+  document.body.classList.toggle('input-touch', isTouch);
+  document.body.classList.toggle('input-pointer', !isTouch);
+
+  const container = document.getElementById('mobile-controls');
+  if (container) container.setAttribute('aria-hidden', String(!isTouch));
+
+  if (isTouch) setupTouchControls();
+  else         releaseAllInput();
+}
+
+/** Alle Bewegungseingaben zurücksetzen — gegen "Lukas läuft weiter". */
+function releaseAllInput() {
+  Player.input.fwd = Player.input.back = Player.input.left = Player.input.right = 0;
+  Player.input.run = false;
+  UI.joystick.active  = false;
+  UI.joystick.pointerId = null;
+  UI.joystick.dx = UI.joystick.dy = 0;
+  resetJoystickVisual();
+}
+
+function resetJoystickVisual() {
+  const base  = document.getElementById('joystick-base');
+  const stick = document.getElementById('joystick-stick');
+  if (base) {
+    base.classList.remove('joystick-active');
+    base.style.left = '';
+    base.style.top  = '';
+  }
+  if (stick) {
+    stick.style.left = '50%';
+    stick.style.top  = '50%';
+  }
+}
+
+
+// ═══════════════════════════════════════════════════════════════════
+// TOUCH-STEUERUNG — Joystick & Aktionsknöpfe
+// ═══════════════════════════════════════════════════════════════════
+
+let touchControlsReady = false;
+
+function setupTouchControls() {
+  if (touchControlsReady) return;          // nur einmal verdrahten
+  const zone = document.getElementById('joystick-zone');
+  const base  = document.getElementById('joystick-base');
+  const stick = document.getElementById('joystick-stick');
+  if (!zone || !base || !stick) return;
+  touchControlsReady = true;
+
+  const RADIUS = 58;      // maximaler Ausschlag in px
+  const DEAD   = 0.14;    // Totzone
+
+  // ── Joystick: reagiert auf die GANZE linke Zone, nicht nur auf den
+  //    kleinen Kreis. Vorher musste man den Kreis exakt treffen —
+  //    daneben getippt passierte gar nichts.
+  zone.addEventListener('pointerdown', (e) => {
+    if (UI.joystick.active) return;
+    e.preventDefault();
+
+    UI.joystick.active    = true;
+    UI.joystick.pointerId = e.pointerId;
+    UI.joystick.baseX     = e.clientX;
+    UI.joystick.baseY     = e.clientY;
+
+    // Basis unter den Finger legen
+    const zRect = zone.getBoundingClientRect();
+    const half  = base.offsetWidth / 2;
+    base.style.left = (e.clientX - zRect.left - half) + 'px';
+    base.style.top  = (e.clientY - zRect.top  - half) + 'px';
+    base.classList.add('joystick-active');
+
+    // Folgeereignisse landen sicher hier, auch außerhalb der Zone
+    try { zone.setPointerCapture(e.pointerId); } catch (_) {}
+    updateStick(e.clientX, e.clientY);
+  });
+
+  zone.addEventListener('pointermove', (e) => {
+    if (!UI.joystick.active || e.pointerId !== UI.joystick.pointerId) return;
+    e.preventDefault();
+    updateStick(e.clientX, e.clientY);
+  });
+
+  // pointercancel ist der wichtige Teil: ohne ihn blieb die Figur
+  // laufen, wenn das System die Berührung abbrach (Anruf, Geste …).
+  const endJoystick = (e) => {
+    if (e.pointerId !== UI.joystick.pointerId) return;
+    releaseAllInput();
+  };
+  zone.addEventListener('pointerup',     endJoystick);
+  zone.addEventListener('pointercancel', endJoystick);
+  zone.addEventListener('lostpointercapture', endJoystick);
+
+  function updateStick(cx, cy) {
+    const dx = cx - UI.joystick.baseX;
+    const dy = cy - UI.joystick.baseY;
+    const dist    = Math.hypot(dx, dy);
     const clamped = Math.min(dist, RADIUS);
-    const ang = Math.atan2(dy, dx);
+    const ang     = Math.atan2(dy, dx);
 
     const ox = Math.cos(ang) * clamped;
     const oy = Math.sin(ang) * clamped;
 
-    // Tampilkan stick visual (relative ke base)
-    stick.style.left = (50 + (ox/RADIUS)*45) + '%';
-    stick.style.top  = (50 + (oy/RADIUS)*45) + '%';
+    stick.style.left = (50 + (ox / RADIUS) * 42) + '%';
+    stick.style.top  = (50 + (oy / RADIUS) * 42) + '%';
 
-    // Normalized input (-1..1)
     UI.joystick.dx = ox / RADIUS;
     UI.joystick.dy = oy / RADIUS;
 
-    // Map ke Player input berdasarkan kamera yaw
-    // (import dinamis untuk hindari circular dep saat file load)
-    const DEAD = 0.15;
-    const absX = Math.abs(UI.joystick.dx);
-    const absY = Math.abs(UI.joystick.dy);
-
-    // fwd/back dari Y (atas joystick = maju)
-    Player.input.fwd  = absY > DEAD && UI.joystick.dy < 0 ? Math.min(1, -UI.joystick.dy) : 0;
-    Player.input.back = absY > DEAD && UI.joystick.dy > 0 ? Math.min(1,  UI.joystick.dy) : 0;
-    Player.input.left  = absX > DEAD && UI.joystick.dx < 0 ? Math.min(1, -UI.joystick.dx) : 0;
-    Player.input.right = absX > DEAD && UI.joystick.dx > 0 ? Math.min(1,  UI.joystick.dx) : 0;
+    const nx = UI.joystick.dx;
+    const ny = UI.joystick.dy;
+    Player.input.fwd   = ny < -DEAD ? Math.min(1, -ny) : 0;
+    Player.input.back  = ny >  DEAD ? Math.min(1,  ny) : 0;
+    Player.input.left  = nx < -DEAD ? Math.min(1, -nx) : 0;
+    Player.input.right = nx >  DEAD ? Math.min(1,  nx) : 0;
   }
 
-  // Action buttons
-  if (jumpBtn) {
-    jumpBtn.addEventListener('touchstart', (e) => {
+  // ── Aktionsknöpfe ────────────────────────────────────────────
+  // Pointer Events statt touchstart/touchend: dieselbe Logik für
+  // Finger und Stift, und 'pointercancel' kommt zuverlässig an.
+  const onPress = (el, down, up) => {
+    if (!el) return;
+    el.addEventListener('pointerdown', (e) => {
       e.preventDefault();
-      if (!Player.isJumping) {
-        Player.isJumping    = true;
-        Player.jumpVelocity = 7.0;
-      }
+      el.classList.add('is-pressed');
+      try { el.setPointerCapture(e.pointerId); } catch (_) {}
+      down?.();
     });
-  }
+    const release = (e) => {
+      el.classList.remove('is-pressed');
+      try { el.releasePointerCapture(e.pointerId); } catch (_) {}
+      up?.();
+    };
+    el.addEventListener('pointerup', release);
+    el.addEventListener('pointercancel', release);
+    el.addEventListener('lostpointercapture', () => { el.classList.remove('is-pressed'); up?.(); });
+  };
 
-  if (runBtn) {
-    runBtn.addEventListener('touchstart', (e) => { e.preventDefault(); Player.input.run = true; });
-    runBtn.addEventListener('touchend',   (e) => { e.preventDefault(); Player.input.run = false; });
-  }
+  onPress(document.getElementById('mobile-jump'), () => {
+    if (!Player.isJumping) {
+      Player.isJumping    = true;
+      Player.jumpVelocity = 7.0;
+    }
+  });
 
-  if (interBtn) {
-    interBtn.addEventListener('touchstart', (e) => {
-      e.preventDefault();
-      window.dispatchEvent(new KeyboardEvent('keydown', { code: 'KeyE', bubbles: true }));
-    });
-  }
+  // Rennen: mit Pointer-Capture bleibt es auch dann gedrückt, wenn der
+  // Finger vom Knopf rutscht — und wird beim Loslassen sicher beendet.
+  onPress(document.getElementById('mobile-run'),
+    () => { Player.input.run = true; },
+    () => { Player.input.run = false; });
 
-  if (pauseBtn) {
-    pauseBtn.addEventListener('touchstart', (e) => {
-      e.preventDefault();
-      if (UI.isPauseMenuOpen) closePauseMenu();
-      else openPauseMenu();
-    });
-  }
+  onPress(document.getElementById('mobile-interact'), () => {
+    window.dispatchEvent(new KeyboardEvent('keydown', { code: 'KeyE', bubbles: true }));
+  });
+
+  onPress(document.getElementById('mobile-pause-btn'), () => {
+    if (UI.isPauseMenuOpen) closePauseMenu();
+    else openPauseMenu();
+  });
 }
 
 
