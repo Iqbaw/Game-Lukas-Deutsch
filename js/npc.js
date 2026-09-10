@@ -701,7 +701,7 @@ function setupInteractionInput() {
 
   window.addEventListener('keydown', (e) => {
     if (Game.isPaused) return;
-    if (e.code !== 'KeyE' && e.code !== 'Space') return;
+    if (e.code !== 'KeyE') return;
     if (!activeNPC) return;
 
     // Prevent default supaya space tidak scroll page

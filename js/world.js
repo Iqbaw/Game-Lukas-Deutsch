@@ -1772,7 +1772,7 @@ function buildSupermarktInterior() {
 //   • Messer          → di dalam Schublade
 //   • Teller          → AUF dem Küchentisch
 //   • Eier            → UNTER dem kleinen Tisch
-//   • Wurst           → IN dem Kühlschrank
+//   • Wurst           → AUF dem Serviertisch
 
 function buildHausInterior() {
   const lpMat = (c) => new THREE.MeshLambertMaterial({color:c, flatShading:true});
@@ -3230,9 +3230,10 @@ function buildHausInterior() {
   // Pfanne → IN dem Schrank
   spawnInteriorItem('pfanne', 'die Pfanne', 'quest_1',
     schrankAnchor.x, schrankAnchor.y, schrankAnchor.z, 0x999999, '🍳');
-  // Wurst → IN dem Kühlschrank
+  // Wurst on a separate serving table, clear of the north/east walls.
+  const wurstTable = buildKuechentisch(-6, 9);
   spawnInteriorItem('wurst', 'die Wurst', 'quest_1',
-    kuehlAnchor.x, kuehlAnchor.y, kuehlAnchor.z, 0xcc5544, '🌭');
+    wurstTable.x, wurstTable.y, wurstTable.z, 0xcc5544, '🌭');
   // Eier → UNTER dem kleinen Tisch
   spawnInteriorItem('eier', 'die Eier', 'quest_1',
     kleinAnchor.x, kleinAnchor.y, kleinAnchor.z, 0xfff0c0, '🥚');

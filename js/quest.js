@@ -23,7 +23,7 @@ const STATE = {
 const ITEM_DESCRIPTIONS = {
   // ── QUEST 1 items (Oma sarapan) ──
   pfanne:  { emoji: '🍳', text: 'Die Pfanne ist <span class="prep">IN</span> dem Schrank.' },
-  wurst:   { emoji: '🌭', text: 'Die Wurst ist <span class="prep">IM</span> Kühlschrank.' },
+  wurst:   { emoji: '🌭', text: 'Die Wurst ist <span class="prep">AUF</span> dem Serviertisch.' },
   eier:    { emoji: '🥚', text: 'Das Ei liegt <span class="prep">UNTER</span> dem Tisch.' },
   teller:  { emoji: '🍽', text: 'Der Teller ist <span class="prep">AUF</span> dem Küchentisch.' },
   besteck: { emoji: '🍴', text: 'Das Besteck ist <span class="prep">IN</span> der Schublade.' },
@@ -599,7 +599,7 @@ export const QuestSystem = {
         <p>Lukas, du brauchst diese Sachen:</p>
         <ul>
           <li>Eine <b>Pfanne</b> — <span class="kw">IN</span> dem Schrank</li>
-          <li>Die <b>Wurst</b> — <span class="kw">IN</span> dem Kühlschrank</li>
+          <li>Die <b>Wurst</b> — <span class="kw">AUF</span> dem Serviertisch</li>
           <li>Die <b>Eier</b> — <span class="kw">UNTER</span> dem kleinen Tisch</li>
           <li>Den <b>Teller</b> — <span class="kw">AUF</span> dem Küchentisch</li>
           <li>Das <b>Besteck</b> — <span class="kw">IN</span> der Schublade</li>
