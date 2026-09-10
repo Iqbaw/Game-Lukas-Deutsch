@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
 
 // A lightweight articulated cast. All garment colors come from the original data.
 export function buildCharacter(cfg) {
@@ -19,9 +20,12 @@ export function buildCharacter(cfg) {
   }
   // Mesh geometry is sized directly so children inherit rotation, not body scale.
   function form(parent, mat, size, pos) {
-    const mesh = oval(parent, mat, size, pos);
-    mesh.geometry.scale(...mesh.scale.toArray());
-    mesh.scale.set(1, 1, 1);
+    const radius = Math.min(...size) * 0.22 * H;
+    const mesh = new THREE.Mesh(new RoundedBoxGeometry(...size.map(n => n * 2 * H), 2, radius), mat);
+    mesh.position.set(...pos.map(n => n * H));
+    mesh.castShadow = true;
+    mesh.receiveShadow = true;
+    parent.add(mesh);
     return mesh;
   }
   const body = form(group, cloth, [0.29, 0.43, 0.19], [0, 1.06, 0]);
@@ -30,24 +34,24 @@ export function buildCharacter(cfg) {
   const head = form(group, skin, [0.225, 0.255, 0.215], [0, 1.74, 0]);
   for (const side of [-1, 1]) {
     oval(head, skin, [0.047, 0.075, 0.04], [side * 0.22, 0, 0]);
-    oval(head, ink, [0.024, 0.032, 0.013], [side * 0.082, 0.025, 0.199]);
-    oval(head, hairMat, [0.047, 0.012, 0.015], [side * 0.084, 0.085, 0.192]);
+    oval(head, ink, [0.024, 0.032, 0.013], [side * 0.082, 0.025, 0.217]);
+    form(head, hairMat, [0.047, 0.012, 0.008], [side * 0.084, 0.085, 0.217]);
   }
   oval(head, skin, [0.035, 0.045, 0.045], [0, -0.025, 0.208]);
-  oval(head, ink, [0.045, 0.008, 0.008], [0, -0.106, 0.195]);
-  const hair = oval(head, hairMat, [0.237, 0.12, 0.225], [0, 0.18, -0.018]);
+  oval(head, ink, [0.045, 0.008, 0.008], [0, -0.106, 0.218]);
+  const hair = form(head, hairMat, [0.237, 0.08, 0.225], [0, 0.225, -0.018]);
   for (let i = 0; i < 3; i++) {
-    const lock = oval(head, hairMat, [0.095, 0.064, 0.054], [(i - 1) * 0.12, 0.155 - i * 0.014, 0.162]);
+    const lock = form(head, hairMat, [0.075, 0.055, 0.035], [(i - 1) * 0.14, 0.19 - i * 0.014, 0.205]);
     lock.rotation.z = -0.22;
   }
   if (cfg.hairStyle === 'bun') oval(head, hairMat, [0.14, 0.14, 0.13], [0, 0.16, -0.22]);
   if (cfg.hairStyle === 'long') {
-    oval(head, hairMat, [0.23, 0.27, 0.11], [0, -0.06, -0.165]);
-    for (const side of [-1, 1]) oval(head, hairMat, [0.065, 0.21, 0.08], [side * 0.205, -0.065, -0.035]);
+    form(head, hairMat, [0.23, 0.27, 0.065], [0, -0.06, -0.2]);
+    for (const side of [-1, 1]) form(head, hairMat, [0.04, 0.21, 0.08], [side * 0.225, -0.065, -0.035]);
   }
   if (cfg.hairStyle === 'messy') {
     for (let i = 0; i < 4; i++) {
-      const tuft = oval(head, hairMat, [0.09, 0.12, 0.075], [(i - 1.5) * 0.095, 0.23, -0.01]);
+      const tuft = form(head, hairMat, [0.065, 0.075, 0.095], [(i - 1.5) * 0.095, 0.28, -0.01]);
       tuft.rotation.z = (i - 1.5) * -0.3;
     }
   }
@@ -81,31 +85,31 @@ export function buildCharacter(cfg) {
   }
   if (cfg.hasApron) {
     const apron = material(cfg.apronColor);
-    oval(body, apron, [0.23, 0.32, 0.036], [0, -0.09, 0.174]);
+    form(body, apron, [0.23, 0.32, 0.022], [0, -0.09, 0.196]);
     oval(body, apron, [0.025, 0.15, 0.025], [0, 0.26, 0.17]);
   }
   if (cfg.hasBackpack) {
     const pack = material(cfg.backpackColor);
-    oval(body, pack, [0.22, 0.27, 0.12], [0, 0, -0.225]);
+    form(body, pack, [0.22, 0.27, 0.12], [0, 0, -0.225]);
     for (const side of [-1, 1]) oval(body, pack, [0.025, 0.29, 0.026], [side * 0.16, 0.03, 0.16]);
   }
   if (cfg.hoodie) {
     oval(body, cloth, [0.235, 0.13, 0.16], [0, 0.38, -0.09]);
-    oval(body, cloth, [0.16, 0.095, 0.04], [0, -0.15, 0.174]);
-    for (const side of [-1, 1]) oval(body, material(0xffffff), [0.01, 0.105, 0.01], [side * 0.048, 0.22, 0.185]);
+    form(body, cloth, [0.16, 0.095, 0.02], [0, -0.15, 0.196]);
+    for (const side of [-1, 1]) form(body, material(0xffffff), [0.01, 0.105, 0.01], [side * 0.048, 0.22, 0.205]);
   }
   function limb(side, arm) {
     const pivot = new THREE.Group();
-    pivot.position.set(side * (arm ? 0.32 : 0.13) * H, (arm ? 1.4 : 0.66) * H, 0);
+    pivot.position.set(side * (arm ? 0.405 : 0.145) * H, (arm ? 1.4 : 0.66) * H, 0);
     group.add(pivot);
     const length = arm ? 0.33 : 0.28;
     const mat = arm ? cloth : pants;
-    oval(pivot, mat, [arm ? 0.105 : 0.105, length * 0.62, 0.105], [0, -length / 2, 0]);
+    form(pivot, mat, [0.105, length * 0.51, 0.12], [0, -length / 2, 0]);
     const joint = new THREE.Group();
     joint.position.y = -length * H;
     pivot.add(joint);
-    oval(joint, mat, [0.087, length * 0.62, 0.09], [0, -length / 2, 0]);
-    const end = oval(joint, arm ? skin : shoes, arm ? [0.075, 0.09, 0.075] : [0.108, 0.075, 0.18], [0, -length - (arm ? 0.045 : 0.015), arm ? 0 : 0.06]);
+    form(joint, mat, [0.102, length * 0.51, 0.115], [0, -length / 2, 0]);
+    const end = form(joint, arm ? skin : shoes, arm ? [0.1, 0.09, 0.11] : [0.115, 0.075, 0.18], [0, -length - (arm ? 0.045 : 0.015), arm ? 0 : 0.06]);
     pivot.userData.joint = joint;
     pivot.userData.end = end;
     pivot.userData.baseY = pivot.position.y;
