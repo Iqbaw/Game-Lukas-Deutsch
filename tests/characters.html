@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en"><meta charset="utf-8"><title>Character visual checks</title>
+<style>body{margin:0;background:#dde5ea;font:15px system-ui;color:#172e40}header{padding:16px}canvas{display:block}button,select{padding:8px;margin:4px}</style>
+<script type="importmap">{"imports":{"three":"https://unpkg.com/three@0.158.0/build/three.module.js"}}</script>
+<header>Character review · original outfit palettes <select id="pose"><option>Walk</option><option>Idle</option><option>Run</option></select><button id="pause">Pause</button><output id="result">Checking…</output></header>
+<script type="module">
+import * as THREE from 'three';
+import {buildCharacter,animateCharacter} from '../js/character.js';
+import {NPC_DATA} from '../js/data/npcs.js';
+import {COLORS} from '../js/config.js';
+const scene=new THREE.Scene();scene.background=new THREE.Color(0xdde5ea);
+const camera=new THREE.PerspectiveCamera(35,innerWidth/(innerHeight-85),0.1,100);camera.position.set(9,9,18);camera.lookAt(0,0.8,0);
+const renderer=new THREE.WebGLRenderer({antialias:true});renderer.setSize(innerWidth,innerHeight-85);renderer.setPixelRatio(Math.min(devicePixelRatio,2));document.body.append(renderer.domElement);
+scene.add(new THREE.HemisphereLight(0xffffff,0x778899,2));const sun=new THREE.DirectionalLight(0xffffff,2);sun.position.set(3,8,5);scene.add(sun);
+const data=[{id:'lukas',name:'Lukas',body:{height:1,bodyColor:COLORS.HOODIE_BLUE,skinColor:COLORS.SKIN,pantsColor:COLORS.PANTS_KHAKI,shoesColor:COLORS.SHOES_WHITE,hairColor:COLORS.HAIR_BLACK,hoodie:true,hairStyle:'messy'}},...NPC_DATA];
+let checks=0;
+const rigs=data.map((d,i)=>{
+ const r=buildCharacter({...d.body,hoodie:d.id==='lukas'||d.id==='felix'});
+ if(r.body.material.color.getHex()!==d.body.bodyColor)throw Error('Outfit color changed: '+d.id);
+ for(const side of ['left','right']){
+  if(r[side+'Leg'].children[0].material.color.getHex()!==d.body.pantsColor)throw Error('Pants color changed');
+  if(r[side+'Leg'].userData.end.material.color.getHex()!==d.body.shoesColor)throw Error('Shoes color changed');
+ }
+ if(r.head.children.length<5)throw Error('Missing attached face: '+d.id);
+ for(const key of ['leftArm','rightArm','leftLeg','rightLeg'])if(!r[key].userData.joint)throw Error('Missing joint');
+ for(let f=0;f<120;f++)animateCharacter(r,1/60,f/60,1,true);
+ for(let f=0;f<120;f++)animateCharacter(r,1/60,2+f/60,0);
+ if(Math.abs(r.leftLeg.rotation.x)>0.001)throw Error('Idle legs did not settle');
+ r.group.traverse(o=>{if(!o.position.toArray().every(Number.isFinite))throw Error('Invalid transform');});
+ checks++;r.group.position.set((i%5-2)*2.15,0,(Math.floor(i/5)-1)*3.3);scene.add(r.group);
+ const c=document.createElement('canvas');c.width=256;c.height=48;const ctx=c.getContext('2d');ctx.fillStyle='#172e40';ctx.font='24px sans-serif';ctx.textAlign='center';ctx.fillText(d.name,128,32);
+ const label=new THREE.Sprite(new THREE.SpriteMaterial({map:new THREE.CanvasTexture(c),depthTest:false}));label.scale.set(1.8,0.34,1);label.position.y=2.35;r.group.add(label);return r;
+});
+document.querySelector('#result').textContent=checks+' characters passed: outfit colors, hierarchy, joints, idle transition, finite transforms';
+let paused=false;document.querySelector('#pause').onclick=()=>{paused=!paused;};const clock=new THREE.Clock();let time=0;
+renderer.setAnimationLoop(()=>{const dt=Math.min(clock.getDelta(),0.05);if(!paused){time+=dt;const mode=document.querySelector('#pose').value;rigs.forEach((r,i)=>animateCharacter(r,dt,time+i,mode==='Idle'?0:1,mode==='Run'));}renderer.render(scene,camera);});
+addEventListener('resize',()=>{camera.aspect=innerWidth/(innerHeight-85);camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight-85);});
+</script></html>
