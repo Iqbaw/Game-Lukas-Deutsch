@@ -280,6 +280,17 @@ function makePost(x,z,r){const g=bldg({x,z,w:7,h:4.5,d:6,color:0xffcc00,rotY:r,n
 
 function makeEdeka(x,z,r){const g=bldg({x,z,w:14,h:5,d:10,color:0xeeeedd,rotY:r,name:'edeka'});addWin(g,14,10,1,6,_gM);
   g.add(mP(new THREE.BoxGeometry(12,3.5,0.1),_gM,0,2,5.08));
+  // Entrance is in front of the glazing, rather than buried behind it.
+  const entry = new THREE.Group();
+  const frame = lpMat(0x1144cc), glass = lpMat(0x79b9cc);
+  for (const side of [-1,1]) {
+    entry.add(mP(new THREE.BoxGeometry(0.08,2.5,0.14),frame,side*0.95,1.25,5.2));
+    entry.add(mP(new THREE.BoxGeometry(0.86,2.28,0.05),glass,side*0.46,1.18,5.21));
+    entry.add(mP(new THREE.BoxGeometry(0.035,0.5,0.08),lpMat(0xeeeeee),side*0.12,1.1,5.27));
+  }
+  entry.add(mP(new THREE.BoxGeometry(2,0.1,0.16),frame,0,2.48,5.2));
+  entry.add(mP(new THREE.BoxGeometry(2.6,0.12,0.9),frame,0,2.7,5.45));
+  g.add(entry);
   g.add(mP(new THREE.BoxGeometry(14.4,0.3,10.4),lpMat(0x1144cc),0,5.15,0));
   const s=makeSign('EDEKA','#1144cc','#ffdd00',5,1);s.position.set(0,4.5,5.12);g.add(s);return g;}
 
@@ -3647,18 +3658,23 @@ function buildStadt() {
 
   // ── HELPER: segmen jalan aspal E-W atau N-S ──
   const roadEW = (cx, cz, len, w = 6) => {
-    const r = mP(new THREE.PlaneGeometry(len, w), roadMat, cx, 0.02, cz);
+    const r = mP(new THREE.PlaneGeometry(len, w), roadMat, cx, 0.021, cz);
     r.rotation.x = -Math.PI/2; r.receiveShadow = true; Game.worldGroup.add(r); World.walkables.push(r);
     // garis tengah putus-putus
     for (let i = -len/2 + 2; i <= len/2 - 2; i += 4) {
+      if ([-24,18].some(junction => Math.abs(cx+i-junction)<4.2)) continue;
       const d = mP(new THREE.PlaneGeometry(2, 0.18), lineMat, cx + i, 0.03, cz);
       d.rotation.x = -Math.PI/2; Game.worldGroup.add(d);
     }
   };
   const roadNS = (cx, cz, len, w = 6) => {
-    const r = mP(new THREE.PlaneGeometry(w, len), roadMat, cx, 0.02, cz);
-    r.rotation.x = -Math.PI/2; r.receiveShadow = true; Game.worldGroup.add(r); World.walkables.push(r);
+    for (const [a,b] of [[cz-len/2,Math.min(-3,cz+len/2)],[Math.max(3,cz-len/2),cz+len/2]]) {
+      if(b<=a)continue;
+      const r=mP(new THREE.PlaneGeometry(w,b-a),roadMat,cx,0.021,(a+b)/2);
+      r.rotation.x=-Math.PI/2;r.receiveShadow=true;Game.worldGroup.add(r);World.walkables.push(r);
+    }
     for (let i = -len/2 + 2; i <= len/2 - 2; i += 4) {
+      if (Math.abs(cz+i)<5.8 || (cx===-24 && Math.abs(cz+i-26)<4.2)) continue;
       const d = mP(new THREE.PlaneGeometry(0.18, 2), lineMat, cx, 0.03, cz + i);
       d.rotation.x = -Math.PI/2; Game.worldGroup.add(d);
     }
@@ -3704,9 +3720,9 @@ function buildStadt() {
   // Jalan ke KIRI (barat) di samping gerbang rumah Oma — supaya di pintu masuk
   // kota ada dua arah (kiri & kanan) dan instruksi "nach links/rechts" bermakna.
   // Pendek saja (berhenti sebelum Kino di x=-31), tidak mengubah peta lain.
-  roadEW(-25, 26, 8);
+  roadEW(-28, 26, 2);
   // Trotoar sepanjang jalan utama (dipotong di perempatan)
-  for (const seg of [[-40, -25], [-23, 17], [19, 40]]) {
+  for (const seg of [[-42, -27.2], [-20.8, 14.8], [21.2, 42]]) {
     const len = seg[1] - seg[0], cx = (seg[0] + seg[1]) / 2;
     for (const dz of [-1, 1]) {
       const sw = mP(new THREE.BoxGeometry(len, 0.12, 1.6), sideMat, cx, 0.06, (3 + 0.8) * dz);
@@ -3716,7 +3732,7 @@ function buildStadt() {
   // Zebra cross di 2 perempatan
   const zebra = (cx, cz) => {
     for (let i = -2; i <= 2; i++) {
-      const zb = mP(new THREE.PlaneGeometry(0.5, 3), lpMat(MODERN_COLORS.CROSSWALK), cx + i * 0.9, 0.04, cz - 4.2);
+      const zb = mP(new THREE.PlaneGeometry(0.5, 2.2), lpMat(MODERN_COLORS.CROSSWALK), cx + i * 0.9, 0.04, cz - 4.2);
       zb.rotation.x = -Math.PI/2; Game.worldGroup.add(zb);
       const zb2 = mP(new THREE.PlaneGeometry(0.5, 3), lpMat(MODERN_COLORS.CROSSWALK), cx + i * 0.9, 0.04, cz + 4.2);
       zb2.rotation.x = -Math.PI/2; Game.worldGroup.add(zb2);
@@ -3745,7 +3761,7 @@ function buildStadt() {
   };
   if (variant === 'A') {
     // Ampel di perempatan Schillerstraße × Gutenbergstraße (hanya varian A)
-    makeAmpel(-20, 4, Math.PI);   // sudut tenggara, menghadap jalan
+    makeAmpel(-20, 4, 0);   // sudut tenggara, menghadap jalan
     makeAmpel(-28, -4, 0);        // sudut barat-laut
     window.__stadtBuildings__['ampel'] = { x: -24, z: 0, r: 6 };
   }
@@ -3859,7 +3875,7 @@ function buildStadt() {
   // GEDUNG — SELATAN jalan (rotY=π, depan menghadap utara/jalan)
   // ═══════════════════════════════════════════════════════════════
   // KIRCHE — landmark menara tinggi (pindah ke barat-daya, bekas lokasi sekolah)
-  const kirche = makeKirche(-36, 15, Math.PI);
+  const kirche = makeKirche(-36, 15, 0);
   { const spire = new THREE.Mesh(new THREE.ConeGeometry(1.6, 6, 6), lpMat(0x8a6a4a));
     spire.position.set(0, 11, 4); kirche.add(spire);
     const tower = new THREE.Mesh(new THREE.BoxGeometry(3, 6, 3), lpMat(0xbbaa88));
@@ -3868,16 +3884,16 @@ function buildStadt() {
     cross.position.set(0, 14.5, 4); kirche.add(cross);
     const s = makeSign('KIRCHE', '#665544', '#fff'); s.position.set(0, 6, 6.1); kirche.add(s); }
   reg('kirche', -36, 15, 7);
-  namedBldg('kino', -36, 27, 10, 6, 7, 0x554466, Math.PI, 'KINO', '#332244');
+  namedBldg('kino', -36, 27, 10, 6, 7, 0x554466, 0, 'KINO', '#332244');
   reg('kino', -36, 27, 5);
   // EDEKA — JAUH dari perempatan (22 unit ke timur), bebas dari semua jalan.
   // r=10 supaya reach_building terpicu SEBELUM player masuk portal interior
-  makeEdeka(-2, 14, Math.PI); reg('edeka', -2, 14, 10);
-  makeCafe(10, 14, Math.PI); reg('cafe', 10, 14, 5);
-  makeRestaurant(32, 16, Math.PI); reg('restaurant', 32, 16, 7);
-  makeBlumenladen(24, 15, Math.PI); reg('blumenladen', 24, 15, 5);
-  makePost(24, 26, Math.PI); reg('post', 24, 26, 6);
-  namedBldg('tourismusbuero', 34, 26, 8, 4.5, 6, 0x66aacc, Math.PI, 'TOURISMUS', '#2266aa');
+  makeEdeka(-2, 14, 0); reg('edeka', -2, 14, 10);
+  makeCafe(10, 14, 0); reg('cafe', 10, 14, 5);
+  makeRestaurant(32, 16, 0); reg('restaurant', 32, 16, 7);
+  makeBlumenladen(24, 15, 0); reg('blumenladen', 24, 15, 5);
+  makePost(24, 26, 0); reg('post', 24, 26, 6);
+  namedBldg('tourismusbuero', 34, 26, 8, 4.5, 6, 0x66aacc, 0, 'TOURISMUS', '#2266aa');
   reg('tourismusbuero', 34, 26, 6);
 
   // ── EISSTAND (kios kecil, "neben dem Café") ──
@@ -3885,7 +3901,7 @@ function buildStadt() {
     const g = new THREE.Group();
     const body = new THREE.Mesh(new THREE.BoxGeometry(2.4, 2.2, 2.0), lpMat(0xffd0e0));
     body.position.y = 1.1; body.castShadow = true; g.add(body);
-    const roof = new THREE.Mesh(new THREE.CylinderGeometry(1.7, 1.7, 0.3, 8, 1, false, 0, Math.PI), lpMat(0xdd4477));
+    const roof = new THREE.Mesh(new THREE.CylinderGeometry(1.7, 1.7, 0.3, 8, 1, false, 0, 0), lpMat(0xdd4477));
     roof.rotation.z = Math.PI/2; roof.position.set(0, 2.4, 1.0); g.add(roof);
     // payung
     const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 3, 6), lpMat(0x8a8a8a));
@@ -3893,7 +3909,7 @@ function buildStadt() {
     const umbrella = new THREE.Mesh(new THREE.ConeGeometry(1.5, 0.8, 8), lpMat(0xff6688));
     umbrella.position.set(1.6, 3.1, 0); g.add(umbrella);
     const s = makeSign('EIS', '#ff4488', '#fff', 1.6, 0.7); s.position.set(0, 2.0, 1.02); g.add(s);
-    g.position.set(12, 20, 0);
+    g.position.set(12, 0, 20);
     Game.worldGroup.add(g);
     World.colliders.push({ type:'box', box:new THREE.Box3(new THREE.Vector3(11, 0, 19), new THREE.Vector3(13, 2.4, 21)), name:'eisstand' });
     reg('eisstand', 12, 20, 4);
@@ -3926,7 +3942,7 @@ function buildStadt() {
   {
     const glow = mP(new THREE.PlaneGeometry(2.4, 0.5), new THREE.MeshStandardMaterial({
       color:0x44cc44, emissive:0x22aa22, emissiveIntensity:0.7, transparent:true, opacity:0.85
-    }), -2, 0.05, 7.5);
+    }), -2, 0.05, 19.65);
     glow.rotation.x = -Math.PI/2; Game.worldGroup.add(glow);
   }
 
@@ -3953,7 +3969,7 @@ function buildStadtpark(cx, cz, w, d) {
   drop.position.set(cx, 1.9, cz); Game.worldGroup.add(drop);
   World.colliders.push({ type:'cylinder', x:cx, z:cz, radius:1.7 });
   // 4 bangku mengelilingi
-  [[cx, cz - 3, 0], [cx, cz + 3, 0], [cx - 4, cz, Math.PI/2], [cx + 4, cz, Math.PI/2]].forEach(([bx, bz, rot]) => {
+  [[cx+4, cz - 3, 0], [cx, cz + 3, 0], [cx - 4, cz, Math.PI/2], [cx + 4, cz, Math.PI/2]].forEach(([bx, bz, rot]) => {
     const b = new THREE.Group();
     const seat = new THREE.Mesh(new THREE.BoxGeometry(1.8, 0.12, 0.5), lp(0x8a5a2a)); seat.position.y = 0.45; b.add(seat);
     const back = new THREE.Mesh(new THREE.BoxGeometry(1.8, 0.5, 0.1), lp(0x8a5a2a)); back.position.set(0, 0.7, -0.2); b.add(back);
@@ -3985,7 +4001,12 @@ function buildStadtpark(cx, cz, w, d) {
   // pagar hedge rendah keliling
   const hedgeMat = lp(0x2f6a2a);
   const hedge = (hx, hz, hw, hd) => { const m = mP(new THREE.BoxGeometry(hw, 0.5, hd), hedgeMat, hx, 0.25, hz); Game.worldGroup.add(m); };
-  hedge(cx, cz - d/2, w, 0.3); hedge(cx, cz + d/2, w, 0.3);
+  // Leave an entrance aligned with the EDEKA doors at x=-2.
+  hedge(cx-w/4-1.75, cz-d/2, w/2-3.5, 0.3);
+  hedge(cx+w/4-0.25, cz-d/2, w/2+0.5, 0.3);
+  hedge(cx, cz + d/2, w, 0.3);
+  const entryPath=mP(new THREE.PlaneGeometry(2.4,3.5),lp(0xd4c4a0),cx-2,0.045,cz-d/2+1.5);
+  entryPath.rotation.x=-Math.PI/2;Game.worldGroup.add(entryPath);World.walkables.push(entryPath);
   hedge(cx - w/2, cz, 0.3, d); hedge(cx + w/2, cz, 0.3, d);
 }
 
