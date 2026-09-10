@@ -8,6 +8,7 @@
 // ═══════════════════════════════════════════════════════════════════
 
 import * as THREE from 'three';
+import { buildCharacter, animateCharacter } from './character.js';
 import { Game, registerUpdate, resetIsoCamera } from './main.js';
 import { CONFIG, COLORS }       from './config.js';
 import { World }                from './world.js';
@@ -68,165 +69,14 @@ const ISO_RIGHT   = new THREE.Vector3( 1, 0, -1).normalize(); // D (kanan layar)
 // ═══════════════════════════════════════════════════════════════════
 
 function buildLukasMesh() {
-  const group = new THREE.Group();
-  group.name = 'lukas';
-
-  const skinMat = new THREE.MeshStandardMaterial({
-    color: COLORS.SKIN, roughness: 0.85, metalness: 0.0,
+  const rig = buildCharacter({
+    height: 1, skinColor: COLORS.SKIN, bodyColor: COLORS.HOODIE_BLUE,
+    pantsColor: COLORS.PANTS_KHAKI, hairColor: COLORS.HAIR_BLACK,
+    shoesColor: COLORS.SHOES_WHITE, hairStyle: 'messy', hoodie: true,
   });
-  const hoodieMat = new THREE.MeshStandardMaterial({
-    color: COLORS.HOODIE_BLUE, roughness: 0.7, metalness: 0.0,
-  });
-  const pantsMat = new THREE.MeshStandardMaterial({
-    color: COLORS.PANTS_KHAKI, roughness: 0.85, metalness: 0.0,
-  });
-  const hairMat = new THREE.MeshStandardMaterial({
-    color: COLORS.HAIR_BLACK, roughness: 0.6, metalness: 0.0,
-  });
-  const shoesMat = new THREE.MeshStandardMaterial({
-    color: COLORS.SHOES_WHITE, roughness: 0.5, metalness: 0.0,
-  });
-
-  // ── BODY ──
-  const body = new THREE.Mesh(
-    new THREE.BoxGeometry(0.55, 0.85, 0.32), hoodieMat
-  );
-  body.position.y = 1.05;
-  body.castShadow = true; body.receiveShadow = true;
-  body.name = 'lukas-body';
-  group.add(body);
-  Player.body = body;
-
-  // Hoodie strings
-  const stringGeo = new THREE.CylinderGeometry(0.012, 0.012, 0.22, 5);
-  const stringMat = new THREE.MeshStandardMaterial({ color: 0xffffff });
-  const stringL = new THREE.Mesh(stringGeo, stringMat);
-  stringL.position.set(-0.05, 1.32, 0.165);
-  group.add(stringL);
-  const stringR = stringL.clone();
-  stringR.position.x = 0.05;
-  group.add(stringR);
-
-  // Hood
-  const hood = new THREE.Mesh(
-    new THREE.BoxGeometry(0.5, 0.18, 0.22), hoodieMat
-  );
-  hood.position.set(0, 1.5, -0.08);
-  hood.castShadow = true;
-  group.add(hood);
-
-  // ── HEAD ──
-  const head = new THREE.Mesh(
-    new THREE.BoxGeometry(0.42, 0.42, 0.42), skinMat
-  );
-  head.position.y = 1.72;
-  head.castShadow = true;
-  head.name = 'lukas-head';
-  group.add(head);
-  Player.head = head;
-
-  // Hair
-  const hairTop = new THREE.Mesh(
-    new THREE.BoxGeometry(0.46, 0.18, 0.46), hairMat
-  );
-  hairTop.position.y = 1.92;
-  hairTop.castShadow = true;
-  group.add(hairTop);
-  Player.hair = hairTop;
-
-  // Fringe
-  const fringe = new THREE.Mesh(
-    new THREE.BoxGeometry(0.43, 0.08, 0.06), hairMat
-  );
-  fringe.position.set(0, 1.85, 0.21);
-  fringe.castShadow = true;
-  group.add(fringe);
-
-  // Eyes
-  const eyeGeo = new THREE.BoxGeometry(0.04, 0.04, 0.01);
-  const eyeMat = new THREE.MeshStandardMaterial({ color: 0x1a1a1a });
-  const eyeL = new THREE.Mesh(eyeGeo, eyeMat);
-  eyeL.position.set(-0.08, 1.74, 0.215);
-  group.add(eyeL);
-  const eyeR = eyeL.clone();
-  eyeR.position.x = 0.08;
-  group.add(eyeR);
-
-  // Mouth
-  const mouth = new THREE.Mesh(
-    new THREE.BoxGeometry(0.08, 0.015, 0.01), eyeMat
-  );
-  mouth.position.set(0, 1.62, 0.215);
-  group.add(mouth);
-
-  // ── ARMS ──
-  function buildArm(side) {
-    const armGroup = new THREE.Group();
-    armGroup.position.set(side * 0.35, 1.45, 0);
-    const upper = new THREE.Mesh(
-      new THREE.BoxGeometry(0.16, 0.7, 0.18), hoodieMat
-    );
-    upper.position.y = -0.35;
-    upper.castShadow = true;
-    armGroup.add(upper);
-
-    const hand = new THREE.Mesh(
-      new THREE.BoxGeometry(0.14, 0.16, 0.16), skinMat
-    );
-    hand.position.y = -0.78;
-    hand.castShadow = true;
-    armGroup.add(hand);
-
-    return { group: armGroup, hand };
-  }
-
-  const armL = buildArm(-1);
-  const armR = buildArm(+1);
-  group.add(armL.group, armR.group);
-  Player.leftArm  = armL.group;
-  Player.rightArm = armR.group;
-  Player.leftHand  = armL.hand;
-  Player.rightHand = armR.hand;
-
-  // ── LEGS ──
-  function buildLeg(side) {
-    const legGroup = new THREE.Group();
-    legGroup.position.set(side * 0.13, 0.62, 0);
-    const upper = new THREE.Mesh(
-      new THREE.BoxGeometry(0.18, 0.62, 0.2), pantsMat
-    );
-    upper.position.y = -0.31;
-    upper.castShadow = true;
-    legGroup.add(upper);
-
-    const shoe = new THREE.Mesh(
-      new THREE.BoxGeometry(0.2, 0.12, 0.32), shoesMat
-    );
-    shoe.position.set(0, -0.68, 0.04);
-    shoe.castShadow = true;
-    legGroup.add(shoe);
-    return legGroup;
-  }
-
-  const legL = buildLeg(-1);
-  const legR = buildLeg(+1);
-  group.add(legL, legR);
-  Player.leftLeg  = legL;
-  Player.rightLeg = legR;
-
-  // ── BLOB SHADOW ──
-  const shadowGeo = new THREE.CircleGeometry(0.45, 16);
-  const shadowMat = new THREE.MeshBasicMaterial({
-    color: 0x000000, transparent: true, opacity: 0.25, depthWrite: false,
-  });
-  const shadow = new THREE.Mesh(shadowGeo, shadowMat);
-  shadow.rotation.x = -Math.PI / 2;
-  shadow.position.y = 0.03;
-  shadow.renderOrder = 1;
-  group.add(shadow);
-  Player.shadow = shadow;
-
-  return group;
+  Object.assign(Player, rig);
+  rig.group.name = 'lukas';
+  return rig.group;
 }
 
 
@@ -292,51 +142,13 @@ function setupInput() {
 // ═══════════════════════════════════════════════════════════════════
 
 function animateIdle(dt) {
-  Player.idleCycle += dt * 1.6;
-
-  const bob = Math.sin(Player.idleCycle) * 0.02;
-  Player.body.position.y = 1.05 + bob;
-  Player.head.position.y = 1.72 + bob;
-  Player.hair.position.y = 1.92 + bob;
-
-  const armSway = Math.sin(Player.idleCycle * 0.7) * 0.04;
-  Player.leftArm.rotation.x  = armSway;
-  Player.rightArm.rotation.x = -armSway;
-
-  Player.leftLeg.rotation.x  = THREE.MathUtils.lerp(Player.leftLeg.rotation.x,  0, 0.15);
-  Player.rightLeg.rotation.x = THREE.MathUtils.lerp(Player.rightLeg.rotation.x, 0, 0.15);
-
-  // Reset lean
-  Player.body.rotation.x = THREE.MathUtils.lerp(Player.body.rotation.x, 0, 0.1);
-  Player.head.rotation.x = THREE.MathUtils.lerp(Player.head.rotation.x, 0, 0.1);
+  Player.idleCycle += dt;
+  animateCharacter(Player, dt, Player.idleCycle);
 }
 
-
 function animateWalk(dt, speedFactor) {
-  const cycleSpeed = speedFactor * (Player.isRunning ? 11 : 7);
-  Player.walkCycle += dt * cycleSpeed;
-
-  const swing = Math.sin(Player.walkCycle);
-  const armSwing = swing * (Player.isRunning ? 1.0 : 0.7);
-  const legSwing = swing * (Player.isRunning ? 1.1 : 0.8);
-
-  Player.leftArm.rotation.x  =  armSwing;
-  Player.rightArm.rotation.x = -armSwing;
-  Player.leftLeg.rotation.x  = -legSwing;
-  Player.rightLeg.rotation.x =  legSwing;
-
-  const bob = Math.abs(Math.sin(Player.walkCycle)) * 0.06 * speedFactor;
-  Player.body.position.y = 1.05 + bob;
-  Player.head.position.y = 1.72 + bob;
-  Player.hair.position.y = 1.92 + bob;
-
-  if (Player.isRunning) {
-    Player.body.rotation.x = THREE.MathUtils.lerp(Player.body.rotation.x, 0.12, 0.1);
-    Player.head.rotation.x = THREE.MathUtils.lerp(Player.head.rotation.x, 0.05, 0.1);
-  } else {
-    Player.body.rotation.x = THREE.MathUtils.lerp(Player.body.rotation.x, 0, 0.1);
-    Player.head.rotation.x = THREE.MathUtils.lerp(Player.head.rotation.x, 0, 0.1);
-  }
+  Player.idleCycle += dt;
+  animateCharacter(Player, dt, Player.idleCycle, speedFactor, Player.isRunning);
 }
 
 
