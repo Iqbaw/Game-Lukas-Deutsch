@@ -994,8 +994,16 @@ export const QuestSystem = {
     const intersects = this.raycaster.intersectObjects(Game.itemsGroup.children, true);
     
     if (intersects.length > 0) {
-      const hit = intersects[0].object;
-      this.evaluateInteraction(hit);
+      // Resolve a model part to its quest root; ignore hidden items and labels.
+      for (const intersection of intersects) {
+        let hit = intersection.object;
+        let visible = true;
+        for (let parent = hit; parent; parent = parent.parent) {
+          if (!parent.visible) visible = false;
+        }
+        while (hit && !hit.userData.isInteractable && !hit.userData.isDoor) hit = hit.parent;
+        if (hit && visible) { this.evaluateInteraction(hit); break; }
+      }
     } else {
       // No object hit
     }
@@ -1033,6 +1041,7 @@ export const QuestSystem = {
     // Hide collected item
     mesh.visible = false;
     mesh.position.y = -100;
+    if (mesh.userData.labelSprite) mesh.userData.labelSprite.visible = false;
     if (mesh.parent) mesh.parent.remove(mesh);
     
     // Score based on attempts

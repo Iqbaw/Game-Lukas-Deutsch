@@ -5,6 +5,7 @@
 // ═══════════════════════════════════════════════════════════════════
 
 import * as THREE from 'three';
+import { buildQuestItem, buildOpenStorage } from './items.js';
 import { Game }             from './main.js';
 import { CONFIG, COLORS, ZONES } from './config.js';
 
@@ -1687,8 +1688,8 @@ function buildSupermarktInterior() {
   }
 
   const spawnQItem = (name, x, z, color, questTarget, symbol) => {
-    const mesh = mP(new THREE.BoxGeometry(0.5, 0.5, 0.5),
-      new THREE.MeshStandardMaterial({ color, emissive: color, emissiveIntensity: 0.35 }), x, 0.4, z);
+    const mesh = buildQuestItem(name, color);
+    mesh.position.set(x, 0.026, z);
     mesh.name = name;
     mesh.userData = { isInteractable: true, questTarget: questTarget || 'quest_4', itemName: name };
     Game.itemsGroup.add(mesh);
@@ -2435,46 +2436,28 @@ function buildHausInterior() {
   };
 
   // ── KITCHEN: KÜCHENSCHRANK (cabinet) — for Pfanne ──
-  const buildSchrank = (x, z, withItem) => {
-    const grp = new THREE.Group();
-    const body = new THREE.Mesh(new THREE.BoxGeometry(1.6, 1.8, 0.7), lpMat(COL.CABINET));
-    body.position.y = 0.9; body.castShadow = true; grp.add(body);
-    const doorL = new THREE.Mesh(new THREE.BoxGeometry(0.78, 1.7, 0.04), lpMat(0x8a5a3a));
-    doorL.position.set(-0.4, 0.9, 0.37); grp.add(doorL);
-    const doorR = new THREE.Mesh(new THREE.BoxGeometry(0.78, 1.7, 0.04), lpMat(0x8a5a3a));
-    doorR.position.set(0.4, 0.9, 0.37); grp.add(doorR);
-    [-0.08, 0.08].forEach(hx => {
-      const h = new THREE.Mesh(new THREE.SphereGeometry(0.05,6,6), lpMat(0xddaa44));
-      h.position.set(hx, 0.9, 0.4); grp.add(h);
-    });
+  const buildSchrank = (x, z) => {
+    const grp = buildOpenStorage(1.6, 1.8, 0.7, COL.CABINET, 1);
     grp.position.set(x, 0, z);
     Game.worldGroup.add(grp);
-    World.colliders.push({type:'box', box: new THREE.Box3(
-      new THREE.Vector3(x-0.85,0,z-0.4), new THREE.Vector3(x+0.85,1.8,z+0.4))});
-    // mark anchor for spawning item "in" the cabinet (at door position so visible)
-    return { x, z: z + 0.45, y: 1.0 };
+    World.colliders.push({type:'box', box:new THREE.Box3(
+      new THREE.Vector3(x-0.8,0,z-0.35), new THREE.Vector3(x+0.8,1.8,z+0.35))});
+    return {x, y:1.006, z};
   };
 
   // ── KITCHEN: SCHUBLADE (drawer block) — for Besteck (Pfannenwender + Gabel + Messer) ──
   const buildSchublade = (x, z) => {
-    const grp = new THREE.Group();
-    const body = new THREE.Mesh(new THREE.BoxGeometry(1.8, 0.95, 0.7), lpMat(COL.DRAWER));
-    body.position.y = 0.48; body.castShadow = true; grp.add(body);
-    // 3 drawer faces
-    for (let i = 0; i < 3; i++) {
-      const drawer = new THREE.Mesh(new THREE.BoxGeometry(1.7, 0.27, 0.04), lpMat(0x7a5a2a));
-      drawer.position.set(0, 0.15 + i*0.3, 0.37); grp.add(drawer);
-      const handle = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.04, 0.06), lpMat(0xddaa44));
-      handle.position.set(0, 0.15 + i*0.3, 0.42); grp.add(handle);
-    }
-    // top counter
-    const top = new THREE.Mesh(new THREE.BoxGeometry(1.95, 0.06, 0.85), lpMat(0x3a2a1a));
-    top.position.y = 0.98; grp.add(top);
+    const grp = buildOpenStorage(1.8, 0.95, 0.7, COL.DRAWER, 0.55);
+    // Low drawer front keeps the cutlery visible from the isometric camera.
+    const front = new THREE.Mesh(new THREE.BoxGeometry(1.62, 0.12, 0.045), lpMat(COL.DRAWER));
+    front.position.set(0, 0.565, 0.32); grp.add(front);
+    const handle = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.035, 0.045), lpMat(0xddaa44));
+    handle.position.set(0, 0.565, 0.365); grp.add(handle);
     grp.position.set(x, 0, z);
     Game.worldGroup.add(grp);
-    World.colliders.push({type:'box', box: new THREE.Box3(
-      new THREE.Vector3(x-0.9,0,z-0.4), new THREE.Vector3(x+0.9,1.0,z+0.4))});
-    return { x, z: z + 0.45, y: 0.55 };
+    World.colliders.push({type:'box', box:new THREE.Box3(
+      new THREE.Vector3(x-0.9,0,z-0.35), new THREE.Vector3(x+0.9,0.95,z+0.35))});
+    return {x, y:0.556, z};
   };
 
   // ── KITCHEN: KÜCHENTISCH (table) — Teller AUF ──
@@ -2490,7 +2473,7 @@ function buildHausInterior() {
     Game.worldGroup.add(grp);
     World.colliders.push({type:'box', box: new THREE.Box3(
       new THREE.Vector3(x-1.2,0,z-0.7), new THREE.Vector3(x+1.2,0.95,z+0.7))});
-    return { x, z, y: 0.95 }; // top surface
+    return { x, z, y: 0.906 }; // tabletop upper face + clearance
   };
 
   // ── KITCHEN: KLEINER TISCH (small side table) — Eier UNTER ──
@@ -2506,27 +2489,21 @@ function buildHausInterior() {
     Game.worldGroup.add(grp);
     World.colliders.push({type:'box', box: new THREE.Box3(
       new THREE.Vector3(x-0.5,0,z-0.4), new THREE.Vector3(x+0.5,0.78,z+0.4))});
-    return { x, z, y: 0.15 }; // UNDER the table — low Y
+    return { x, z, y: 0.026 }; // UNDER the table — low Y
   };
 
   // ── KITCHEN: KÜHLSCHRANK (fridge) — Wurst IN ──
   const buildKuehlschrank = (x, z) => {
-    const grp = new THREE.Group();
-    const body = new THREE.Mesh(new THREE.BoxGeometry(1.0, 2.2, 0.8), lpMat(COL.FRIDGE));
-    body.position.y = 1.1; body.castShadow = true; grp.add(body);
-    // split door line
-    const split = new THREE.Mesh(new THREE.BoxGeometry(1.0, 0.04, 0.82), lpMat(0xaaaaaa));
-    split.position.y = 1.45; grp.add(split);
-    // Handles
-    [0.7, 1.6].forEach(hy => {
-      const h = new THREE.Mesh(new THREE.BoxGeometry(0.05,0.4,0.06), lpMat(0xcccccc));
-      h.position.set(0.4, hy, 0.42); grp.add(h);
-    });
+    const grp = buildOpenStorage(1, 2.2, 0.8, COL.FRIDGE, 1.2);
+    const freezer = new THREE.Mesh(new THREE.BoxGeometry(0.86, 0.48, 0.06), lpMat(COL.FRIDGE));
+    freezer.position.set(0, 1.9, 0.385); grp.add(freezer);
+    const handle = new THREE.Mesh(new THREE.BoxGeometry(0.035, 0.22, 0.05), lpMat(0xaaaaaa));
+    handle.position.set(0.32, 1.9, 0.435); grp.add(handle);
     grp.position.set(x, 0, z);
     Game.worldGroup.add(grp);
-    World.colliders.push({type:'box', box: new THREE.Box3(
-      new THREE.Vector3(x-0.55,0,z-0.45), new THREE.Vector3(x+0.55,2.2,z+0.45))});
-    return { x, z: z + 0.5, y: 1.2 };
+    World.colliders.push({type:'box', box:new THREE.Box3(
+      new THREE.Vector3(x-0.5,0,z-0.4), new THREE.Vector3(x+0.5,2.2,z+0.4))});
+    return {x, y:1.206, z};
   };
 
   // ── KITCHEN: STOVE (decorative) ──
@@ -3013,7 +2990,12 @@ function buildHausInterior() {
     // Nightstand di samping kasur
     buildNightstand(x1 + 5, z1 + 5);
     // Lemari di tembok utara, pojok kanan
-    buildWardrobe(x2 - 3, z1 + 1.5, 0);
+    if (x2 - 3 === 3 && z1 + 1.5 === -12.5) {
+      const wardrobe = buildOpenStorage(1.6, 2.2, 0.8, COL.WOOD_DARK, 1.0);
+      wardrobe.position.set(3, 0, -12.5);
+      Game.worldGroup.add(wardrobe);
+      World.colliders.push({type:'box',box:new THREE.Box3(new THREE.Vector3(2.2,0,-12.9),new THREE.Vector3(3.8,2.2,-12.1))});
+    } else buildWardrobe(x2 - 3, z1 + 1.5, 0);
     // Meja belajar + kursi di sebelah lemari
     const deskAnchor = buildSchreibtisch(x2 - 6, z1 + 1.5, 0);
     buildStuhl(x2 - 6, z1 + 3.2, Math.PI);
@@ -3212,12 +3194,7 @@ function buildHausInterior() {
   // ═══════════════════════════════════════════════════════════════
 
   const spawnInteriorItem = (name, label, questTarget, x, y, z, color, symbol) => {
-    const geo = new THREE.BoxGeometry(0.35, 0.35, 0.35);
-    const mat = new THREE.MeshStandardMaterial({
-      color, emissive: color, emissiveIntensity: 0.5,
-      metalness: 0.2, roughness: 0.4
-    });
-    const mesh = new THREE.Mesh(geo, mat);
+    const mesh = buildQuestItem(name, color);
     mesh.position.set(x, y, z);
     mesh.castShadow = true;
     mesh.userData = {
@@ -3244,34 +3221,9 @@ function buildHausInterior() {
     Game.itemsGroup.add(sprite);
     mesh.userData.labelSprite = sprite;
 
-    // Bob + pulse animation untuk item supaya mencolok (different per item)
-    mesh.userData.bobBase = y;
-    mesh.userData.spriteBobBase = y + 0.6;
-    mesh.userData.bobPhase = Math.random() * Math.PI * 2; // random phase so items don't sync
-    mesh.userData.bobActive = true;
-    // Register tick if not already registered globally
-    if (!World._itemBobTick) {
-      World._itemBobTick = (t) => {
-        Game.itemsGroup?.children?.forEach(c => {
-          if (!c.userData?.bobActive || !c.visible) return;
-          if (c.userData.itemName) {  // mesh, not sprite
-            c.position.y = c.userData.bobBase + Math.sin(t * 2.2 + c.userData.bobPhase) * 0.08;
-            // Subtle rotation
-            c.rotation.y = t * 0.4 + c.userData.bobPhase;
-            // Sprite follow
-            if (c.userData.labelSprite) {
-              c.userData.labelSprite.position.y = c.userData.spriteBobBase + Math.sin(t * 2.2 + c.userData.bobPhase) * 0.08;
-            }
-          }
-        });
-      };
-      // Inject into update loop via World._updateAmbient hook
-      const prevAmbient = World._updateAmbient;
-      World._updateAmbient = (delta, t) => {
-        if (prevAmbient) prevAmbient(delta, t);
-        World._itemBobTick(t);
-      };
-    }
+    // Physical props stay on their supporting surface. Only the label is a marker.
+    mesh.userData.supportY = y;
+
   };
 
   // 5 ITEMS (sesuai instruksi Oma di telepon):
@@ -3286,7 +3238,7 @@ function buildHausInterior() {
     kleinAnchor.x, kleinAnchor.y, kleinAnchor.z, 0xfff0c0, '🥚');
   // Teller → AUF dem Küchentisch
   spawnInteriorItem('teller', 'der Teller', 'quest_1',
-    tischAnchor.x, tischAnchor.y + 0.05, tischAnchor.z, 0xfafafa, '🍽');
+    tischAnchor.x, tischAnchor.y, tischAnchor.z, 0xfafafa, '🍽');
   // Besteck (Gabel + Messer) → IN der Schublade — direpresentasikan sebagai 1 item visual
   spawnInteriorItem('besteck', 'das Besteck', 'quest_1',
     schubladeAnchor.x, schubladeAnchor.y, schubladeAnchor.z, 0xdddddd, '🍴');
@@ -3306,13 +3258,13 @@ function buildHausInterior() {
   // Papier → AUF Coffee Table di Wohnzimmer (-1.5, 7.0)
   // Coffee table top y=0.5 → papier sits at y=0.55
   const papierMesh = (() => {
-    spawnInteriorItem('papier', 'das Papier', 'quest_2', -1.5, 0.55, 7.0, 0xffffff, '📄');
+    spawnInteriorItem('papier', 'das Papier', 'quest_2', -1.5, 0.496, 7.0, 0xffffff, '📄');
     return Game.itemsGroup.children[Game.itemsGroup.children.length - 2];
   })();
   // Spielzeug → UNTER dem Küchentisch (-10, 9)
   // Under table → y=0.1 (close to floor)
   const spielzeugMesh = (() => {
-    spawnInteriorItem('spielzeug', 'das Spielzeug', 'quest_2', -10, 0.1, 9, 0xff8844, '🧸');
+    spawnInteriorItem('spielzeug', 'das Spielzeug', 'quest_2', -10, 0.026, 9, 0xff8844, '🧸');
     return Game.itemsGroup.children[Game.itemsGroup.children.length - 2];
   })();
 
