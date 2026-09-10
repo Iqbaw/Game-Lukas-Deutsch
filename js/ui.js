@@ -4,7 +4,7 @@
 
 import { Game, registerUpdate } from './main.js';
 import { CONFIG, EVENTS }       from './config.js';
-import { Player, setInputEnabled, teleportPlayer } from './player.js';
+import { Player, setInputEnabled, teleportPlayer, requestJump } from './player.js';
 import { setMusicVolume, setMusicEnabled }        from './music.js';
 import { setSfxVolume, setSfxEnabled, playSfx }   from './sfx.js';
 import { migrateSettings }                        from './mainmenu.js';
@@ -613,7 +613,7 @@ function resetJoystickVisual() {
 
 let touchControlsReady = false;
 
-function setupTouchControls() {
+export function setupTouchControls() {
   if (touchControlsReady) return;          // nur einmal verdrahten
   const zone = document.getElementById('joystick-zone');
   const base  = document.getElementById('joystick-base');
@@ -723,10 +723,7 @@ function setupTouchControls() {
   };
 
   onPress(document.getElementById('mobile-jump'), () => {
-    if (!Player.isJumping) {
-      Player.isJumping    = true;
-      Player.jumpVelocity = 7.0;
-    }
+    requestJump();
   });
 
   // Rennen: mit Pointer-Capture bleibt es auch dann gedrückt, wenn der

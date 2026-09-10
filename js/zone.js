@@ -421,41 +421,40 @@ function buildPortals(zoneDef) {
     if (portal.rotY) group.rotation.y = portal.rotY;
 
     // Platform bercahaya
-    const platformGeo = new THREE.BoxGeometry(portal.w || 2, 0.15, portal.d || 2);
+    const platformGeo = new THREE.RingGeometry(0.78, 0.95, 48);
+    platformGeo.scale((portal.w || 2) / 2, (portal.d || 2) / 2, 1);
     const platformMat = new THREE.MeshStandardMaterial({
       color: 0xf4c430,
       emissive: 0xf4c430,
       emissiveIntensity: 0.4,
       transparent: true,
-      opacity: 0.7,
+      opacity: 0.6,
+      side: THREE.DoubleSide,
+      depthWrite: false,
       roughness: 0.3,
     });
     const platform = new THREE.Mesh(platformGeo, platformMat);
-    platform.position.set(0, 0.08, 0);
+    platform.rotation.x = -Math.PI / 2;
+    platform.position.set(0, 0.035, 0);
     platform.receiveShadow = true;
     group.add(platform);
 
-    // Tiang portal (dua sisi)
-    const pillarGeo = new THREE.BoxGeometry(0.2, 3.5, 0.2);
-    const pillarMat = new THREE.MeshStandardMaterial({
-      color: 0xd4a882,
-      roughness: 0.6,
-    });
-    const pillarL = new THREE.Mesh(pillarGeo, pillarMat);
-    pillarL.position.set(-1, 1.75, 0);
-    pillarL.castShadow = true;
-    group.add(pillarL);
-
-    const pillarR = pillarL.clone();
-    pillarR.position.x = 1;
-    group.add(pillarR);
-
-    // Arch atas
-    const archGeo = new THREE.BoxGeometry(2.4, 0.3, 0.3);
-    const arch = new THREE.Mesh(archGeo, pillarMat);
-    arch.position.set(0, 3.5, 0);
-    arch.castShadow = true;
+    // Arched gateway fits the configured opening, with a clear walking passage.
+    const radius = Math.max(0.65, (portal.w || 2) / 2);
+    const pillarMat = new THREE.MeshStandardMaterial({color:0x9b7650, roughness:0.8});
+    for (const side of [-1, 1]) {
+      const pillar = new THREE.Mesh(new THREE.CylinderGeometry(0.09,0.12,1.7,8),pillarMat);
+      pillar.position.set(side*radius,0.85,0);
+      pillar.castShadow=true;
+      group.add(pillar);
+    }
+    const arch = new THREE.Mesh(new THREE.TorusGeometry(radius,0.1,8,32,Math.PI),pillarMat);
+    arch.position.y=1.7;
     group.add(arch);
+    const trim = new THREE.Mesh(new THREE.TorusGeometry(radius-0.04,0.022,5,32,Math.PI),
+      new THREE.MeshStandardMaterial({color:0xf4c430,emissive:0xf4c430,emissiveIntensity:0.5}));
+    trim.position.set(0,1.7,0.095);
+    group.add(trim);
 
     // Papan nama tujuan
     const signCanvas = document.createElement('canvas');
@@ -483,11 +482,11 @@ function buildPortals(zoneDef) {
         emissiveIntensity: 0.3,
       })
     );
-    signMesh.position.set(0, 4.0, 0);
+    signMesh.position.set(0, 1.7 + radius + 0.38, 0);
     group.add(signMesh);
 
     // Partikel cahaya (glow di atas platform)
-    const glowGeo = new THREE.SphereGeometry(0.15, 8, 8);
+    const glowGeo = new THREE.SphereGeometry(0.045, 6, 6);
     const glowMat = new THREE.MeshBasicMaterial({
       color: 0xf4c430,
       transparent: true,
@@ -496,15 +495,25 @@ function buildPortals(zoneDef) {
     for (let i = 0; i < 5; i++) {
       const glow = new THREE.Mesh(glowGeo, glowMat.clone());
       glow.position.set(
-        portal.x + (Math.random() - 0.5) * 1.5,
+        (Math.random() - 0.5) * radius * 1.5,
         0.5 + Math.random() * 2.5,
-        portal.z + (Math.random() - 0.5) * 1.5
+        (Math.random() - 0.5) * 0.3
       );
       glow.userData.floatOffset = Math.random() * Math.PI * 2;
       glow.userData.floatSpeed = 0.5 + Math.random() * 0.5;
       group.add(glow);
     }
 
+    // Existing interior doorframes already identify the opening. Keep only
+    // the floor light and motes here, avoiding a second arch and duplicate sign.
+    if (zoneDef.id === ZONES.HAUS_INTERIOR) {
+      for (const child of [...group.children]) {
+        if (child !== platform && child.userData.floatOffset === undefined) {
+          group.remove(child);
+          disposeObject(child);
+        }
+      }
+    }
     Game.worldGroup.add(group);
 
     // Simpan untuk collision check
@@ -528,7 +537,7 @@ export function updateZones(delta, elapsed) {
   portalMeshes.forEach(({ group }) => {
     group.children.forEach(child => {
       if (child.userData.floatOffset !== undefined) {
-        child.position.y = 0.5 + Math.sin(elapsed * child.userData.floatSpeed + child.userData.floatOffset) * 1.2;
+        child.position.y = 1.2 + Math.sin(elapsed * child.userData.floatSpeed + child.userData.floatOffset) * 0.8;
         child.material.opacity = 0.3 + Math.sin(elapsed * 2 + child.userData.floatOffset) * 0.3;
       }
     });
@@ -561,8 +570,8 @@ function checkPortalProximity() {
     const hd = (portal.d || 2) / 2 + 0.5;
 
     if (
-      px >= portal.x - hw && px <= portal.x + hw &&
-      pz >= portal.z - hd && pz <= portal.z + hd
+      Math.abs((px-portal.x)*Math.cos(portal.rotY||0) - (pz-portal.z)*Math.sin(portal.rotY||0)) <= hw &&
+      Math.abs((px-portal.x)*Math.sin(portal.rotY||0) + (pz-portal.z)*Math.cos(portal.rotY||0)) <= hd
     ) {
       // Pemain masuk portal!
       const targetDef = ZONE_DEFS[portal.target];

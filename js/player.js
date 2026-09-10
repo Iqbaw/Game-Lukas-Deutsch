@@ -8,6 +8,7 @@
 // ═══════════════════════════════════════════════════════════════════
 
 import * as THREE from 'three';
+import { advanceJump } from './jump.js';
 import { buildCharacter, animateCharacter } from './character.js';
 import { Game, registerUpdate, resetIsoCamera } from './main.js';
 import { CONFIG, COLORS }       from './config.js';
@@ -38,6 +39,9 @@ export const Player = {
   isMoving:       false,
   isRunning:      false,
   speed:          0,
+  isJumping:      false,
+  jumpHeight:     0,
+  jumpVelocity:   0,
 
   walkCycle:      0,
   idleCycle:      0,
@@ -102,6 +106,11 @@ function setupInput() {
   window.addEventListener('keydown', (e) => {
     if (!Player.inputEnabled) return;
     if (Game.isPaused) return;
+    if (e.code === 'Space') {
+      e.preventDefault();
+      if (!e.repeat) requestJump();
+      return;
+    }
 
     const action = keyMap[e.code] || keyMap[e.key];
     if (action) {
@@ -255,7 +264,7 @@ function updatePlayer(delta) {
   // ── 5.3 Movement dengan collision ──
   if (inputMagnitude > 0.01) {
     _tmpMove.normalize();
-    const moveDist = Player.speed * delta;
+    const moveDist = Player.speed * delta * (Player.isJumping && Player.isRunning ? 1.15 : 1);
 
     Player.targetFacing = Math.atan2(_tmpMove.x, _tmpMove.z);
 
@@ -293,7 +302,11 @@ function updatePlayer(delta) {
       Player.position.y = THREE.MathUtils.lerp(Player.position.y, 0, 0.25);
     }
   }
-  Player.group.position.y = Player.position.y;
+  advanceJump(Player, delta);
+  Player.group.position.y = Player.position.y + Player.jumpHeight;
+  // Keep the contact shadow on the terrain while the body rises.
+  Player.shadow.position.y = 0.025 - Player.jumpHeight;
+  Player.shadow.material.opacity = 0.22 / (1 + Player.jumpHeight * 0.6);
 
   // ── 5.6 Animasi ──
   if (Player.isMoving) {
@@ -301,6 +314,12 @@ function updatePlayer(delta) {
     animateWalk(delta, Math.min(1.5, speedFactor));
   } else {
     animateIdle(delta);
+  }
+  if (Player.isJumping) {
+    Player.leftLeg.userData.joint.rotation.x = 0.55;
+    Player.rightLeg.userData.joint.rotation.x = 0.7;
+    Player.leftArm.rotation.x = -0.65;
+    Player.rightArm.rotation.x = -0.65;
   }
 
   // (Camera follow sekarang di main.js → updateIsoCamera)
@@ -353,6 +372,9 @@ export function setInputEnabled(enabled) {
 
 
 export function teleportPlayer(x, z, facing = 0) {
+  Player.isJumping = false;
+  Player.jumpHeight = 0;
+  Player.jumpVelocity = 0;
   // Safety: prevent NaN from corrupting camera
   if (!Number.isFinite(x)) x = 0;
   if (!Number.isFinite(z)) z = 0;
@@ -370,3 +392,11 @@ export function teleportPlayer(x, z, facing = 0) {
 }
 
 export { updatePlayer };
+
+export function requestJump() {
+  if (!Player.group || !Player.inputEnabled || Game.isPaused || Player.isJumping) return false;
+  Player.isJumping = true;
+  Player.jumpHeight = 0;
+  Player.jumpVelocity = 7;
+  return true;
+}

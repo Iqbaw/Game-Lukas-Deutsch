@@ -262,7 +262,7 @@ export const DIALOGS = {
       p7: {
         id:      'p7',
         speaker: 'oma_helga',
-        text:    'Und die <vocab title="sosis">Wurst</vocab> ist <vocab title="di dalam">IN</vocab> dem <vocab title="kulkas">Kühlschrank</vocab>. Viel Spaß, mein Schatz!',
+        text:    'Und die <vocab title="sosis">Wurst</vocab> ist <vocab title="di atas">AUF</vocab> dem <vocab title="meja saji">Serviertisch</vocab>. Viel Spaß, mein Schatz!',
         next:    'p8',
       },
       p8: {
@@ -357,7 +357,7 @@ export const DIALOGS = {
         speaker: 'oma_helga',
         text:    'Sehr gut! Letzte Frage: Wo war die <vocab title="sosis">Wurst</vocab>?',
         choices: [
-          { text: 'In dem Kühlschrank',        correct: true,  score: 100, next: 'r1_correct' },
+          { text: 'Auf dem Serviertisch',       correct: true,  score: 100, next: 'r1_correct' },
           { text: 'Auf dem Herd',              correct: false, score: -10, next: 'r1_wrong' },
           { text: 'Unter dem Tisch',           correct: false, score: -10, next: 'r1_wrong' },
         ],
@@ -375,7 +375,7 @@ export const DIALOGS = {
       r1_wrong: {
         id:      'r1_wrong',
         speaker: 'oma_helga',
-        text:    'Hmm, denk nochmal! Die Pfanne war IM Schrank, die Eier UNTER dem kleinen Tisch, die Wurst IM Kühlschrank.',
+        text:    'Hmm, denk nochmal! Die Pfanne war IM Schrank, die Eier UNTER dem kleinen Tisch, die Wurst AUF dem Serviertisch.',
         next:    'r1_quiz',
       },
       r1_done: {
@@ -1123,7 +1123,7 @@ Mein Schatz Lukas,
 Ich bin kurz im Garten. Hier sind die Hinweise für die Küche:
 
 • Die <b>Pfanne</b> liegt <span class="prep-highlight">AUF</span> dem Herd
-• Die <b>Wurst</b> ist <span class="prep-highlight">IM</span> Kühlschrank
+• Die <b>Wurst</b> ist <span class="prep-highlight">AUF</span> dem Serviertisch
 • Die <b>Eier</b> findest du <span class="prep-highlight">IN</span> der Schublade
 • Der <b>Teller</b> ist <span class="prep-highlight">AUF</span> dem Regal
 • Das <b>Besteck</b> liegt <span class="prep-highlight">UNTER</span> dem Kochbuch

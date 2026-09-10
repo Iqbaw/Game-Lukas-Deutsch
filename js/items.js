@@ -50,6 +50,11 @@ export function buildQuestItem(name, color) {
     ball(0,0.32,0,0.13,0.13,0.13,base);
   }
   group.name=name;
+  group.traverse(part => {
+    if (!part.isMesh) return;
+    part.material.emissive.set(0xf4c430);
+    part.material.emissiveIntensity = 0.16;
+  });
   return group;
 }
 
