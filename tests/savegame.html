@@ -1,0 +1,26 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>Save game checks</title>
+<body><output id="result">Checking…</output><script type="module">
+import {CONFIG} from '../js/config.js';
+import {clearSave,disableAutosave,enableAutosave,hasSave,readSave,restoreSave,saveNow} from '../js/savegame.js';
+const previous=localStorage.getItem(CONFIG.STORAGE_KEY);
+try {
+ clearSave();
+ if(hasSave())throw Error('Empty storage reported a save');
+ window.__GAME__={isRunning:true};
+ window.__PLAYER__={group:{},position:{x:12.5,z:-3.25},facing:1.2};
+ window.__QUEST_SYSTEM__={activeQuestId:'quest_3',activeStep:2,currentState:'EXPLORATION',collectedItems:new Set(['papier']),lastRoom:'flur'};
+ window.__SCORE_SYSTEM__={streak:4};window.__score__=750;window.__questState__={quest_1:'completed',quest_2:'completed',quest_3:'active'};window.__currentZoneId__='stadt';window.__stadtVariant__='A';
+ enableAutosave();
+ if(!saveNow()||!hasSave())throw Error('Autosave was not created');
+ const data=readSave();
+ if(data.player.x!==12.5||data.activeStep!==2||data.collectedItems[0]!=='papier'||data.score!==750)throw Error('Snapshot mismatch');
+ let loaded=null,teleported=null,restored=null;
+ const score={score:0,streak:0};
+ await restoreSave(data,{loadZone:async(z,p)=>{loaded={z,p};},teleportPlayer:(x,z,f)=>{teleported={x,z,f};},QuestSystem:{restoreProgress:d=>{restored=d;}},ScoreSystem:score});
+ if(loaded.z!=='stadt'||teleported.x!==12.5||score.score!==750||restored.activeQuestId!=='quest_3')throw Error('Restore mismatch');
+ document.querySelector('#result').textContent='PASS: validation, snapshot, quest/items, position, zone, score and restore';
+} finally {
+ disableAutosave();
+ if(previous===null)localStorage.removeItem(CONFIG.STORAGE_KEY);else localStorage.setItem(CONFIG.STORAGE_KEY,previous);
+}
+</script></body></html>

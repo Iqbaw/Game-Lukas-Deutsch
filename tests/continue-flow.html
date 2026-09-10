@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<title>Continue game integration check</title>
+<style>
+  body { margin: 0; font: 16px system-ui; background: #152116; color: white; }
+  #result { position: fixed; z-index: 10; top: 12px; left: 12px; padding: 10px 14px; background: #fff; color: #111; border-radius: 8px; }
+  iframe { width: 100vw; height: 100vh; border: 0; }
+</style>
+<output id="result">Checking real Continue flow…</output>
+<iframe id="game" title="Game under test"></iframe>
+<script type="module">
+  import { CONFIG } from '../js/config.js';
+
+  const result = document.querySelector('#result');
+  const frame = document.querySelector('#game');
+  const previous = localStorage.getItem(CONFIG.STORAGE_KEY);
+  const expected = {
+    version: 2,
+    savedAt: Date.now(),
+    zone: 'haus_interior',
+    cityVariant: null,
+    player: { x: -6.5, z: 7.25, facing: 0.75 },
+    score: 420,
+    streak: 4,
+    questState: { quest_1: 'active' },
+    activeQuestId: 'quest_1',
+    activeStep: 0,
+    currentState: 'EXPLORATION',
+    collectedItems: [],
+    lastRoom: 'wohnzimmer',
+  };
+
+  function restoreStorage() {
+    if (previous === null) localStorage.removeItem(CONFIG.STORAGE_KEY);
+    else localStorage.setItem(CONFIG.STORAGE_KEY, previous);
+  }
+
+  function waitFor(check, timeout = 30000) {
+    const started = performance.now();
+    return new Promise((resolve, reject) => {
+      const poll = () => {
+        try {
+          const value = check();
+          if (value) return resolve(value);
+        } catch (_) {}
+        if (performance.now() - started > timeout) return reject(new Error('Timed out'));
+        requestAnimationFrame(poll);
+      };
+      poll();
+    });
+  }
+
+  try {
+    localStorage.setItem(CONFIG.STORAGE_KEY, JSON.stringify(expected));
+    frame.src = '../index.html?continue-flow-test=1';
+    const button = await waitFor(() => frame.contentDocument?.querySelector('[data-action="continue"]'));
+    button.click();
+    await waitFor(() => frame.contentWindow?.__GAME__?.isRunning && frame.contentWindow?.__currentZoneId__ === expected.zone);
+
+    const gameWindow = frame.contentWindow;
+    const player = gameWindow.__PLAYER__;
+    const quest = gameWindow.__QUEST_SYSTEM__;
+    const correctPosition = Math.abs(player.position.x - expected.player.x) < 0.01 && Math.abs(player.position.z - expected.player.z) < 0.01;
+    const storyHidden = frame.contentDocument.querySelector('#story-overlay')?.hidden !== false;
+    if (!correctPosition) throw new Error('Player position was not restored');
+    if (gameWindow.__score__ !== expected.score) throw new Error('Score was not restored');
+    if (quest.activeQuestId !== expected.activeQuestId || quest.activeStep !== expected.activeStep) throw new Error('Quest was not restored');
+    if (!storyHidden) throw new Error('Continue unexpectedly opened the prologue');
+    result.textContent = 'PASS: Continue restores the running game, zone, position, quest and score';
+  } catch (error) {
+    result.textContent = `FAIL: ${error.message}`;
+    result.style.background = '#ffb4b4';
+  } finally {
+    restoreStorage();
+  }
+</script>
+</html>

@@ -22,6 +22,7 @@
 
 import { playSfx, unlockSfx, setSfxVolume, setSfxEnabled } from './sfx.js';
 import { initMusic, unlockMusic, setMusicVolume, setMusicEnabled } from './music.js';
+import { hasSave, readSave } from './savegame.js';
 
 const BG_BASE      = 'assets/images/main-menu-bg';
 const BG_LQIP      = 'data:image/webp;base64,UklGRu4AAABXRUJQVlA4IOIAAABwBQCdASogABIAPrFInUmnJCKhMAgA4BYJZACdMxsnJD98vZKuaYI66LTBifPj8LQfGUUAAP72k9e/F7P7aLqqIZw/jZPG7XL+xH2c8aXrn1/JcrJ8ALrUcNk7I5PaWSA8u3YcDAkGPLl3wvJJeGiT/31nyAbzLG2qz8Fi8WqwieWTJLSmUG76BTeNvkxHaHtAWoh1JywRk1Drt0bHAKxbrfwFoFVl+Y/FheeuktJ0Yq9Ww+t2pY7fGpuo+ph0QAmcn3YmpYF8CWiI8BixPrYmC3+DXDHQf4NgFP0l4l7kwAAA';
@@ -37,8 +38,9 @@ const DEFAULT_SETTINGS = {
 };
 
 // Reihenfolge = Reihenfolge im Panel
-const MENU_ITEMS = [
-  { id: 'start',    icon: '▶', label: 'Abenteuer beginnen', sub: 'Mulai bermain'  },
+let MENU_ITEMS = [
+  ...(hasSave() ? [{ id: 'continue', icon: '↻', label: 'Weiterspielen', sub: 'Lanjutkan permainan' }] : []),
+  { id: 'start',    icon: '▶', label: 'Neues Abenteuer',     sub: 'Mulai permainan baru'  },
   { id: 'settings', icon: '⚙', label: 'Einstellungen',      sub: 'Pengaturan'     },
   { id: 'about',    icon: '❔', label: 'Über das Spiel',     sub: 'Tentang game'   },
 ];
@@ -318,6 +320,10 @@ function showPanel(name, { focus = true } = {}) {
 
 function activate(action) {
   switch (action) {
+    case 'continue':
+      playSfx('select');
+      continueGame();
+      break;
     case 'start':
       playSfx('select');
       startGame();
@@ -341,6 +347,23 @@ function startGame() {
   closeMainMenu();
   // index.html hört darauf und zeigt das Story-Intro
   window.dispatchEvent(new CustomEvent('menu:start'));
+}
+
+function continueGame() {
+  const save = readSave();
+  if (!save) {
+    MENU_ITEMS = MENU_ITEMS.filter(item => item.id !== 'continue');
+    render();
+    MainMenu.items = Array.from(MainMenu.root.querySelectorAll('.mm-item'));
+    bindEvents();
+    showPanel('main', { focus: true });
+    return;
+  }
+  // Main menu dapat siap lebih cepat daripada modul engine 3D. Simpan
+  // permintaan ini agar main.js tetap dapat meneruskannya setelah boot.
+  window.__pendingContinueSave__ = save;
+  closeMainMenu();
+  window.dispatchEvent(new CustomEvent('menu:continue', { detail: { save } }));
 }
 
 

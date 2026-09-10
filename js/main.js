@@ -27,7 +27,7 @@ import { CONFIG, EVENTS, COLORS, ZONES } from './config.js';
 import { updateWorld } from './world.js';
 
 // Player
-import { buildPlayer } from './player.js';
+import { buildPlayer, teleportPlayer } from './player.js';
 
 // NPCs
 import { initNPCSystem } from './npc.js';
@@ -44,6 +44,7 @@ import { initZones, loadZone, updateZones } from './zone.js';
 // Gameplay Loop Systems
 import { ScoreSystem } from './scoring.js';
 import { QuestSystem } from './quest.js';
+import { clearSave, enableAutosave, readSave, restoreSave } from './savegame.js';
 
 
 // ═══════════════════════════════════════════════════════════════════
@@ -83,6 +84,7 @@ export const Game = {
   delta:           0,
   elapsed:         0,
 };
+window.__GAME__ = Game;
 
 
 // ═══════════════════════════════════════════════════════════════════
@@ -552,7 +554,7 @@ async function bootstrap() {
     // Bootstrap fertig — falls der Spieler im Menü schon auf
     // "Abenteuer beginnen" geklickt hat, jetzt nachholen.
     Game.isBootReady = true;
-    if (startRequested) startGame();
+    if (startRequested) startGame(startRequested.mode, startRequested.save);
 
     if (CONFIG.DEBUG) {
       console.log('[Lukas Abenteuer] Init complete.', Game);
@@ -570,27 +572,61 @@ async function bootstrap() {
  * der erste Bildschirm ist, kann das passieren, bevor die Bootstrap durch
  * ist — dann wird der Start gemerkt und am Ende der Bootstrap nachgeholt.
  */
-let startRequested = false;
+let startRequested = null;
 
-function requestStart() {
-  if (Game.isBootReady) startGame();
-  else startRequested = true;
+function requestStart(mode = 'new', save = null) {
+  if (Game.isBootReady) startGame(mode, save);
+  else startRequested = { mode, save };
 }
 
-window.addEventListener(EVENTS.GAME_START, requestStart, { once: true });
+window.addEventListener(EVENTS.GAME_START, () => requestStart('new'), { once: true });
+window.addEventListener('menu:continue', (event) => {
+  const save = event.detail?.save || readSave();
+  window.__pendingContinueSave__ = null;
+  requestStart('continue', save);
+}, { once: true });
+
+// Continue dapat ditekan saat dependency Three.js masih dimuat. Dalam kasus
+// itu event terjadi lebih dulu dan snapshot-nya dititipkan oleh mainmenu.js.
+if (window.__pendingContinueSave__) {
+  const pendingSave = window.__pendingContinueSave__;
+  window.__pendingContinueSave__ = null;
+  requestStart('continue', pendingSave);
+}
 
 
-function startGame() {
+async function startGame(mode = 'new', save = null) {
   if (Game.isRunning) return;
+  if (mode === 'new') {
+    clearSave();
+    ScoreSystem.score = 0;
+    ScoreSystem.streak = 0;
+    window.__score__ = 0;
+  } else {
+    const restored = await restoreSave(save, { loadZone, teleportPlayer, QuestSystem, ScoreSystem });
+    if (!restored) {
+      clearSave();
+      mode = 'new';
+      window.dispatchEvent(new CustomEvent(EVENTS.GAME_START));
+      return;
+    }
+  }
   Game.isRunning = true;
+  enableAutosave();
   Game.clock.start();
   requestAnimationFrame(gameLoop);
+
+  const container = document.getElementById('game-container');
+  if (container) {
+    container.setAttribute('aria-hidden', 'false');
+    container.classList.add('game-container-active');
+  }
 
   const hintEl = document.getElementById('controls-hint');
   if (hintEl) hintEl.classList.remove('hud-hidden');
 
   // Import UI and set initial objective
-  import('./ui.js').then(({ UI }) => {
+  if (mode === 'new') import('./ui.js').then(({ UI }) => {
     UI.updateObjective('Ich habe Hunger. Wo ist die Pfanne?');
   });
 

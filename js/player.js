@@ -50,6 +50,7 @@ export const Player = {
   input:          { fwd: 0, back: 0, left: 0, right: 0, run: false },
   inputEnabled:   true,
 };
+if (typeof window !== 'undefined') window.__PLAYER__ = Player;
 
 // Reusable vectors
 const _tmpDir       = new THREE.Vector3();

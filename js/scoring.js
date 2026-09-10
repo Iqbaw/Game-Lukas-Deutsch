@@ -6,8 +6,10 @@ export const ScoreSystem = {
   streak: 0,
   
   init() {
-    this.loadProgress();
+    this.score = 0;
+    this.streak = 0;
     window.__score__ = this.score;
+    window.__SCORE_SYSTEM__ = this;
 
     window.addEventListener(EVENTS.SCORE_ADD, (e) => {
       this.addScore(e.detail.points, e.detail.label);
@@ -94,15 +96,7 @@ export const ScoreSystem = {
   },
 
   saveProgress() {
-    const data = {
-      score: this.score,
-      questState: window.__questState__ || {}
-    };
-    try {
-      localStorage.setItem(CONFIG.STORAGE_KEY, JSON.stringify(data));
-    } catch (e) {
-      console.warn("Could not save to localStorage", e);
-    }
+    window.dispatchEvent(new CustomEvent('save:request'));
   },
 
   loadProgress() {
@@ -110,11 +104,7 @@ export const ScoreSystem = {
       const saved = localStorage.getItem(CONFIG.STORAGE_KEY);
       if (saved) {
         const data = JSON.parse(saved);
-        if (data.score) this.score = data.score;
-        // JANGAN restore questState dari localStorage — setiap sesi game harus mulai fresh.
-        // Quest state hanya dipersist untuk live save, BUKAN antar-sesi.
-        // (Educational game: pemain mulai dari awal tiap kali buka)
-        // Old behavior: if (data.questState) window.__questState__ = data.questState;
+        if (data.version === 2 && Number.isFinite(data.score)) this.score = data.score;
       }
     } catch (e) {
       console.warn("Could not load from localStorage", e);

@@ -626,6 +626,8 @@ function addScore(delta, label) {
 
   // Update global score
   window.__score__ = (window.__score__ || 0) + delta;
+  if (window.__SCORE_SYSTEM__) window.__SCORE_SYSTEM__.score = window.__score__;
+  window.dispatchEvent(new CustomEvent('save:request'));
 
   // Update UI
   const scoreEl = document.getElementById('score-value');

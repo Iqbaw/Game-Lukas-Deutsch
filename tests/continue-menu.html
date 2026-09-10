@@ -1,0 +1,9 @@
+<!doctype html><html><meta charset="utf-8"><title>Continue menu check</title><link rel="stylesheet" href="../style.css">
+<body><div id="main-menu" class="main-menu" role="dialog" aria-label="Hauptmenü" aria-hidden="true" hidden></div>
+<script type="module">
+import {CONFIG} from '../js/config.js';
+const previous=localStorage.getItem(CONFIG.STORAGE_KEY);
+localStorage.setItem(CONFIG.STORAGE_KEY,JSON.stringify({version:2,savedAt:Date.now(),zone:'stadt',player:{x:1,z:2,facing:0},questState:{quest_1:'completed'},activeQuestId:'quest_2',activeStep:1,collectedItems:[],score:100}));
+await import('../js/mainmenu.js');
+setTimeout(()=>{const labels=[...document.querySelectorAll('.mm-item-label')].map(e=>e.textContent);const out=document.createElement('output');out.id='test-result';out.style='position:fixed;right:12px;top:12px;z-index:9999;background:white;color:black;padding:10px';out.textContent=labels[0]==='Weiterspielen'?'PASS: Continue is first menu action':'FAIL: '+labels.join(',');document.body.append(out);if(previous===null)localStorage.removeItem(CONFIG.STORAGE_KEY);else localStorage.setItem(CONFIG.STORAGE_KEY,previous);},100);
+</script></body></html>

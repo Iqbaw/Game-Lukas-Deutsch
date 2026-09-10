@@ -99,6 +99,7 @@ export const QuestSystem = {
 
   init() {
     window.__questState__ = window.__questState__ || {};
+    window.__QUEST_SYSTEM__ = this;
 
     // Register update loop for timer and interactions
     registerUpdate((delta) => this.update(delta));
@@ -323,6 +324,54 @@ export const QuestSystem = {
     }
     // Wire hint button
     this.initHintButton();
+  },
+
+  restoreProgress(data) {
+    window.__questState__ = { ...(data.questState || {}) };
+    const questOrder = Array.from({ length: 10 }, (_, index) => `quest_${index + 1}`);
+    const nextQuest = questOrder.find(id => window.__questState__[id] !== 'completed') || null;
+    this.activeQuestId = data.activeQuestId || nextQuest;
+    this.activeStep = data.activeQuestId
+      ? Math.max(0, Number.isFinite(data.activeStep) ? data.activeStep : 0)
+      : 0;
+    if (this.activeQuestId && !window.__questState__[this.activeQuestId]) {
+      window.__questState__[this.activeQuestId] = 'active';
+    }
+    this.currentState = this.activeQuestId ? STATE.EXPLORATION : STATE.IDLE;
+    this.collectedItems = new Set(Array.isArray(data.collectedItems) ? data.collectedItems : []);
+    this.lastRoom = data.lastRoom || null;
+    this.questTimer = 0;
+    this.interactionAttempts = 0;
+
+    const completed = window.__questState__;
+    if (completed.quest_1 === 'completed') this.hideQuestItems(['pfanne', 'wurst', 'eier', 'teller', 'besteck']);
+    if (completed.quest_2 === 'completed') this.hideQuestItems(['socken', 'papier', 'spielzeug']);
+
+    if (!this.activeQuestId) {
+      this.hideSummaryPanel();
+      this.hideQuestListPanel();
+      this.hideHintButton();
+      return;
+    }
+
+    const quest = getQuest(this.activeQuestId);
+    if (!quest) return;
+    this.updateHUD(quest.title);
+    this.updateStepHUD(quest);
+    this.showHintButton();
+    const step = quest.steps[this.activeStep];
+    if (step?.kind === 'collect_auto') this.onCollectStepStart();
+
+    const itemSets = {
+      quest_1: ['pfanne', 'wurst', 'eier', 'teller', 'besteck'],
+      quest_2: ['socken', 'papier', 'spielzeug'],
+      quest_4: ['fleisch', 'gemuese', 'brot'],
+      quest_5: ['eis'],
+    };
+    const currentItems = itemSets[this.activeQuestId] || [];
+    this.revealQuestItems(currentItems.filter(name => !this.collectedItems.has(name)));
+    this.hideQuestItems(currentItems.filter(name => this.collectedItems.has(name)));
+    this.collectedItems.forEach(name => this.markItemFoundInPanel(name));
   },
 
   startQuest(questId) {
