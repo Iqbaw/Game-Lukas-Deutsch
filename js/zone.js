@@ -45,7 +45,7 @@ export const ZONE_DEFS = {
     spawn:  { x: 0, z: 4.8, facing: 0 },
     portals: [
       {
-        x: -10, z: 2, w: 2, d: 2, rotY: -0.3, // Match bridge diagonal
+        x: -10, y: 0.5, z: 2, w: 2, d: 1.2, rotY: Math.PI / 2, // Opening faces the bridge's east-west deck.
         target: ZONES.STADT,                  // → Kota terpadu (Stage 2)
         targetSpawn: { x: -24, z: 26, facing: Math.PI }, // masuk di ujung Schillerstraße
         label:  '→ In die Stadt',
@@ -110,7 +110,7 @@ export const ZONE_DEFS = {
       },
       {
         // Pintu masuk EDEKA → interior (bukan navigasi kota)
-        x: -2, z: 6.5, w: 2, d: 1.5,
+        x: -2, z: 19.7, w: 2, d: 1.2,
         target: ZONES.SUPERMARKET_INTERIOR,
         targetSpawn: { x: 0, z: 5, facing: Math.PI },
         label:  '→ EDEKA betreten',
@@ -158,7 +158,7 @@ export const ZONE_DEFS = {
       {
         x: 0, z: 6.5, w: 2, d: 2,
         target: ZONES.STADT,
-        targetSpawn: { x: -2, z: 4, facing: Math.PI }, // Keluar di depan pintu EDEKA (STADT)
+        targetSpawn: { x: -2, z: 22.5, facing: 0 }, // Outside the camera-facing EDEKA entrance trigger.
         label:  '← Ausgang',
         labelDE: 'Ausgang',
       }
@@ -417,7 +417,7 @@ function buildPortals(zoneDef) {
   zoneDef.portals.forEach(portal => {
     const group = new THREE.Group();
     group.name = `portal-${portal.target}`;
-    group.position.set(portal.x, 0, portal.z);
+    group.position.set(portal.x, portal.y || 0, portal.z);
     if (portal.rotY) group.rotation.y = portal.rotY;
 
     // Platform bercahaya
