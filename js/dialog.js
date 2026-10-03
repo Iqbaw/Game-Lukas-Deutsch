@@ -35,6 +35,10 @@ const Dialog = {
   // Pilihan ganda
   choicesShown:  false,
   attempts:      0,        // berapa kali coba soal ini
+
+  // Node-IDs, deren onEnter-Effekte schon gelaufen sind. Nötig für das
+  // Vorspulen (Admin-Modus): kein Effekt darf doppelt feuern.
+  firedEffects:  new Set(),
 };
 
 export { Dialog };
@@ -131,6 +135,7 @@ export function openDialog(dialogData, npcData = null) {
   Dialog.currentNPC    = npcData;
   Dialog.currentNodeId = dialogData.start;
   Dialog.attempts      = 0;
+  Dialog.firedEffects  = new Set();
 
   // Freeze player input
   setInputEnabled(false);
@@ -242,7 +247,10 @@ function showNode(nodeId) {
       }
     }
     // Eksekusi side effects saat node selesai di-type
-    if (node.onEnter) executeEffects(node.onEnter);
+    if (node.onEnter && !Dialog.firedEffects.has(nodeId)) {
+      Dialog.firedEffects.add(nodeId);
+      executeEffects(node.onEnter);
+    }
   });
 }
 
@@ -722,4 +730,50 @@ function getNPCEmoji(id) {
     felix:       '🧑',
   };
   return map[id] || '🧑';
+}
+
+
+// ═══════════════════════════════════════════════════════════════════
+// VORSPULEN — nur für den Admin-Modus (js/admin.js)
+//
+// Ein Gespräch einfach zu schließen würde die Quests hängen lassen:
+// Fortschritt steckt in den onEnter-Effekten der einzelnen Knoten.
+// Deshalb läuft hier der Rest des Dialogbaums durch, führt die Effekte
+// aus und schließt erst dann.
+// ═══════════════════════════════════════════════════════════════════
+
+const SKIP_MAX_STEPS = 200;   // Reißleine gegen Zyklen im Dialogbaum
+
+export function skipDialog() {
+  if (!Dialog.isOpen || !Dialog.currentDialog) return false;
+
+  const nodes = Dialog.currentDialog.nodes || {};
+  let nodeId  = Dialog.currentNodeId;
+  let steps   = 0;
+
+  while (nodeId && steps++ < SKIP_MAX_STEPS) {
+    const node = nodes[nodeId];
+    if (!node) break;
+
+    // Effekte dieses Knotens nachholen, falls der Typewriter noch lief
+    if (node.onEnter && !Dialog.firedEffects.has(nodeId)) {
+      Dialog.firedEffects.add(nodeId);
+      executeEffects(node.onEnter);
+    }
+
+    if (node.end) break;
+
+    if (Array.isArray(node.choices) && node.choices.length) {
+      // Bei Aufgaben die richtige Antwort nehmen — sonst die erste.
+      const pick = node.choices.find(c => c.correct === true) || node.choices[0];
+      if (pick?.score) addScore(pick.score, '');
+      nodeId = pick?.next || null;
+    } else {
+      nodeId = node.next || null;
+    }
+  }
+
+  stopTypewriter();
+  closeDialog();
+  return true;
 }

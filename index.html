@@ -66,6 +66,12 @@
   <div id="main-menu" class="main-menu" role="dialog" aria-label="Hauptmenü" aria-hidden="true" hidden></div>
 
   <!-- ═══════════════════════════════════════════════════════════
+       ADMIN — versteckt, Inhalt kommt aus js/admin.js
+       Strg+Umschalt+A, oder fünfmal auf den Spieltitel tippen.
+       ═══════════════════════════════════════════════════════════ -->
+  <div id="admin-overlay" class="admin-overlay" hidden></div>
+
+  <!-- ═══════════════════════════════════════════════════════════
        STORY INTRO — Cinematic intro before gameplay
        ═══════════════════════════════════════════════════════════ -->
   <div id="story-intro" class="story-intro" role="dialog" aria-modal="true"
@@ -294,6 +300,9 @@
 
   <!-- Story-Intro (Prolog zwischen Menü und Gameplay) -->
   <script type="module" src="js/story.js"></script>
+
+  <!-- Admin-Modus (versteckt) -->
+  <script type="module" src="js/admin.js"></script>
 
   <!-- Entry point Three.js -->
   <script type="module" src="js/main.js"></script>
