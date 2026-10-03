@@ -478,6 +478,22 @@ function bindEvents() {
   window.addEventListener('loading:progress', (e) => setLoadingHint(e.detail?.percent, e.detail?.status));
   window.addEventListener('loading:complete', markGameReady);
 
+  // Versteckter Zugang zum Admin-Modus: fünfmal kurz hintereinander auf
+  // den Spieltitel tippen. Auf dem Handy gibt es keine Tastenkürzel.
+  const title = root.querySelector('.mm-brand-title');
+  if (title) {
+    let taps = 0, lastTap = 0;
+    title.addEventListener('click', () => {
+      const now = Date.now();
+      taps = (now - lastTap < 600) ? taps + 1 : 1;
+      lastTap = now;
+      if (taps >= 5) {
+        taps = 0;
+        import('./admin.js').then((m) => m.promptAdmin()).catch(() => {});
+      }
+    });
+  }
+
   // Pill neu vermessen, wenn sich das Layout ändert
   window.addEventListener('resize', () => movePill(MainMenu.activeIndex, false));
   if (document.fonts?.ready) {
