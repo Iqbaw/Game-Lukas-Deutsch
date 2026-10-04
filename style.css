@@ -1060,6 +1060,15 @@ body.hud-collapsed .hud-quest-tracker::before { display: none; }
   opacity: 0.6;
 }
 
+/* Tombol yang sedang ditekan menyala — tanda bahwa game menerimanya */
+.hud-controls-hint kbd.is-down {
+  background: var(--c-accent);
+  color: #2a1a08;
+  border-color: #fff3c4;
+  transform: translateY(1px);
+}
+.hud-controls-hint.ch-dim:has(kbd.is-down) { opacity: 1; }
+
 .hud-controls-hint.ch-dim { opacity: 0.45; }
 .hud-controls-hint.ch-dim:hover { opacity: 1; }
 

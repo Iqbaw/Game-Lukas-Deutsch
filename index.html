@@ -1,6 +1,18 @@
 <!DOCTYPE html>
 <html lang="de">
 <head>
+  <script>
+    // Tombol gerak (WASD / panah) dicatat sedini mungkin — fase capture di
+    // window, sebelum skrip lain di halaman sempat mencegatnya.
+    // js/player.js mendaftar ke sini dan membaca setiap tombol yang ditekan.
+    (function () {
+      var hub = window.__heldKeys__ = { listeners: [] };
+      function emit(e, down) { for (var i = 0; i < hub.listeners.length; i++) hub.listeners[i](e, down); }
+      window.addEventListener('keydown', function (e) { emit(e, true); }, true);
+      window.addEventListener('keyup', function (e) { emit(e, false); }, true);
+      window.addEventListener('blur', function () { emit(null, false); });
+    })();
+  </script>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="description" content="Lukas Abenteuer — Willkommen in Hamburg! Game 3D edukasi bahasa Jerman berbasis pendekatan CTL." />
@@ -179,8 +191,8 @@
       </div>
 
       <div id="controls-hint" class="hud-controls-hint hud-hidden" aria-label="Steuerung">
-        <span class="ch-move"><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd><em>/</em><kbd>↑↓←→</kbd> laufen</span>
-        <span><kbd>Shift</kbd> rennen</span>
+        <span class="ch-move"><kbd data-k="fwd">W</kbd><kbd data-k="left">A</kbd><kbd data-k="back">S</kbd><kbd data-k="right">D</kbd><em>/</em><kbd>↑↓←→</kbd> laufen</span>
+        <span><kbd data-k="run">Shift</kbd> rennen</span>
         <span><kbd>E</kbd> reden</span>
         <span><kbd>Tab</kbd> Tagebuch</span>
         <span><kbd>Mausrad</kbd> Zoom</span>
