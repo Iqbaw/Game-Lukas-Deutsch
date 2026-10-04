@@ -28,6 +28,7 @@ import { updateWorld } from './world.js';
 
 // Player
 import { buildPlayer, teleportPlayer, resetInputLocks } from './player.js';
+import { startSession } from './activitylog.js';
 
 // NPCs
 import { initNPCSystem } from './npc.js';
@@ -639,6 +640,7 @@ if (window.__pendingContinueSave__) {
 async function startGame(mode = 'new', save = null) {
   if (Game.isRunning) return;
   resetInputLocks();
+  startSession(mode);
   if (mode === 'new') {
     clearSave();
     ScoreSystem.score = 0;

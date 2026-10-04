@@ -4370,6 +4370,336 @@ body.dialog-open .mobile-controls {
   .adm-hint  { display: none; }
 }
 
+.adm-btn-log {
+  color: #2c1e08;
+  background: linear-gradient(180deg, #f0d089, var(--dlg-gold, #e3bd5c));
+  border-color: #f0d089;
+  font-weight: 700;
+}
+.adm-btn-log:hover { color: #2c1e08; filter: brightness(1.08); }
+
+/* ── Spielprotokoll (js/adminlog.js) ─────────────────────────────── */
+
+.alog[hidden] { display: none; }
+
+.alog {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 18px;
+  background: rgba(8, 6, 3, 0.62);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+}
+
+.alog-card {
+  display: flex;
+  flex-direction: column;
+  width: min(1060px, 100%);
+  height: min(860px, 100%);
+  overflow: hidden;
+  border-radius: 14px;
+  font-family: var(--font-body);
+  color: var(--dlg-ink, #f2e4c4);
+  background: linear-gradient(165deg, rgba(38, 28, 16, 0.985), rgba(17, 12, 6, 0.99));
+  border: 1px solid var(--dlg-gold-d, #8a6a13);
+  box-shadow: 0 26px 64px rgba(0, 0, 0, 0.65), inset 0 1px 0 rgba(255, 226, 160, 0.12);
+}
+
+.alog-head {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 18px 12px;
+  border-bottom: 1px solid rgba(201, 162, 39, 0.22);
+}
+.alog-title { display: flex; align-items: center; gap: 12px; flex: 1; min-width: 0; }
+.alog-title h2 { font-family: var(--font-medieval, serif); font-size: 20px; color: var(--dlg-gold, #e3bd5c); line-height: 1.1; }
+.alog-title p { font-size: 11.5px; color: rgba(242, 228, 196, 0.6); margin-top: 2px; }
+.alog-session-wrap { display: flex; flex-direction: column; gap: 3px; font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; color: rgba(242, 228, 196, 0.5); }
+
+.alog-select, .alog-input {
+  font: inherit;
+  font-size: 12.5px;
+  color: var(--dlg-ink, #f2e4c4);
+  background: rgba(12, 8, 4, 0.62);
+  border: 1px solid rgba(201, 162, 39, 0.38);
+  border-radius: 7px;
+  padding: 6px 9px;
+  outline: none;
+  max-width: 330px;
+}
+.alog-select:focus, .alog-input:focus { border-color: var(--dlg-gold, #e3bd5c); }
+.alog-select option { background: #1d150b; color: #f2e4c4; }
+
+.alog-stats {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 8px;
+  padding: 12px 18px;
+  border-bottom: 1px solid rgba(201, 162, 39, 0.16);
+}
+.alog-stat {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  grid-template-rows: auto auto auto;
+  column-gap: 8px;
+  padding: 8px 10px;
+  border-radius: 9px;
+  background: rgba(255, 236, 190, 0.05);
+  border: 1px solid rgba(201, 162, 39, 0.16);
+}
+.alog-stat-ic { grid-row: 1 / 4; font-size: 20px; align-self: center; }
+.alog-stat b { font-size: 17px; color: #fff3cc; line-height: 1.15; font-variant-numeric: tabular-nums; }
+.alog-stat span { font-size: 11px; color: rgba(242, 228, 196, 0.8); }
+.alog-stat small { font-size: 10px; color: rgba(242, 228, 196, 0.48); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+.alog-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 10px 18px;
+  border-bottom: 1px solid rgba(201, 162, 39, 0.16);
+}
+.alog-tabs { display: flex; gap: 6px; }
+.alog-tab {
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  padding: 7px 12px;
+  border-radius: 8px;
+  cursor: pointer;
+  color: rgba(242, 228, 196, 0.78);
+  background: rgba(255, 236, 190, 0.04);
+  border: 1px solid rgba(201, 162, 39, 0.22);
+}
+.alog-tab:hover { color: #fff3cc; background: rgba(226, 188, 104, 0.12); }
+.alog-tab.is-active { color: #2c1e08; background: linear-gradient(180deg, #f0d089, var(--dlg-gold, #e3bd5c)); border-color: #f0d089; }
+.alog-count {
+  display: inline-block;
+  min-width: 20px;
+  margin-left: 4px;
+  padding: 0 6px;
+  border-radius: 10px;
+  font-size: 11px;
+  text-align: center;
+  background: rgba(0, 0, 0, 0.22);
+}
+.alog-filters { display: flex; gap: 8px; flex: 1; justify-content: flex-end; min-width: 240px; }
+.alog-filters .alog-input { flex: 1; max-width: 280px; }
+
+.alog-body {
+  flex: 1;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 10px 18px 18px;
+  scroll-behavior: auto;
+}
+
+.alog-group {
+  position: sticky;
+  top: -10px;
+  z-index: 1;
+  margin: 12px -18px 4px;
+  padding: 7px 18px;
+  font-family: var(--font-medieval, serif);
+  font-size: 13px;
+  letter-spacing: 0.04em;
+  color: var(--dlg-gold, #e3bd5c);
+  background: linear-gradient(180deg, rgba(30, 22, 12, 0.98), rgba(30, 22, 12, 0.9));
+  border-bottom: 1px solid rgba(201, 162, 39, 0.2);
+}
+
+.alog-row {
+  display: grid;
+  grid-template-columns: 64px 54px 26px 1fr auto;
+  align-items: baseline;
+  gap: 8px;
+  padding: 6px 8px;
+  border-radius: 7px;
+  font-size: 13px;
+  line-height: 1.4;
+}
+.alog-row:nth-child(even) { background: rgba(255, 236, 190, 0.025); }
+.alog-row time { font-variant-numeric: tabular-nums; color: rgba(242, 228, 196, 0.7); font-size: 12px; }
+.alog-gt { font-variant-numeric: tabular-nums; color: rgba(242, 228, 196, 0.38); font-size: 11px; }
+.alog-ic { text-align: center; }
+.alog-txt b { color: #fff3cc; }
+.alog-txt i { color: rgba(242, 228, 196, 0.55); font-style: normal; font-size: 12px; }
+.alog-row.k-session { background: rgba(110, 160, 255, 0.08); }
+.alog-row.k-quest   { background: rgba(226, 188, 104, 0.08); }
+.alog-row.k-done    { background: rgba(120, 200, 120, 0.1); }
+.alog-row.k-admin   { opacity: 0.7; }
+.alog-row.k-dlg { cursor: pointer; }
+.alog-row.k-dlg:hover, .alog-row.k-dlg:focus-visible { background: rgba(226, 188, 104, 0.14); outline: none; }
+.alog-link { font-size: 11px; color: var(--dlg-gold, #e3bd5c); opacity: 0; transition: opacity 0.15s; }
+.alog-row.k-dlg:hover .alog-link, .alog-row.k-dlg:focus-visible .alog-link { opacity: 1; }
+.alog-meta { font-size: 11.5px; color: rgba(242, 228, 196, 0.5); }
+.alog-tag {
+  display: inline-block;
+  padding: 0 6px;
+  border-radius: 4px;
+  font-size: 10.5px;
+  color: rgba(242, 228, 196, 0.75);
+  background: rgba(255, 236, 190, 0.08);
+  border: 1px solid rgba(201, 162, 39, 0.2);
+}
+.alog-pts {
+  font-variant-numeric: tabular-nums;
+  font-size: 11.5px;
+  font-weight: 700;
+  padding: 1px 7px;
+  border-radius: 10px;
+  color: #b8f0a8;
+  background: rgba(90, 170, 80, 0.16);
+}
+.alog-pts.neg { color: #ffb0a8; background: rgba(200, 80, 70, 0.18); }
+.alog-ok  { color: #9fe39a; font-weight: 700; }
+.alog-bad { color: #ff9f96; font-weight: 700; }
+.alog-neu { color: rgba(242, 228, 196, 0.6); }
+.alog-vocab { text-decoration: underline dotted rgba(226, 188, 104, 0.8); text-underline-offset: 3px; cursor: help; }
+
+/* Gespräche */
+.alog-conv {
+  margin: 10px 0;
+  border-radius: 11px;
+  border: 1px solid rgba(201, 162, 39, 0.2);
+  background: rgba(255, 236, 190, 0.03);
+  overflow: hidden;
+}
+.alog-conv.open { border-color: rgba(201, 162, 39, 0.38); }
+.alog-conv-head {
+  display: grid;
+  grid-template-columns: 38px 1fr auto 16px;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 12px;
+  cursor: pointer;
+}
+.alog-conv-head:hover, .alog-conv-head:focus-visible { background: rgba(226, 188, 104, 0.08); outline: none; }
+.alog-avatar {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  font-size: 19px;
+  background: rgba(255, 236, 190, 0.08);
+  border: 1px solid rgba(201, 162, 39, 0.3);
+}
+.alog-conv-title { display: flex; flex-direction: column; min-width: 0; }
+.alog-conv-title b { color: #fff3cc; font-size: 14px; }
+.alog-conv-chips { display: flex; gap: 5px; flex-wrap: wrap; justify-content: flex-end; }
+.alog-chip {
+  font-size: 10.5px;
+  font-weight: 600;
+  padding: 2px 7px;
+  border-radius: 10px;
+  color: rgba(242, 228, 196, 0.8);
+  background: rgba(255, 236, 190, 0.07);
+  border: 1px solid rgba(201, 162, 39, 0.22);
+}
+.alog-chip.ok   { color: #9fe39a; border-color: rgba(120, 200, 120, 0.35); }
+.alog-chip.bad  { color: #ff9f96; border-color: rgba(220, 110, 100, 0.35); }
+.alog-chip.skip { color: #9cc7ff; border-color: rgba(120, 160, 255, 0.35); }
+.alog-caret { color: var(--dlg-gold, #e3bd5c); }
+.alog-conv-body {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px 14px 14px;
+  border-top: 1px solid rgba(201, 162, 39, 0.16);
+  background: rgba(0, 0, 0, 0.14);
+}
+.alog-msg { display: flex; flex-direction: column; align-items: flex-start; max-width: 78%; }
+.alog-msg.me { align-self: flex-end; align-items: flex-end; }
+.alog-who { font-size: 10.5px; color: rgba(242, 228, 196, 0.5); margin: 0 6px 2px; }
+.alog-msg.me .alog-who { margin: 2px 6px 0; }
+.alog-bubble {
+  padding: 8px 12px;
+  border-radius: 12px 12px 12px 4px;
+  font-size: 13.5px;
+  line-height: 1.45;
+  color: #2a1f10;
+  background: #f3e6c8;
+  box-shadow: 0 1px 0 rgba(0, 0, 0, 0.25);
+}
+.alog-msg.me .alog-bubble { border-radius: 12px 12px 4px 12px; color: #0f2236; background: #bfe0ff; }
+.alog-msg.choice .alog-bubble { background: #ffe9a8; color: #2c1e08; border: 1px dashed rgba(140, 100, 20, 0.6); }
+.alog-choice-k { display: block; font-size: 10px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; opacity: 0.6; margin-bottom: 2px; }
+.alog-sys { align-self: center; font-size: 11.5px; color: rgba(242, 228, 196, 0.55); padding: 2px 10px; border-radius: 10px; background: rgba(255, 236, 190, 0.06); }
+
+/* Antworten */
+.alog-answers-sum { font-size: 13px; margin: 8px 0 10px; color: rgba(242, 228, 196, 0.85); }
+.alog-table-wrap { overflow-x: auto; border-radius: 9px; border: 1px solid rgba(201, 162, 39, 0.2); }
+.alog-table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+.alog-table th {
+  position: sticky;
+  top: 0;
+  text-align: left;
+  font-size: 10.5px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--dlg-gold, #e3bd5c);
+  padding: 8px 10px;
+  background: #241a0e;
+  border-bottom: 1px solid rgba(201, 162, 39, 0.28);
+}
+.alog-table td { padding: 7px 10px; vertical-align: top; border-bottom: 1px solid rgba(201, 162, 39, 0.1); }
+.alog-table td:first-child { font-variant-numeric: tabular-nums; color: rgba(242, 228, 196, 0.7); white-space: nowrap; }
+.alog-table tr.r-ok td:nth-last-child(2)  { background: rgba(90, 170, 80, 0.08); }
+.alog-table tr.r-bad td:nth-last-child(2) { background: rgba(200, 80, 70, 0.1); }
+.alog-q { color: rgba(242, 228, 196, 0.72); max-width: 340px; }
+
+.alog-empty { padding: 48px 20px; text-align: center; color: rgba(242, 228, 196, 0.55); font-size: 14px; }
+
+.alog-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 10px 18px 12px;
+  border-top: 1px solid rgba(201, 162, 39, 0.2);
+}
+.alog-foot-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.alog-danger { color: #ffb0a8; border-color: rgba(220, 110, 100, 0.4); }
+.alog-danger:hover { color: #fff; background: rgba(200, 80, 70, 0.35); }
+.alog-note { font-size: 10.5px; color: rgba(242, 228, 196, 0.45); }
+.alog-note kbd { font-size: 9.5px; padding: 0 4px; }
+
+@media (max-width: 900px) {
+  .alog-stats { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+}
+@media (max-width: 640px) {
+  .alog { padding: 0; }
+  .alog-card { width: 100%; height: 100%; border-radius: 0; }
+  .alog-head { flex-wrap: wrap; padding: 12px 14px 10px; }
+  .alog-session-wrap { order: 3; width: 100%; }
+  .alog-select { max-width: 100%; }
+  .alog-stats { display: flex; overflow-x: auto; gap: 6px; padding: 8px 14px; scrollbar-width: none; }
+  .alog-stat { flex: 0 0 auto; min-width: 104px; padding: 6px 9px; }
+  .alog-stat small { display: none; }
+  .alog-stat b { font-size: 15px; }
+  .alog-toolbar { padding: 8px 14px; }
+  .alog-tabs { width: 100%; }
+  .alog-tab { flex: 1; font-size: 12px; padding: 7px 6px; }
+  .alog-filters { display: grid; grid-template-columns: 1fr 1fr; min-width: 0; width: 100%; }
+  .alog-filters .alog-input, .alog-filters .alog-select { min-width: 0; max-width: none; width: 100%; }
+  .alog-body { padding: 8px 12px 16px; }
+  .alog-group { margin: 10px -12px 4px; padding: 6px 12px; }
+  .alog-row { grid-template-columns: 58px 22px 1fr auto; }
+  .alog-gt { display: none; }
+  .alog-msg { max-width: 90%; }
+  .alog-conv-head { grid-template-columns: 34px 1fr 14px; }
+  .alog-conv-chips { grid-column: 2 / 3; justify-content: flex-start; }
+  .alog-note { display: none; }
+}
+
 
 /* ═══════════════════════════════════════════════════════════════════
    QUEST HUD v2 — Quest n/10, Schritt x/y, Anweisung (DE) + Hinweis (ID)

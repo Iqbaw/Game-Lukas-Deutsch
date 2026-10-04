@@ -16,6 +16,7 @@ import { setInputEnabled }  from './player.js';
 import { getDialog, NPC_DEFAULT_DIALOG } from './data/dialogs.js';
 import { NPC_DATA }         from './data/npcs.js';
 import { showToast }        from './ui.js';
+import { logActivity, plainText } from './activitylog.js';
 
 // Nama pembicara per node (dialog bisa berisi beberapa orang: Oma, Opa, Kellner …)
 const SPEAKER_NAMES = {
@@ -131,6 +132,11 @@ export function openDialog(dialogData, npcData = null) {
   Dialog.currentNodeId = dialogData.start;
   Dialog.attempts      = 0;
   Dialog.firedEffects  = new Set();
+  Dialog.convId        = 'c' + Date.now().toString(36) + Math.floor(Math.random() * 1e4).toString(36);
+  logActivity('dlg_open', {
+    conv: Dialog.convId, dialog: dialogData.id,
+    npc: npcData?.name || 'NPC', npcId: npcData?.id || null, emoji: getNPCEmoji(npcData?.id),
+  });
 
   // Freeze player input
   setInputEnabled(false, 'dialog');
@@ -167,6 +173,7 @@ export function openDialog(dialogData, npcData = null) {
 
 export function closeDialog() {
   if (!Dialog.isOpen) return;
+  logActivity('dlg_close', { conv: Dialog.convId });
 
   Dialog.isOpen        = false;
   Dialog.currentDialog = null;
@@ -225,6 +232,16 @@ function showNode(nodeId) {
     $name.textContent = Dialog.currentNPC.name;
     $name.style.color = '';
     if ($avatar?.parentElement) $avatar.parentElement.dataset.emoji = getNPCEmoji(Dialog.currentNPC?.id);
+  }
+
+  // Protokoll (Admin): siapa bicara, teks lengkap, kosakata
+  {
+    const who = $name?.textContent || Dialog.currentNPC?.name || 'NPC';
+    const { text, vocab } = plainText(node.text);
+    logActivity('dlg_line', {
+      conv: Dialog.convId, who, lukas: who === 'Lukas', text,
+      vocab: vocab.length ? vocab : undefined, node: nodeId,
+    });
   }
 
   // Proses tag <vocab> sebelum typewriter
@@ -373,6 +390,7 @@ function showVocabTooltip(el) {
 
   const translation = el.dataset.translation;
   if (!translation) return;
+  logActivity('vocab', { word: el.textContent, trans: translation });
 
   const tt = document.createElement('div');
   tt.className = 'vocab-tooltip-popup';
@@ -432,6 +450,17 @@ function onChoiceSelected(choice, btn, allChoices) {
   });
 
   Dialog.attempts++;
+  {
+    const scoreMap = { 1: CONFIG.CORRECT_FIRST, 2: CONFIG.CORRECT_SECOND, 3: CONFIG.CORRECT_THIRD };
+    const points = choice.correct === true ? (choice.score ?? (scoreMap[Dialog.attempts] || CONFIG.CORRECT_THIRD))
+      : choice.correct === false ? (choice.score ?? (CONFIG.WRONG_ANSWER || -10))
+      : (choice.score || 0);
+    logActivity('dlg_choice', {
+      conv: Dialog.convId, text: plainText(choice.text).text,
+      result: choice.correct === true ? 'ok' : choice.correct === false ? 'wrong' : null,
+      attempt: Dialog.attempts, points,
+    });
+  }
 
   if (choice.correct === true) {
     // Benar
@@ -503,6 +532,7 @@ function onChoiceSelected(choice, btn, allChoices) {
 
 function onDialogKey(e) {
   if (!Dialog.isOpen) return;
+  if (e.target?.closest?.('input, textarea, select, [contenteditable="true"]')) return;   // sedang mengetik
 
   if (e.code === 'KeyE' || e.code === 'Space') {
     e.preventDefault();
@@ -742,6 +772,7 @@ const SKIP_MAX_STEPS = 200;   // Reißleine gegen Zyklen im Dialogbaum
 
 export function skipDialog() {
   if (!Dialog.isOpen || !Dialog.currentDialog) return false;
+  logActivity('dlg_skip', { conv: Dialog.convId });
 
   const nodes = Dialog.currentDialog.nodes || {};
   let nodeId  = Dialog.currentNodeId;

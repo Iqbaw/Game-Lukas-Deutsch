@@ -19,6 +19,9 @@
 // wirklich geheim bleiben muss.
 // ═══════════════════════════════════════════════════════════════════
 
+import { initLogViewer, openLogViewer, closeLogViewer, toggleLogViewer, isLogViewerOpen, logSummary } from './adminlog.js';
+import { logActivity, subscribe } from './activitylog.js';
+
 // SHA-256 des Admin-Passworts
 const PASSWORD_HASH = '33606b36c7aa4ac03db6d3c8266206c293178646bdae5c8b6be44990c7890c7e';
 
@@ -131,6 +134,14 @@ function render() {
       </section>
 
       <section class="adm-section">
+        <h3 class="adm-h3">Protokoll</h3>
+        <button type="button" class="adm-btn adm-btn-wide adm-btn-log" id="adm-log">
+          📜 Spielprotokoll öffnen
+        </button>
+        <p class="adm-note" id="adm-log-sum">Aktivitäten und Gespräche von Lukas.</p>
+      </section>
+
+      <section class="adm-section">
         <h3 class="adm-h3">Gespräche</h3>
         <button type="button" class="adm-btn adm-btn-wide" id="adm-skip">
           Laufendes Gespräch vorspulen
@@ -145,7 +156,7 @@ function render() {
 
       <footer class="adm-foot">
         <button type="button" class="adm-btn" id="adm-logout">Abmelden</button>
-        <span class="adm-hint"><kbd>Strg</kbd>+<kbd>⇧</kbd>+<kbd>A</kbd> Fenster · <kbd>Strg</kbd>+<kbd>⇧</kbd>+<kbd>D</kbd> vorspulen</span>
+        <span class="adm-hint"><kbd>Strg</kbd>+<kbd>⇧</kbd>+<kbd>A</kbd> Fenster · <kbd>L</kbd> Protokoll · <kbd>D</kbd> vorspulen</span>
       </footer>
     </div>
   `;
@@ -160,6 +171,8 @@ function render() {
 async function jumpToZone(zoneId, spot = '') {
   try {
     const { loadZone } = await import('./zone.js');
+    const z = ZONE_LIST.find((x) => x.id === zoneId && (x.spot || '') === (spot || ''));
+    logActivity('admin', { action: 'zone', label: `Sprung zu „${z?.label || zoneId}"` });
     await loadZone(zoneId, null, false);
     const target = spot && window.__stadtBuildings__?.[spot];
     if (target) {
@@ -183,6 +196,7 @@ async function jumpToQuest(questId) {
     for (let i = 1; i < index; i++) window.__questState__[`quest_${i}`] = 'completed';
     delete window.__questState__[questId];
 
+    logActivity('admin', { action: 'quest', label: `Sprung zu Quest ${index}` });
     QuestSystem.startQuest(questId);
     notify(`Quest ${index} gestartet`);
   } catch (err) {
@@ -251,17 +265,32 @@ export function promptAdmin() {
   setTimeout(() => field.focus(), 40);
 }
 
+/** Overlay sichtbar, solange Anmeldung, Fenster oder Protokoll offen ist. */
+function syncRoot() {
+  if (!Admin.root) return;
+  const loginOpen = !Admin.root.querySelector('#adm-login').hidden;
+  Admin.root.hidden = !(Admin.panelOpen || loginOpen || isLogViewerOpen());
+}
+
 function closeLogin() {
   const login = Admin.root?.querySelector('#adm-login');
   if (login) login.hidden = true;
-  if (!Admin.panelOpen) Admin.root.hidden = true;
+  syncRoot();
 }
 
 function togglePanel(open) {
   Admin.panelOpen = open ?? !Admin.panelOpen;
   const panel = Admin.root.querySelector('#adm-panel');
   panel.hidden = !Admin.panelOpen;
-  Admin.root.hidden = !(Admin.panelOpen || !Admin.root.querySelector('#adm-login').hidden);
+  if (Admin.panelOpen) updateLogSummary();
+  syncRoot();
+}
+
+function updateLogSummary() {
+  const el = Admin.root?.querySelector('#adm-log-sum');
+  if (!el) return;
+  const s = logSummary();
+  el.textContent = `Aktuelle Sitzung: ${s.entries} Einträge · ${s.convs} Gespräche · ${s.answers} Antworten`;
 }
 
 function unlock() {
@@ -275,6 +304,7 @@ function unlock() {
 
 function logout() {
   Admin.unlocked = false;
+  closeLogViewer();
   setAutoSkip(false);
   try { sessionStorage.removeItem(SESSION_KEY); } catch (_) {}
   document.body.classList.remove('admin-unlocked');
@@ -305,6 +335,7 @@ function bindEvents() {
   root.querySelector('#adm-logout').addEventListener('click', logout);
   root.querySelector('#adm-skip').addEventListener('click', skipCurrentDialog);
   root.querySelector('#adm-autoskip').addEventListener('click', () => setAutoSkip(!Admin.autoSkip));
+  root.querySelector('#adm-log').addEventListener('click', () => { if (Admin.unlocked) openLogViewer(); });
 
   root.addEventListener('click', (e) => {
     const zone = e.target.closest('[data-zone]');
@@ -318,6 +349,7 @@ function bindEvents() {
     if (!e.ctrlKey || !e.shiftKey) return;
     if (e.code === 'KeyA') { e.preventDefault(); promptAdmin(); }
     else if (e.code === 'KeyD' && Admin.unlocked) { e.preventDefault(); skipCurrentDialog(); }
+    else if (e.code === 'KeyL' && Admin.unlocked) { e.preventDefault(); toggleLogViewer(); }
   });
 }
 
@@ -332,6 +364,14 @@ export function initAdmin(root = document.getElementById('admin-overlay')) {
   Admin.root = root;
   render();
   bindEvents();
+  // Protokoll-Ansicht: nur für entsperrte Admins
+  initLogViewer(root, { canOpen: () => Admin.unlocked, onToggle: syncRoot });
+  let sumTimer = null;
+  subscribe(() => {
+    if (!Admin.panelOpen) return;
+    clearTimeout(sumTimer);
+    sumTimer = setTimeout(updateLogSummary, 400);
+  });
 
   try {
     if (sessionStorage.getItem(SESSION_KEY) === '1') {
@@ -354,6 +394,7 @@ function boot() {
   window.LukasAdmin = {
     prompt: promptAdmin,
     skipDialog: skipCurrentDialog,
+    openLog: openLogViewer,
     state: Admin,
   };
 }
