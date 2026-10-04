@@ -25,6 +25,7 @@ import { spawnNPC, despawnNPC, getNPCRecord, getAllNPCs, setNPCFollowing } from 
 import { Journal } from './journal.js';
 import { Cutscene } from './cutscene.js';
 import { playJingle } from './music.js';
+import { logActivity, questTitle, plainText } from './activitylog.js';
 
 const STATE = {
   IDLE:        'IDLE',
@@ -159,6 +160,7 @@ export const QuestSystem = {
     });
 
     window.addEventListener('keydown', (e) => {
+      if (e.target?.closest?.('#admin-overlay, input, textarea, select')) return;   // panel admin / kolom teks
       if (e.code === 'Tab') {
         e.preventDefault();
         if (this.currentState === STATE.CARD || this.currentState === STATE.CUTSCENE) return;
@@ -242,6 +244,7 @@ export const QuestSystem = {
     // Varian tata letak kota (nama jalan) untuk quest ini — js/stadt.js
     if (quest.city) window.__stadtVariant__ = quest.city;
 
+    logActivity('quest_start', { quest: questId, ...questTitle(questId) });
     Journal.onQuestStart(quest);
     if (questId !== 'quest_1') this.hideOnboardingBanner();
     if (!silent) this.showQuestBanner(quest);
@@ -273,6 +276,10 @@ export const QuestSystem = {
       }
     }
 
+    logActivity('quest_step', {
+      quest: this.activeQuestId, step: this.activeStep + 1, total: quest.steps.length,
+      stepId: step.id, desc: step.description, restored: restored || undefined,
+    });
     const hook = STEP_ENTER[step.id];
     if (hook) hook.call(this, { restored });
     // Musik latar memilih lagu sesuai quest & langkah (js/music.js)
@@ -384,6 +391,7 @@ export const QuestSystem = {
   completeQuest(qid) {
     const quest = getQuest(qid);
     if (!quest || window.__questState__[qid] === 'completed') return;
+    logActivity('quest_done', { q: qid, quest: qid, ...questTitle(qid), points: quest.reward?.score || 0 });
     window.__questState__[qid] = 'completed';
     if (this.activeQuestId === qid) {
       this.activeQuestId = null;
@@ -513,6 +521,7 @@ export const QuestSystem = {
 
   autoCollectItem(mesh, itemName, step) {
     this.collectedItems.add(itemName);
+    logActivity('item', { item: itemName, points: 50 });
     mesh.visible = false;
     if (mesh.userData.labelSprite) mesh.userData.labelSprite.visible = false;
 
@@ -756,6 +765,7 @@ export const QuestSystem = {
       showCenterPopup('Schau dich um!', '💡', 2500);
       return;
     }
+    logActivity('hint', { desc: step.description, hint: plainText(step.hint || '').text });
     const extra = step.panel ? '<br><small>📓 TAB: Wegbeschreibung im Reisetagebuch nochmal lesen.</small>' : '';
     showCenterPopup(`<b>${step.description}</b><br>${step.hint || ''}${extra}`, '💡', 6000);
   },
@@ -967,6 +977,10 @@ export const QuestSystem = {
   },
 
   handleSmsChoice(isCorrect, cardEl) {
+    logActivity('sms', {
+      text: plainText(cardEl.innerText || cardEl.textContent || '').text,
+      result: isCorrect ? 'ok' : 'wrong', points: isCorrect ? 100 : -10,
+    });
     if (isCorrect) {
       cardEl.classList.add('correct');
       document.querySelectorAll('.sms-card').forEach(c => { c.style.pointerEvents = 'none'; });

@@ -8,7 +8,9 @@
     (function () {
       var hub = window.__heldKeys__ = { listeners: [] };
       function emit(e, down) { for (var i = 0; i < hub.listeners.length; i++) hub.listeners[i](e, down); }
-      window.addEventListener('keydown', function (e) { emit(e, true); }, true);
+      // Saat mengetik di kolom teks (mis. panel admin) huruf W/A/S/D bukan tombol gerak
+      function typing(e) { var t = e.target; return !!(t && t.closest && t.closest('input, textarea, select, [contenteditable="true"]')); }
+      window.addEventListener('keydown', function (e) { if (!typing(e)) emit(e, true); }, true);
       window.addEventListener('keyup', function (e) { emit(e, false); }, true);
       window.addEventListener('blur', function () { emit(null, false); });
     })();

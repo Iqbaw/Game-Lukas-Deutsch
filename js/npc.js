@@ -714,6 +714,7 @@ function setupInteractionInput() {
     if (Game.isPaused) return;
     if (e.code !== 'KeyE') return;
     if (!activeNPC) return;
+    if (e.target?.closest?.('input, textarea, select, [contenteditable="true"]')) return;   // sedang mengetik
 
     // Prevent default supaya space tidak scroll page
     e.preventDefault();

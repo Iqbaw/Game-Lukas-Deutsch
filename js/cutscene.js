@@ -19,6 +19,7 @@ import { openDialog, Dialog, skipDialog } from './dialog.js';
 import { getDialog } from './data/dialogs.js';
 import { QUEST_ORDER } from './data/quests.js';
 import { setMusicOverride } from './music.js';
+import { logActivity } from './activitylog.js';
 
 const wait = (ms) => new Promise(r => setTimeout(r, ms));
 
@@ -381,6 +382,7 @@ export const Cutscene = {
   async play(name) {
     const fn = SCENES[name];
     if (!fn) return;
+    logActivity('cutscene', { name });
     try { await fn(); }
     finally {
       if (Dialog.isOpen) skipDialog();
@@ -392,6 +394,7 @@ export const Cutscene = {
   async transition(type) {
     const fn = TRANSITIONS[type];
     if (!fn) return;
+    logActivity('cutscene', { name: type, transition: true });
     try { await fn(); }
     finally {
       if (root) await closeOverlay();
