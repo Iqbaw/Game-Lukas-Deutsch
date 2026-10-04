@@ -18,6 +18,7 @@ import { setInputEnabled, teleportPlayer } from './player.js';
 import { openDialog, Dialog, skipDialog } from './dialog.js';
 import { getDialog } from './data/dialogs.js';
 import { QUEST_ORDER } from './data/quests.js';
+import { setMusicOverride } from './music.js';
 
 const wait = (ms) => new Promise(r => setTimeout(r, ms));
 
@@ -117,6 +118,7 @@ const SCENES = {
   // ── Quest 5: dengan bus ke kota ─────────────────────────────────
   async bus() {
     overlay().classList.add('cs-bus');
+    setMusicOverride('travel');
     setInputEnabled(false);
     await scene(`
       <div class="bus-sky"></div>
@@ -153,6 +155,7 @@ const SCENES = {
   // ── Quest 7: di bioskop ─────────────────────────────────────────
   async kino() {
     overlay().classList.add('cs-kino');
+    setMusicOverride('shop');                // foyer: musik ceria
     setInputEnabled(false);
     await scene(`
       <div class="cs-title-card">
@@ -193,8 +196,10 @@ const SCENES = {
       { cls: 'f-light', html: '<div class="sea calm"></div><div class="lighthouse">🗼</div><div class="beam"></div><div class="ship">⛵</div>', sub: 'Der Leuchtturm zeigt ihm den Weg — geradeaus, dann links!', ms: 3600 },
       { cls: 'f-end', html: '<div class="ft">ENDE</div><div class="fs">Jan ist zu Hause. 💛</div>', sub: '', ms: 2400 },
     ];
+    const FILM_MUSIC = { 'f-title': 'film_title', 'f-ship': 'film_sail', 'f-storm': 'film_storm', 'f-light': 'film_light', 'f-end': 'film_end' };
     for (const f of FRAMES) {
       if (skipRequested || !film) break;
+      setMusicOverride(FILM_MUSIC[f.cls], { fade: f.cls === 'f-title' ? 0.6 : 0.35 });
       film.className = `film ${f.cls}`;
       film.innerHTML = `${f.html}${f.sub ? `<div class="film-sub">${f.sub}</div>` : ''}`;
       if (whisper) {
@@ -205,6 +210,7 @@ const SCENES = {
     }
     root?.querySelector('.cs-skip')?.remove();
     skipRequested = false;
+    setMusicOverride('film_end', { fade: 0.4 });
     await scene(`
       <div class="cs-title-card cs-lights-on">
         <div class="cs-big">💡</div>
@@ -221,6 +227,7 @@ const SCENES = {
   // ── Quest 8: makan siang di restoran ────────────────────────────
   async restaurant() {
     overlay().classList.add('cs-restaurant');
+    setMusicOverride('tavern');
     setInputEnabled(false);
     await scene(`
       <div class="cs-title-card">
@@ -259,6 +266,7 @@ const SCENES = {
   // ── Akhir permainan ─────────────────────────────────────────────
   async finale() {
     overlay().classList.add('cs-finale');
+    setMusicOverride('finale', { fade: 2 });
     setInputEnabled(false);
     const qs = window.__questState__ || {};
     const done = QUEST_ORDER.filter(id => qs[id] === 'completed').length;
@@ -298,6 +306,7 @@ const TRANSITIONS = {
   // Setelah Quest 6: makan malam bersama, lalu malam tiba (Quest 7)
   async dinner() {
     overlay().classList.add('cs-time');
+    setMusicOverride('home');
     setInputEnabled(false);
     await scene(`
       <div class="tt-card tt-dinner">
@@ -320,6 +329,7 @@ const TRANSITIONS = {
   // Setelah Quest 7: tidur → pagi berikutnya di rumah Oma (Quest 8)
   async nextday() {
     overlay().classList.add('cs-time');
+    setMusicOverride('night');
     setInputEnabled(false);
     await scene(`
       <div class="tt-sky tt-night"><div class="tt-stars"></div><div class="tt-moon">🌙</div></div>
@@ -327,6 +337,7 @@ const TRANSITIONS = {
         <div class="cs-cap-de">Lukas geht nach Hause und schläft sofort ein. Gute Nacht! 😴</div>
         <div class="cs-cap-id">Lukas pulang dan langsung tertidur. Selamat malam!</div>
       </div>`, 2600, 'cs-night');
+    setMusicOverride('home', { fade: 2.5 });
     await scene(`
       <div class="tt-sky tt-sunrise"><div class="tt-sun">☀️</div></div>
       <div class="cs-caption">
@@ -342,6 +353,7 @@ const TRANSITIONS = {
   // Setelah Quest 9: matahari terbenam → malam perpisahan (Quest 10)
   async evening() {
     overlay().classList.add('cs-time');
+    setMusicOverride('farewell', { fade: 2.5 });
     setInputEnabled(false);
     await scene(`
       <div class="tt-sky tt-sunset"><div class="tt-sun">🌇</div></div>
@@ -374,6 +386,7 @@ export const Cutscene = {
       if (Dialog.isOpen) skipDialog();
       if (root) await closeOverlay();
       setInputEnabled(true);
+      if (name !== 'finale') setMusicOverride(null, { fade: 2 });
     }
   },
   async transition(type) {
@@ -383,6 +396,7 @@ export const Cutscene = {
     finally {
       if (root) await closeOverlay();
       setInputEnabled(true);
+      setMusicOverride(null, { fade: 2.5 });
     }
   },
 };

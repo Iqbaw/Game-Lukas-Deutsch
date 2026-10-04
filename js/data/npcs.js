@@ -116,7 +116,7 @@ export const NPC_DATA = [
     name:      'Opa Klaus',
     title:     'Großvater',
     zone:      ZONES.HAUS,
-    spawn:     { x: 7.5, z: -5, facing: -Math.PI / 2 }, // di luar, sebelah kanan kincir angin
+    spawn:     { x: 7.9, z: -4.4, facing: -Math.PI / 2 }, // di luar, sebelah kanan kincir angin
     // Malam perpisahan: Opa duduk bersama keluarga di meja taman
     spawnWhen: [{ when: any(isActive('quest_10'), isDone('quest_10')), spawn: { x: 5.4, z: 6.7, facing: -Math.PI * 0.75 } }],
     activity:  'repairing_windmill',
@@ -204,7 +204,7 @@ export const NPC_DATA = [
     name:      'Nachbar Hans',
     title:     'Nachbar',
     zone:      ZONES.HAUS,
-    spawn:     { x: -5, z: 8, facing: Math.PI / 2 }, // Di luar, sebelah kiri jalan
+    spawn:     { x: -3.55, z: 8.25, facing: -Math.PI / 2 }, // memancing di dermaga tepi sungai
     level:     1,
     activity:  'idle',
     greeting:  'Der EDEKA ist in der Stadt — an der Ampel rechts!',
@@ -398,7 +398,7 @@ export const NPC_DATA = [
     name:      'Frau Müller',
     title:     'Passantin',
     zone:      ZONES.STADT,            // Stadtpark, di ujung selatan Allee (Quest 7)
-    spawn:     { x: 5.8, z: 24, facing: -Math.PI / 2 },
+    spawn:     { x: 2.6, z: 24.4, facing: Math.PI * 0.75 },   // di ujung Allee, tepi plaza
     when:      isActive('quest_7'),
     level:     7,
     greeting:  'Hallo! Ich kenne diesen Park sehr gut.',
