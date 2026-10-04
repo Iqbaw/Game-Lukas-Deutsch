@@ -43,36 +43,29 @@ function buildGround(zoneId) {
   const size = CONFIG.ZONE_SIZE || 80;
 
   if (zoneId === ZONES.HAUS) {
-    // Low poly undulating terrain
-    const segments = 40;
-    const geo = new THREE.PlaneGeometry(size, size, segments, segments);
+    // Medan low-poly di sekeliling halaman (js/haus.js). Sungai (x ≈ −7)
+    // mengalir menembus SELURUH medan dalam lembah landai, jadi dari sudut
+    // kamera mana pun sungai tidak pernah terlihat terputus. Bukit baru naik
+    // perlahan jauh dari halaman & sungai (tanpa tebing di tepi halaman).
+    const SIZE = 110, segments = 66, RX = -7;
+    const geo = new THREE.PlaneGeometry(SIZE, SIZE, segments, segments);
     const pos = geo.attributes.position;
-    
+    const smooth = (a, b, v) => { const t = Math.min(1, Math.max(0, (v - a) / (b - a))); return t * t * (3 - 2 * t); };
     for (let i = 0; i < pos.count; i++) {
       const x = pos.getX(i);
       const y = pos.getY(i);
-      
-      // River bed on the left (x < -6)
-      if (x < -5) {
-        const depth = Math.max(-1.5, (x + 5) * 0.4); 
-        pos.setZ(i, depth + (Math.sin(y*0.5)*0.1));
-      } else {
-        // Hills
-        const h1 = Math.sin(x*0.15) * Math.cos(y*0.15) * 1.8;
-        const h2 = Math.sin(x*0.4 + y*0.4) * 0.3;
-        
-        // Flatten center for house (-4 to +12)
-        let flat = 1.0;
-        if (x > -4 && x < 12 && y > -8 && y < 8) {
-          flat = 0.1; 
-        }
-        pos.setZ(i, (h1 + h2) * flat);
-      }
+      const dr = Math.abs(x - RX);
+      // Bukit, diredam dekat sungai dan dekat halaman (±14)
+      const hills = Math.sin(x * 0.15) * Math.cos(y * 0.15) * 1.8 + Math.sin(x * 0.4 + y * 0.4) * 0.3;
+      const awayYard = smooth(15, 24, Math.max(Math.abs(x), Math.abs(y)));
+      const awayRiver = smooth(4.5, 11, dr);
+      // Halaman & tepi sungai rata (dasar + air sungai dibuat di haus.js)
+      pos.setZ(i, Math.max(0, hills + 0.6) * awayYard * awayRiver - 0.01);
     }
     geo.computeVertexNormals();
     
     const mat = new THREE.MeshLambertMaterial({
-      color: 0x7ab648, // Lebih hijau terang
+      color: 0x72ad44,  // sama dengan platform halaman
       flatShading: true,
     });
     const g = new THREE.Mesh(geo, mat);

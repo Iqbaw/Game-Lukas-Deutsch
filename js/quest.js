@@ -784,7 +784,7 @@ export const QuestSystem = {
     this.closeCard();
     this.currentState = STATE.CARD;
     playJingle('jingle_complete');
-    setInputEnabled(false);
+    setInputEnabled(false, 'card');
     this.hideMarker();
 
     const next = quest.next ? getQuest(quest.next) : null;
@@ -835,7 +835,7 @@ export const QuestSystem = {
       this._card = null;
       el.classList.remove('visible');
       setTimeout(() => el.remove(), 350);
-      setInputEnabled(true);
+      setInputEnabled(true, 'card');
       this.currentState = STATE.IDLE;
       this.continueAfter(quest);
     };
@@ -851,7 +851,7 @@ export const QuestSystem = {
     if (el) el.remove();
     if (this._card) {
       this._card = null;
-      setInputEnabled(true);
+      setInputEnabled(true, 'card');
     }
   },
 
@@ -902,11 +902,11 @@ export const QuestSystem = {
         <div class="brief-cta">— Klick oder drück E, um weiterzumachen —</div>
       </div>`;
     document.body.appendChild(overlay);
-    setInputEnabled(false);
+    setInputEnabled(false, 'brief');
     const close = () => {
       window.removeEventListener('keydown', onKey, true);
       overlay.remove();
-      setInputEnabled(true);
+      setInputEnabled(true, 'brief');
       setTimeout(() => {
         const dlg = getDialog('lukas_brief_quiz');
         if (dlg) {

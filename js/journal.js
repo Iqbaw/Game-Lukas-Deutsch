@@ -94,7 +94,7 @@ export const Journal = {
     if (open && document.getElementById('dialog-box')?.classList.contains('hud-hidden') === false) return;
     this.root.classList.toggle('hud-hidden', !open);
     this.root.setAttribute('aria-hidden', String(!open));
-    setInputEnabled(!open);
+    setInputEnabled(!open, 'journal');
     if (open) {
       this.setUnread(false);
       this.render();

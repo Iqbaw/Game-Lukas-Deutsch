@@ -107,7 +107,7 @@ function openStepDialog(id, speaker) {
   const dlg = getDialog(id);
   if (!dlg) return Promise.resolve();
   openDialog(dlg, speaker);
-  return waitDialogClosed().then(() => setInputEnabled(false));
+  return waitDialogClosed().then(() => setInputEnabled(false, 'cutscene'));
 }
 
 // ═══════════════════════════════════════════════════════════════════
@@ -119,7 +119,7 @@ const SCENES = {
   async bus() {
     overlay().classList.add('cs-bus');
     setMusicOverride('travel');
-    setInputEnabled(false);
+    setInputEnabled(false, 'cutscene');
     await scene(`
       <div class="bus-sky"></div>
       <div class="bus-hills"></div>
@@ -149,14 +149,14 @@ const SCENES = {
       </div>`, 3200, 'cs-dark');
     placePlayer(35.6, 3.9, -Math.PI / 2);
     await closeOverlay();
-    setInputEnabled(true);
+    setInputEnabled(true, 'cutscene');
   },
 
   // ── Quest 7: di bioskop ─────────────────────────────────────────
   async kino() {
     overlay().classList.add('cs-kino');
     setMusicOverride('shop');                // foyer: musik ceria
-    setInputEnabled(false);
+    setInputEnabled(false, 'cutscene');
     await scene(`
       <div class="cs-title-card">
         <div class="cs-big">🎬</div>
@@ -221,14 +221,14 @@ const SCENES = {
     const door = window.__stadtBuildings__?.kino?.door;
     if (door) placePlayer(door.x, door.z + 1.1, 0);
     await closeOverlay();
-    setInputEnabled(true);
+    setInputEnabled(true, 'cutscene');
   },
 
   // ── Quest 8: makan siang di restoran ────────────────────────────
   async restaurant() {
     overlay().classList.add('cs-restaurant');
     setMusicOverride('tavern');
-    setInputEnabled(false);
+    setInputEnabled(false, 'cutscene');
     await scene(`
       <div class="cs-title-card">
         <div class="cs-big">🍽️</div>
@@ -260,14 +260,14 @@ const SCENES = {
     const door = window.__stadtBuildings__?.restaurant?.door;
     if (door) placePlayer(door.x, door.z + 1.1, 0);
     await closeOverlay();
-    setInputEnabled(true);
+    setInputEnabled(true, 'cutscene');
   },
 
   // ── Akhir permainan ─────────────────────────────────────────────
   async finale() {
     overlay().classList.add('cs-finale');
     setMusicOverride('finale', { fade: 2 });
-    setInputEnabled(false);
+    setInputEnabled(false, 'cutscene');
     const qs = window.__questState__ || {};
     const done = QUEST_ORDER.filter(id => qs[id] === 'completed').length;
     const score = window.__score__ || 0;
@@ -294,7 +294,7 @@ const SCENES = {
       }));
     });
     await closeOverlay();
-    setInputEnabled(true);
+    setInputEnabled(true, 'cutscene');
   },
 };
 
@@ -307,7 +307,7 @@ const TRANSITIONS = {
   async dinner() {
     overlay().classList.add('cs-time');
     setMusicOverride('home');
-    setInputEnabled(false);
+    setInputEnabled(false, 'cutscene');
     await scene(`
       <div class="tt-card tt-dinner">
         <div class="tt-icons">🍲 🥔 🥗 🥧</div>
@@ -323,14 +323,14 @@ const TRANSITIONS = {
     await reloadHere();
     await sleepSkippable(1800);
     await closeOverlay();
-    setInputEnabled(true);
+    setInputEnabled(true, 'cutscene');
   },
 
   // Setelah Quest 7: tidur → pagi berikutnya di rumah Oma (Quest 8)
   async nextday() {
     overlay().classList.add('cs-time');
     setMusicOverride('night');
-    setInputEnabled(false);
+    setInputEnabled(false, 'cutscene');
     await scene(`
       <div class="tt-sky tt-night"><div class="tt-stars"></div><div class="tt-moon">🌙</div></div>
       <div class="cs-caption">
@@ -347,14 +347,14 @@ const TRANSITIONS = {
     await loadZoneUnder(ZONES.HAUS, { x: 1.2, z: 4.8, facing: 0 });
     await sleepSkippable(2200);
     await closeOverlay();
-    setInputEnabled(true);
+    setInputEnabled(true, 'cutscene');
   },
 
   // Setelah Quest 9: matahari terbenam → malam perpisahan (Quest 10)
   async evening() {
     overlay().classList.add('cs-time');
     setMusicOverride('farewell', { fade: 2.5 });
-    setInputEnabled(false);
+    setInputEnabled(false, 'cutscene');
     await scene(`
       <div class="tt-sky tt-sunset"><div class="tt-sun">🌇</div></div>
       <div class="cs-caption">
@@ -364,7 +364,7 @@ const TRANSITIONS = {
     await reloadHere();
     await sleepSkippable(2200);
     await closeOverlay();
-    setInputEnabled(true);
+    setInputEnabled(true, 'cutscene');
   },
 };
 
@@ -385,7 +385,7 @@ export const Cutscene = {
     finally {
       if (Dialog.isOpen) skipDialog();
       if (root) await closeOverlay();
-      setInputEnabled(true);
+      setInputEnabled(true, 'cutscene');
       if (name !== 'finale') setMusicOverride(null, { fade: 2 });
     }
   },
@@ -395,7 +395,7 @@ export const Cutscene = {
     try { await fn(); }
     finally {
       if (root) await closeOverlay();
-      setInputEnabled(true);
+      setInputEnabled(true, 'cutscene');
       setMusicOverride(null, { fade: 2.5 });
     }
   },

@@ -397,11 +397,13 @@ function buildWindmill(x, z) {
 // SUNGAI: air, tepian batu, alang-alang, teratai, dermaga
 // ═══════════════════════════════════════════════════════════════════
 
-const RIVER = { x: -7, w: 4, len: 32, x0: -9, x1: -5 };
+// Sungai menembus seluruh medan (len 100) — tidak ada ujung air yang terlihat
+const RIVER = { x: -7, w: 4, len: 100, x0: -9, x1: -5 };
+const RIVER_END = 48;   // batas sebar batu/alang-alang di sepanjang tepi
 
 function buildRiver() {
   const { x: RX, w, len } = RIVER;
-  const geo = new THREE.PlaneGeometry(w, len, 10, 36);
+  const geo = new THREE.PlaneGeometry(w, len, 10, 90);
   const waterTex = canvasTex(256, 256, (ctx, W, H) => {
     const grad = ctx.createLinearGradient(0, 0, W, 0);
     grad.addColorStop(0, '#2f8fb8'); grad.addColorStop(0.5, '#3aa6cc'); grad.addColorStop(1, '#2f8fb8');
@@ -413,7 +415,7 @@ function buildRiver() {
       const y = r() * H, x = r() * W * 0.6;
       ctx.beginPath(); ctx.moveTo(x, y); ctx.quadraticCurveTo(x + 30, y - 6 + r() * 12, x + 50 + r() * 60, y); ctx.stroke();
     }
-  }, [1.2, 6]);
+  }, [1.2, 19]);
   const waterMat = new THREE.MeshStandardMaterial({
     map: waterTex, color: 0x9fe0f2, emissive: 0x0b4d70, emissiveIntensity: 0.18,
     roughness: 0.15, metalness: 0.1, transparent: true, opacity: 0.94, depthWrite: false,
@@ -445,7 +447,7 @@ function buildRiver() {
   // Batu tepian (satu draw call)
   const stones = [];
   for (const bx of [RIVER.x0, RIVER.x1]) {
-    for (let z = -15.5; z < 15.5; z += 0.42 + r() * 0.3) {
+    for (let z = -RIVER_END; z < RIVER_END; z += 0.42 + r() * 0.3) {
       if (inBridge(z)) continue;
       const s = 0.16 + r() * 0.24;
       stones.push({ x: bx + (r() - 0.5) * 0.35, y: 0.1, z, s, sy: s * 0.65, ry: r() * 6, rx: r(), color: [0x9a9a8e, 0x8a8a7e, 0xa9a596, 0x7d7f74][Math.floor(r() * 4)] });
@@ -454,7 +456,8 @@ function buildRiver() {
   scatter(new THREE.DodecahedronGeometry(1, 0), M(0xffffff), stones, { shadow: true });
   // Batu besar di dalam air dengan riak busa
   const foamMat = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.45, depthWrite: false });
-  for (const [bx, bz, s] of [[-6.2, -7.5, 0.55], [-7.9, 9.5, 0.45], [-7.4, -12.5, 0.4]]) {
+  for (const [bx, bz, s] of [[-6.2, -7.5, 0.55], [-7.9, 9.5, 0.45], [-7.4, -12.5, 0.4], [-6.4, -21, 0.5], [-7.7, 18.5, 0.5],
+                             [-6.1, 26, 0.42], [-8.0, -29, 0.46], [-6.6, 34, 0.5], [-7.8, -38, 0.44]]) {
     const b = add(Game.worldGroup, new THREE.DodecahedronGeometry(s, 0), M(0x7d8077), bx, 0.12, bz);
     b.scale.set(1.2, 0.75, 1);
     const foam = add(Game.worldGroup, new THREE.TorusGeometry(s * 1.15, 0.05, 6, 18), foamMat, bx, 0.2, bz, false);
@@ -462,11 +465,10 @@ function buildRiver() {
   }
   // Alang-alang & ekor kucing (cattail)
   const reeds = [], tops = [];
-  for (let i = 0; i < 26; i++) {
+  for (let i = 0; i < 76; i++) {
     const side = i % 2 ? RIVER.x0 + 0.25 : RIVER.x1 - 0.25;
-    let z = -15 + r() * 30;
+    let z = -RIVER_END + r() * RIVER_END * 2;
     if (inBridge(z)) z += 5;
-    if (z > 15) z -= 30;
     for (let k = 0; k < 5; k++) {
       const h = 0.5 + r() * 0.5;
       reeds.push({ x: side + (r() - 0.5) * 0.4, y: h / 2 + 0.1, z: z + (r() - 0.5) * 0.5, sx: 1, sy: h, sz: 1, rx: (r() - 0.5) * 0.3, rz: (r() - 0.5) * 0.3, color: r() < 0.5 ? 0x5c8f34 : 0x6fa23f });
@@ -477,9 +479,9 @@ function buildRiver() {
   scatter(new THREE.CapsuleGeometry(0.045, 0.16, 2, 6), M(0x6b4628), tops);
   // Daun teratai + bunga
   const pads = [], blossoms = [];
-  for (let i = 0; i < 18; i++) {
+  for (let i = 0; i < 46; i++) {
     const side = i % 2 ? RIVER.x0 + 0.7 : RIVER.x1 - 0.7;
-    let z = -14 + r() * 28;
+    let z = -RIVER_END + 2 + r() * (RIVER_END - 2) * 2;
     if (inBridge(z)) continue;
     const s = 0.22 + r() * 0.16;
     pads.push({ x: side + (r() - 0.5) * 0.6, y: 0.2, z, sx: s, sy: 1, sz: s, ry: r() * 6 });
@@ -636,6 +638,10 @@ function buildVegetation() {
     ['pine', -12.7, -11, 1.3], ['round', -10.8, -8.2, 1.0], ['pine', -12.5, -4.2, 1.2], ['birch', -11.2, -1.6, 0.9],
     ['pine', -10.8, 7.2, 1.1], ['round', -12.6, 10.2, 1.25], ['pine', -10.4, 12.4, 0.9], ['pine', -13.2, -14, 0.9],
     ['round', -11.4, -13.2, 1.1], ['pine', -13.3, -7.2, 1.0], ['birch', -11.9, 9.0, 0.85], ['pine', -13.5, 13.2, 1.1],
+    // Di sepanjang sungai di luar halaman (sungai terlihat mengalir terus)
+    ['pine', -11.6, -20, 1.1], ['round', -13.8, -25, 1.2], ['birch', -11.2, -31, 0.95], ['pine', -14.2, -36, 1.2],
+    ['round', -11.8, 18, 1.0], ['pine', -13.6, 23, 1.15], ['birch', -11.4, 29, 0.9], ['round', -14.5, 34, 1.1],
+    ['pine', -2.6, -19, 1.1], ['round', -1.2, -24.5, 1.15], ['pine', -3.0, -30, 1.0], ['birch', 1.5, -21, 0.9],
   ];
   T.forEach(([k, x, z, s], i) => tree(k, x, z, s, i + 1));
 
@@ -684,12 +690,10 @@ function buildVegetation() {
 // ═══════════════════════════════════════════════════════════════════
 
 function buildGrounds() {
-  // Platform rumput diorama
-  const base = add(Game.worldGroup, B(28, 0.6, 28), M(0x72ad44), 0, -0.3, 0, false);
-  World.walkables.push(base);
-  // Padang di seberang sungai
-  const farGrass = add(Game.worldGroup, B(4.8, 0.06, 28), M(0x5aa43a), -11.5, 0.04, 0, false);
-  World.walkables.push(farGrass);
+  // Rumput halaman = medan dunia (world.js), rata di sekitar rumah dan
+  // sungai — tanpa platform terpisah yang tepinya terlihat sebagai garis.
+  // (Padang di seberang sungai = medan dunia, warnanya sama dengan platform —
+  //  tanpa kotak rumput terpisah yang dulu terlihat terpotong di ujungnya.)
 
   // Jalan batu bulat (Kopfsteinpflaster)
   const cobble = (rx, ry) => canvasTex(128, 128, (ctx, w, h) => {

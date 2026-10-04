@@ -261,7 +261,9 @@ function updatePlayer(delta) {
     ? CONFIG.PLAYER_SPEED * (Player.isRunning ? CONFIG.RUN_MULTIPLIER : 1.0)
     : 0;
 
-  Player.speed = THREE.MathUtils.lerp(Player.speed, targetSpeed, 0.18);
+  // Percepatan tidak bergantung frame rate (dulu 0.18 per frame: terasa
+  // lamban di laptop yang lambat dan "licin" di layar 144 Hz)
+  Player.speed = THREE.MathUtils.lerp(Player.speed, targetSpeed, 1 - Math.exp(-12 * delta));
 
   // ── 5.3 Movement dengan collision ──
   if (inputMagnitude > 0.01) {
@@ -271,6 +273,15 @@ function updatePlayer(delta) {
     Player.targetFacing = Math.atan2(_tmpMove.x, _tmpMove.z);
 
     moveWithCollision(_tmpMove.x * moveDist, _tmpMove.z * moveDist);
+
+    // Setelah Lukas cukup lama berjalan, petunjuk tombol meredup
+    if (!Player._hintDimmed) {
+      Player._walked = (Player._walked || 0) + moveDist;
+      if (Player._walked > 40) {
+        Player._hintDimmed = true;
+        document.getElementById('controls-hint')?.classList.add('ch-dim');
+      }
+    }
 
     // Clamp ke batas zona (per-zona bila tersedia, else global ZONE_SIZE)
     const zb = (typeof window !== 'undefined') ? window.__zoneBounds__ : null;
@@ -363,15 +374,33 @@ export function buildPlayer() {
 }
 
 
-export function setInputEnabled(enabled) {
-  Player.inputEnabled = enabled;
-  if (!enabled && Player._releaseKeys) Player._releaseKeys();
+// Beberapa sistem bisa mengunci input bersamaan (dialog, cutscene, jurnal,
+// menu pause, kartu quest). Dulu satu boolean dipakai bersama: menutup jurnal
+// atau menu pause di tengah dialog/cutscene menyalakan WASD terlalu cepat,
+// dan urutan buka-tutup yang lain bisa membuat Lukas tidak bisa digerakkan.
+// Sekarang tiap sistem memegang kuncinya sendiri; WASD aktif hanya bila
+// tidak ada kunci sama sekali.
+const _inputLocks = new Set();
+
+export function setInputEnabled(enabled, source = 'misc') {
+  if (enabled) _inputLocks.delete(source);
+  else _inputLocks.add(source);
+  Player.inputEnabled = _inputLocks.size === 0;
   if (!enabled) {
+    if (Player._releaseKeys) Player._releaseKeys();
     Player.input.fwd = Player.input.back = 0;
     Player.input.left = Player.input.right = 0;
     Player.input.run = false;
   }
 }
+
+/** Lepas semua kunci input (game baru / lanjutkan dari menu). */
+export function resetInputLocks() {
+  _inputLocks.clear();
+  Player.inputEnabled = true;
+}
+
+export function inputLocks() { return [..._inputLocks]; }
 
 
 export function teleportPlayer(x, z, facing = 0) {
