@@ -271,7 +271,7 @@ export const QUESTS = {
     id:           'quest_5',
     title:        'Lukas fragt nach dem Weg nach Tantes Haus',
     subtitle:     'Menanyakan Jalan ke Rumah Tante',
-    description:  'Lukas ingin mampir ke rumah Tante untuk memberikan sesuatu — tapi ia lupa jalannya! Tanya orang asing di tengah kota. Layout kota VARIAN C (jembatan, taman, perpustakaan tua).',
+    description:  'Lukas ingin mampir ke rumah Tante untuk memberikan sesuatu — tapi ia lupa jalannya! Tanya orang asing di tengah kota.',
     giver:        'frau_weber',
     zone:         ZONES.STADT,
     prerequisites:['quest_4'],
@@ -327,7 +327,7 @@ export const QUESTS = {
         id:          'step2_return_home',
         kind:        'reach_zone',
         target:      ZONES.HAUS,
-        description: 'Finde den Weg zurück zu Omas Haus (an der Brücke vorbei)',
+        description: 'Finde den Weg zurück zu Omas Haus (über die alte Brücke)',
       },
     ],
 
@@ -366,7 +366,7 @@ export const QUESTS = {
         id:          'step2_ask_kino',
         kind:        'talk_npc',
         target:      'passant_4',
-        description: 'Frag den Fremden nach dem Kino (allgemeines Verständnis)',
+        description: 'Frag die Frau im Stadtpark nach dem Kino (allgemeines Verständnis)',
       },
       {
         id:          'step3_find_kino',
@@ -383,7 +383,8 @@ export const QUESTS = {
                       'die Allee', 'die Hauptstraße', 'die bunten Lichter'],
     },
 
-    intro_dialog: 'passant4_quest7_intro',
+    // intro_dialog TIDAK ADA — Frau Müller berdiri di Stadtpark; dialognya
+    // (NPC_DEFAULT_DIALOG) baru dibuka saat Lukas bicara dengannya di sana.
   },
 
 

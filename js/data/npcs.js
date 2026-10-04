@@ -187,7 +187,7 @@ export const NPC_DATA = [
     spawn:     { x: -5, z: 8, facing: Math.PI / 2 }, // Di luar, sebelah kiri jalan
     level:     1,
     activity:  'idle',
-    greeting:  'Der EDEKA-Supermarkt liegt in der Hauptstraße!',
+    greeting:  'Der EDEKA ist in der Stadt — an der Ampel rechts!',
     hasQuest:  false,
     questId:   null,
 
@@ -214,8 +214,8 @@ export const NPC_DATA = [
     id:        'leni',
     name:      'Leni',
     title:     'Cousine',
-    zone:      ZONES.STADT,            // di depan Grundschule kuning (kota, Quest 3)
-    spawn:     { x: -7, z: -10, facing: 0 }, // menghadap jalan (selatan)
+    zone:      ZONES.STADT,            // di depan pintu Grundschule kuning (kota, Quest 3)
+    spawn:     { x: -10.4, z: -4.6, facing: 0 }, // di samping pintu, menghadap jalan (selatan)
     hideAfterQuest: 'quest_3',         // setelah Q3 selesai, Leni tidak spawn lagi di kota
     greeting:  'Lukas! Du bist gekommen! Endlich!',
     hasQuest:  true,
@@ -296,7 +296,7 @@ export const NPC_DATA = [
     name:      'Frau Weber',
     title:     'Passantin',
     zone:      ZONES.STADT,
-    spawn:     { x: 33, z: 2, facing: -Math.PI / 2 }, // tengah kota, dekat spawn Q5
+    spawn:     { x: 34, z: 3.8, facing: Math.PI / 2 }, // trotoar Hauptstraße, menghadap spawn Q5
     greeting:  'Ja? Kann ich dir helfen?',
     hasQuest:  true,
     questId:   'quest_5',
@@ -320,8 +320,8 @@ export const NPC_DATA = [
     id:        'passant_1',
     name:      'Herr Bauer',
     title:     'Passant',
-    zone:      ZONES.STADT,            // di kota, dekat pintu masuk (Quest 4)
-    spawn:     { x: 6, z: 8, facing: Math.PI },
+    zone:      ZONES.STADT,            // Schillerstraße, dekat Alte Brücke (pintu masuk kota)
+    spawn:     { x: -20.2, z: 25, facing: -Math.PI / 2 },
     level:     4,                       // muncul saat quest_4 aktif
     greeting:  'Guten Tag! Kann ich Ihnen helfen?',
     hasQuest:  true,
@@ -345,8 +345,8 @@ export const NPC_DATA = [
     id:        'passant_2',
     name:      'Frau Schmidt',
     title:     'Passantin',
-    zone:      ZONES.STADT,            // dekat Eisstand (Quest 5)
-    spawn:     { x: 16, z: 20, facing: -Math.PI / 2 },
+    zone:      ZONES.STADT,            // Lindenstraße, depan Restaurant (arah ke Eisstand)
+    spawn:     { x: 30, z: 19.2, facing: -Math.PI / 2 },
     level:     5,
     greeting:  'Ja bitte? Wie kann ich helfen?',
     hasQuest:  true,
@@ -370,8 +370,8 @@ export const NPC_DATA = [
     id:        'passant_3',
     name:      'Herr Fischer',
     title:     'Passant',
-    zone:      ZONES.STADT,            // di kota (Lukas tersesat, Quest 6)
-    spawn:     { x: 30, z: 8, facing: Math.PI },
+    zone:      ZONES.STADT,            // taman di depan Tantes Haus (Quest 6 mulai di sana)
+    spawn:     { x: 18, z: -28.4, facing: Math.PI / 2 },
     level:     6,
     greeting:  'Hallo! Sie sehen verloren aus...',
     hasQuest:  true,
@@ -396,8 +396,8 @@ export const NPC_DATA = [
     id:        'passant_4',
     name:      'Frau Müller',
     title:     'Passantin',
-    zone:      ZONES.STADT,            // dekat Stadtpark (Quest 7)
-    spawn:     { x: 7, z: 24, facing: -Math.PI / 2 },
+    zone:      ZONES.STADT,            // Stadtpark, di ujung selatan Allee (Quest 7)
+    spawn:     { x: 5.8, z: 24, facing: -Math.PI / 2 },
     level:     7,
     greeting:  'Hallo! Ich kenne diesen Park sehr gut.',
     hasQuest:  true,

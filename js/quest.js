@@ -388,7 +388,8 @@ export const QuestSystem = {
     // ── VARIAN LAYOUT KOTA per quest Stage 3 ──
     // Setiap quest kota pakai tata letak berbeda supaya siswa membaca teks
     // deskriptif, bukan menghafal peta. Dibaca oleh buildStadt() saat loadZone.
-    const STADT_VARIANTS = { quest_3: 'A', quest_4: 'B', quest_5: 'C' };
+    // Q6/Q7 memakai varian C karena narasinya menyebut "Hauptstraße".
+    const STADT_VARIANTS = { quest_3: 'A', quest_4: 'B', quest_5: 'C', quest_6: 'C', quest_7: 'C' };
     if (STADT_VARIANTS[questId]) {
       window.__stadtVariant__ = STADT_VARIANTS[questId];
     }
@@ -398,6 +399,16 @@ export const QuestSystem = {
       this.showSummaryPanel(
         `Geh <span class="kw">ins Haus</span> hinein. Auf dem <span class="kw">Esstisch</span> ` +
         `liegt ein <span class="kw">Brief von Oma</span> ✉️ — finde und lies ihn!`,
+        '📜 Aufgabe:'
+      );
+    }
+
+    // Q7 (Ins Kino): Lukas harus ke Stadtpark dulu, baru bertanya di sana.
+    if (questId === 'quest_7') {
+      this.showSummaryPanel(
+        `Nach dem Abendessen willst du ins <span class="kw">Kino</span> 🎬 — aber du ` +
+        `landest im <span class="kw">Stadtpark</span>! Geh über die <span class="kw">alte Brücke</span> ` +
+        `in die Stadt zum Park und frag dort eine <span class="kw">Passantin</span> nach dem Weg.`,
         '📜 Aufgabe:'
       );
     }
@@ -413,8 +424,8 @@ export const QuestSystem = {
       );
       setTimeout(() => {
         import('./zone.js').then(z => {
-          // Tengah kota, di Hauptstraße; Frau Weber berdiri di dekatnya
-          z.loadZone('stadt', { x: 36, z: 0, facing: -Math.PI / 2 }, true);
+          // Trotoar Hauptstraße di timur kota; Frau Weber berdiri di sebelahnya
+          z.loadZone('stadt', { x: 36.5, z: 3.8, facing: -Math.PI / 2 }, true);
         });
       }, 900);
     }
@@ -528,6 +539,11 @@ export const QuestSystem = {
       step4_go_edeka:        { title: '🛒 Geh zum EDEKA!',          body: 'Folge dem Weg aus Omas Brief in die Stadt!',       icon: '🛒' },
       // Quest 5 (Stage 3 — Weg nach Tantes Haus)
       step2_go_tantes_haus:  { title: '🏠 Zu Tantes Haus!',         body: 'Kreuzung → rechts → Brücke → Park → Bibliothek!',  icon: '🏠' },
+      // Quest 6 (Wo bin ich?)
+      step2_return_home:     { title: '🏡 Nach Hause!',             body: 'Hauptstraße → Ampel → links → über die alte Brücke!', icon: '🏡' },
+      // Quest 7 (Ins Kino!)
+      step2_ask_kino:        { title: '🗣️ Frag nach dem Kino!',     body: 'Frau Müller steht im Stadtpark an der Allee (E drücken).', icon: '🗣️' },
+      step3_find_kino:       { title: '🎬 Schnell zum Kino!',        body: 'Allee geradeaus → rechts → Kino links (bunte Lichter)!', icon: '🎬' },
     };
     const guide = STEP_GUIDE[next.id];
     if (guide) {
@@ -838,7 +854,7 @@ export const QuestSystem = {
         <p style="margin:0 0 10px;">heute Abend kochen wir zusammen. Bitte geh zum Supermarkt
           „EDEKA“ und kauf die Zutaten ein. Der Supermarkt ist nicht weit.
           Geh aus dem Haus nach rechts in die Blumenstraße. Dann geh geradeaus bis zur
-          Kreuzung. An der Kreuzung siehst du eine Bank. Nimmt dort nach rechts in die
+          Kreuzung. An der Kreuzung siehst du eine Bank. Nimm dort nach rechts in die
           Wolfgangstraße. Der Supermarkt liegt gegenüber dem Mall.</p>
         <p style="margin:0 0 10px;">Bitte kauf: Kartoffeln, Fleisch, Salat und Butter.</p>
         <p style="margin:0;">Bis später!<br><i>Deine Oma</i></p>
@@ -1315,9 +1331,13 @@ export const QuestSystem = {
       }
     } else if (step.kind === 'reach_building') {
       // Step advances saat player dekat gedung target di kota STADT.
-      // Registry: window.__stadtBuildings__[name] = {x, z, r}
+      // Registry (js/stadt.js): area di depan pintu, lingkaran {x, z, r}
+      // atau kotak {x, z, hw, hd}.
       const b = window.__stadtBuildings__ && window.__stadtBuildings__[step.target];
-      if (b && Math.hypot(px - b.x, pz - b.z) <= (b.r || 3.5)) {
+      const inside = b && (b.hw
+        ? Math.abs(px - b.x) <= b.hw && Math.abs(pz - b.z) <= b.hd
+        : Math.hypot(px - b.x, pz - b.z) <= (b.r || 3.5));
+      if (inside) {
         this.progressStep(step.id);
       }
     } else if (step.kind === 'talk_npc') {
