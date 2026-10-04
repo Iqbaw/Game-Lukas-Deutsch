@@ -133,7 +133,7 @@ export function openDialog(dialogData, npcData = null) {
   Dialog.firedEffects  = new Set();
 
   // Freeze player input
-  setInputEnabled(false);
+  setInputEnabled(false, 'dialog');
 
   // Avatar & nama
   const npc = npcData;
@@ -185,7 +185,7 @@ export function closeDialog() {
   }, 250);
 
   // Restore player input
-  setInputEnabled(true);
+  setInputEnabled(true, 'dialog');
 
   // Dispatch event
   window.dispatchEvent(new CustomEvent(EVENTS.DIALOG_CLOSE));
@@ -408,6 +408,7 @@ function showVocabTooltip(el) {
 
 function showChoices(choices) {
   Dialog.choicesShown = true;
+  Dialog.choicesAt = performance.now();
   $choices.innerHTML  = '';
 
   const KEYS = ['A', 'B', 'C', 'D'];
@@ -522,6 +523,9 @@ function onDialogKey(e) {
     if (keyMap[e.code] !== undefined) {
       e.preventDefault();
       e.stopImmediatePropagation();
+      // A dan D juga tombol jalan: tombol yang masih ditahan (auto-repeat)
+      // atau ditekan tepat saat pilihan muncul tidak boleh langsung menjawab.
+      if (e.repeat || performance.now() - (Dialog.choicesAt || 0) < 450) return;
       const btn = $choices.children[keyMap[e.code]];
       if (btn && !btn.disabled) btn.click();
     }

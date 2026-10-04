@@ -97,14 +97,14 @@ export const ZONE_DEFS = {
     id:     ZONES.STADT,
     name:   'Die Stadt',
     nameID: 'Kota',
-    size:   { w: 84, h: 70 },
+    size:   { w: 84, h: 82 },     // ke selatan sampai ujung Alte Brücke di atas Elbe yang lebar
     // Masuk di ujung selatan Schillerstraße, tepat setelah Alte Brücke
     spawn:  { x: -24, z: 27.6, facing: Math.PI },
     portals: [
       {
         // Gerbang di ujung selatan Alte Brücke: kembali ke rumah Oma
         kind: 'gate',
-        x: -24, y: 0.26, z: 34.2, w: 4.4, d: 1.4,      // y = tinggi dek jembatan
+        x: -24, y: 0.26, z: 39.6, w: 4.4, d: 1.4,      // y = tinggi dek jembatan (ujung selatan)
         target: ZONES.HAUS,
         // Spawn di UJUNG TIMUR jembatan (sisi rumah) — BUKAN di sungai (x -9..-5)!
         targetSpawn: { x: -3.5, z: 2.2, facing: Math.PI / 2 },

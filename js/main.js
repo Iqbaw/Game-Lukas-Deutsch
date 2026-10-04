@@ -27,7 +27,7 @@ import { CONFIG, EVENTS, COLORS, ZONES } from './config.js';
 import { updateWorld } from './world.js';
 
 // Player
-import { buildPlayer, teleportPlayer } from './player.js';
+import { buildPlayer, teleportPlayer, resetInputLocks } from './player.js';
 
 // NPCs
 import { initNPCSystem } from './npc.js';
@@ -208,6 +208,31 @@ function initCamera() {
 
   // Update rotation ke isometric angle
   updateIsoCameraRotation();
+  initWheelZoom();
+}
+
+/**
+ * Scrollrad = sedikit mendekat / menjauh. Rentangnya sengaja kecil supaya
+ * tepi dunia (ujung peta) tidak ikut terlihat saat menjauh.
+ */
+const ZOOM_MIN = 0.9, ZOOM_MAX = 1.6;
+function initWheelZoom() {
+  Game._zoomTarget = 1;
+  window.addEventListener('wheel', (e) => {
+    if (!Game.isRunning || Game.isPaused) return;
+    if (e.target !== Game.renderer?.domElement) return;   // bukan saat di atas panel/HUD
+    const step = Math.exp(-Math.sign(e.deltaY) * 0.12);
+    Game._zoomTarget = THREE.MathUtils.clamp(Game._zoomTarget * step, ZOOM_MIN, ZOOM_MAX);
+  }, { passive: true });
+}
+
+function updateZoom(delta) {
+  const cam = Game.camera;
+  const target = Game._zoomTarget ?? 1;
+  if (Math.abs(cam.zoom - target) < 0.001) return;
+  cam.zoom += (target - cam.zoom) * (1 - Math.exp(-10 * delta));
+  if (Math.abs(cam.zoom - target) < 0.001) cam.zoom = target;
+  cam.updateProjectionMatrix();
 }
 
 /**
@@ -246,6 +271,7 @@ let _camInitialized = false;
  */
 export function updateIsoCamera(delta) {
   if (!Game.camera || !Game._isoCamOffset) return;
+  updateZoom(delta);
 
   // Import player position (lazy to avoid circular)
   const playerPos = Game.player?.position || new THREE.Vector3(0, 0, 0);
@@ -612,6 +638,7 @@ if (window.__pendingContinueSave__) {
 
 async function startGame(mode = 'new', save = null) {
   if (Game.isRunning) return;
+  resetInputLocks();
   if (mode === 'new') {
     clearSave();
     ScoreSystem.score = 0;

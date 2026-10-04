@@ -76,6 +76,9 @@ export function initUI() {
   window.addEventListener('keydown', (e) => {
     if (e.code === 'Escape') {
       if (document.body.classList.contains('main-menu-open')) return;
+      // Esc sudah dipakai layar lain (mis. melewati cerita pembuka) —
+      // jangan sekaligus membuka menu pause dan membekukan WASD.
+      if (e.defaultPrevented) return;
       if (UI.isPauseMenuOpen) closePauseMenu();
       else openPauseMenu();
     }
@@ -223,8 +226,7 @@ function setupPauseMenu() {
         </div>
         <div class="help-section">
           <h4 class="help-section-title">📷 Kamera</h4>
-          <div class="help-row"><span>🖱 Rechtsklick + Drag</span><span>Kamera drehen</span></div>
-          <div class="help-row"><span>🖱 Scrollrad</span><span>Zoom</span></div>
+          <div class="help-row"><span>🖱 Scrollrad</span><span>Näher / weiter weg</span></div>
         </div>
         <div class="help-section">
           <h4 class="help-section-title">💬 Interaktion</h4>
@@ -407,13 +409,15 @@ export function openPauseMenu() {
     Game.isPaused = true;
     Game.clock?.stop();
   }
-  setInputEnabled(false);
+  setInputEnabled(false, 'pause');
 
   // Animasi GSAP
   if (window.gsap) {
-    gsap.from('#pause-card-main', {
-      opacity: 0, scale: 0.9, duration: 0.3, ease: 'back.out(1.5)'
-    });
+    // fromTo, bukan from: setelah ditutup kartu tertinggal di opacity 0,
+    // sehingga 'from' akan menganimasikan 0 → 0 (menu pause tak terlihat)
+    gsap.fromTo('#pause-card-main',
+      { opacity: 0, scale: 0.9 },
+      { opacity: 1, scale: 1, duration: 0.3, ease: 'back.out(1.5)', overwrite: true });
   }
 }
 
@@ -424,14 +428,20 @@ export function closePauseMenu() {
   const overlay = document.getElementById('pause-menu');
   if (!overlay) return;
 
+  // Jangan hanya bergantung pada onComplete GSAP: bila animasinya tertunda
+  // (tab berat / GSAP gagal dimuat), WASD tetap terkunci. Cadangan timer
+  // memastikan game selalu lanjut.
+  let finished = false;
   const finish = () => {
+    if (finished || UI.isPauseMenuOpen) return;
+    finished = true;
     overlay.classList.add('hud-hidden');
     overlay.classList.remove('pause-active');
     if (Game.isPaused) {
       Game.isPaused = false;
       Game.clock?.start();
     }
-    setInputEnabled(true);
+    setInputEnabled(true, 'pause');
     window.dispatchEvent(new CustomEvent(EVENTS.GAME_RESUME));
   };
 
@@ -439,6 +449,7 @@ export function closePauseMenu() {
     gsap.to('#pause-card-main', {
       opacity: 0, scale: 0.9, duration: 0.2, ease: 'power2.in', onComplete: finish
     });
+    setTimeout(finish, 320);
   } else {
     finish();
   }

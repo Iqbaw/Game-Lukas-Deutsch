@@ -13,12 +13,14 @@
 //
 //        z=-36  Bank*        Sportplatz     Bibliothek  Tantes Haus  Häuser
 //               │            ~~~~~~~~~ Kanal ~~~~[Brücke]~~~~~~~~~~~~~~~~~~
-//        z=-6   Apotheke*  Schule* Bäckerei Kino │ Hotel  Tourist-Info
+//        z=-6   Apotheke*  Schule* Bäckerei Kino │ Tourist-Info  Hotel
 //        z= 0  ════════ Ampel ═══ Hauptstraße ═══╪═══════════════════════
 //               Kirche   │ EDEKA  P  Allee  Café │  Post   Restaurant
 //               Mall*    │                 Eis   │═══ Deichstraße ═════
 //               (Eingang)│   Stadtpark    Blumen │
-//        z=32  ~~~~~~~~[Alte Brücke → Omas Haus]~~~~~~~ Fluss ~~~~~~~~~~~~
+//        z=30  ~~~~~~~~[Alte Brücke]~~~~~~ Elbe (lebar, kapal) ~~ Elbblick ~~
+//              ~~~~~~~~[ → Omas Haus ]~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//        z=39   tepi seberang: jalan setapak, alang-alang, mercusuar
 //                    x=-24 (Schillerstr.)       x=18 (Bachstr.)
 //
 //   * Varian B menukar Apotheke↔Bank dan Schule↔Mall (lihat VARIANTS),
@@ -38,8 +40,8 @@ const WEST_X  = -24;   // Schillerstraße / Blumenstraße (N-S)
 const EAST_X  = 18;    // Bachstraße (N-S)
 const LIND_Z  = 23;    // Deichstraße (E-W, mulai dari Bachstraße ke timur, dekat Elbe)
 const CANAL_Z = -20;   // kanal utara (air z -21.8..-18.2)
-const RIVER_Z = 32.2;  // sungai selatan (air z 30.4..34.0)
-const CANAL_HW = 1.8, RIVER_HW = 1.8;
+const RIVER_Z = 34.7;  // Elbe di selatan (air z 30.4..39.0) — lebar, ada kapal
+const CANAL_HW = 1.8, RIVER_HW = 4.3;
 
 // Nama jalan & gedung yang bertukar per varian quest (lihat quest.js)
 const VARIANTS = {
@@ -700,13 +702,98 @@ function zebra(cx, cz, alongX) {
     else flat(2.2, 0.45, 0xeeeeee, cx, cz + i * 0.9, 0.032);
   }
 }
-function water(x0, z0, x1, z1) {
-  const m = new THREE.MeshStandardMaterial({ color: 0x3fb4e6, emissive: 0x0b5f8f, emissiveIntensity: 0.3, roughness: 0.25, metalness: 0.1 });
-  flat(x1 - x0, z1 - z0, m, (x0 + x1) / 2, (z0 + z1) / 2, 0.035);
-  // Kaimauer (stone embankment) di kedua tepi
-  for (const zz of [z0, z1]) add(Game.worldGroup, B(x1 - x0, 0.3, 0.45), mat(0x9a968c), (x0 + x1) / 2, 0.15, zz, false);
+// ── Air beranimasi (Elbe & kanal) ────────────────────────────────
+// Fungsi animasi kota (air, busa, kapal, mercusuar) — dijalankan lewat
+// World._updateRiver, dikosongkan setiap kali kota dibangun ulang.
+const _anims = [];
+const WATER = {
+  elbe:  { edge: '#5fc2e4', mid: '#3d9dd2', deep: '#2b79b5' },
+  kanal: { edge: '#66c6e6', mid: '#4aaad9', deep: '#3b93c9' },
+};
+function rng(seed) { let v = (seed * 9301 + 49297) % 233280 || 1; return () => (v = (v * 16807) % 2147483647) / 2147483647; }
+const isNightNow = () => document.body.classList.contains('is-night');
+
+/** Tekstur air yang bisa diulang ke samping: gradasi tepi→tengah + riak terang. */
+function waterCanvas(seed, colors) {
+  const W = 256, H = 256;
+  const c = document.createElement('canvas'); c.width = W; c.height = H;
+  const ctx = c.getContext('2d');
+  const r = rng(seed);
+  if (colors) {
+    const g = ctx.createLinearGradient(0, 0, 0, H);
+    g.addColorStop(0, colors.edge); g.addColorStop(0.22, colors.mid); g.addColorStop(0.5, colors.deep);
+    g.addColorStop(0.78, colors.mid); g.addColorStop(1, colors.edge);
+    ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+    for (let i = 0; i < 26; i++) {                   // bidang gelap lembut (kedalaman)
+      ctx.fillStyle = `rgba(10,50,95,${0.04 + r() * 0.07})`;
+      const x = r() * W, y = 30 + r() * (H - 60), rx = 18 + r() * 50, ry = 4 + r() * 9;
+      for (const dx of [0, -W, W]) { ctx.beginPath(); ctx.ellipse(x + dx, y, rx, ry, 0, 0, Math.PI * 2); ctx.fill(); }
+    }
+  }
+  for (let i = 0; i < (colors ? 64 : 44); i++) {     // riak terang
+    const x = r() * W, y = 6 + r() * (H - 12), len = 10 + r() * 44, th = 0.8 + r() * 1.9;
+    ctx.fillStyle = `rgba(235,250,255,${(colors ? 0.1 : 0.34) + r() * 0.3})`;
+    for (const dx of [0, -W]) { ctx.beginPath(); ctx.ellipse(x + dx + len / 2, y, len / 2, th, 0, 0, Math.PI * 2); ctx.fill(); }
+  }
+  const t = new THREE.CanvasTexture(c);
+  t.colorSpace = THREE.SRGBColorSpace;
+  t.wrapS = THREE.RepeatWrapping; t.wrapT = THREE.ClampToEdgeWrapping;
+  t.anisotropy = 4;
+  return t;
 }
-function bridge(cx, z0, z1, width, name) {
+
+/**
+ * Permukaan air beranimasi + kaimauer batu bertutup dan garis busa.
+ * o.gaps: [[x0, x1, sisi?], …] — kaimauer dipotong (jembatan, teras);
+ *         sisi -1 = tepi utara, +1 = tepi selatan, kosong = keduanya.
+ * o.south: 'wall' (default) atau 'natural' (tepi berpasir tanpa tembok).
+ */
+function water(x0, z0, x1, z1, o = {}) {
+  const w = x1 - x0, d = z1 - z0, cx = (x0 + x1) / 2, cz = (z0 + z1) / 2;
+  const tile = o.tile || 10, seed = o.seed || 11, flow = o.flow ?? 0.008;
+  const tex = waterCanvas(seed, o.colors || WATER.elbe);
+  tex.repeat.set(w / tile, 1);
+  const surf = flat(w, d, new THREE.MeshStandardMaterial({
+    map: tex, roughness: 0.3, metalness: 0.05, emissive: 0x0b5f8f, emissiveIntensity: 0.2,
+  }), cx, cz, 0.035);
+  surf.name = o.name || 'wasser';
+  const sh = waterCanvas(seed + 5, null);
+  sh.repeat.set(w / (tile * 0.7), 1);
+  const shMat = new THREE.MeshBasicMaterial({ map: sh, transparent: true, opacity: 0.42, depthWrite: false });
+  flat(w, d, shMat, cx, cz, 0.04);
+  const foamMat = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.26, depthWrite: false });
+  _anims.push((dt, t) => {
+    tex.offset.x = (t * flow) % 1;
+    sh.offset.x = (t * flow * 1.8) % 1;
+    const night = isNightNow();
+    shMat.opacity = (night ? 0.1 : 0.4) + Math.sin(t * 0.9) * 0.05;
+    foamMat.opacity = (night ? 0.07 : 0.24) + Math.sin(t * 1.6) * 0.06;
+  });
+  for (const [zz, side] of [[z0, -1], [z1, 1]]) {
+    const segs = [];
+    let xa = x0;
+    for (const [g0, g1, gs] of (o.gaps || []).slice().sort((a, b) => a[0] - b[0])) {
+      if (gs && gs !== side) continue;
+      if (g0 > xa) segs.push([xa, g0]);
+      xa = Math.max(xa, g1);
+    }
+    if (xa < x1) segs.push([xa, x1]);
+    const natural = side > 0 && o.south === 'natural';
+    for (const [a, b] of segs) {
+      const sw = b - a, sx = (a + b) / 2;
+      if (natural) {
+        flat(sw, 0.9, 0xd8c79c, sx, zz + 0.3, 0.03);                         // pasir
+        flat(sw, 0.3, foamMat, sx, zz - 0.12, 0.045);
+        continue;
+      }
+      add(Game.worldGroup, B(sw, 0.3, 0.46), mat(0x8c867b), sx, 0.15, zz, false);           // tembok
+      add(Game.worldGroup, B(sw, 0.07, 0.56), mat(0xbdb6a8), sx, 0.33, zz - side * 0.02, false); // batu tutup
+      flat(sw, 0.26, foamMat, sx, zz - side * 0.38, 0.045);                                  // busa
+    }
+  }
+  return surf;
+}
+function bridge(cx, z0, z1, width, name, o = {}) {
   const g = new THREE.Group();
   const len = z1 - z0;
   const deck = add(g, B(width, 0.26, len), mat(0xb59a74), 0, 0.13, 0);
@@ -716,6 +803,29 @@ function bridge(cx, z0, z1, width, name) {
     add(g, B(0.16, 0.12, len), mat(0xeae4d6), s * (width / 2 - 0.08), 1.0, 0);
     add(g, B(0.12, 0.08, len), mat(0xeae4d6), s * (width / 2 - 0.08), 0.6, 0, false);
     for (let zz = -len / 2 + 0.1; zz <= len / 2; zz += len / Math.round(len / 1.2)) add(g, B(0.16, 1.0, 0.16), mat(0xeae4d6), s * (width / 2 - 0.08), 0.5, zz);
+  }
+  // Tiang lentera di ujung jembatan — mudah dikenali, juga di malam hari
+  const ends = o.lanterns === 'north' ? [-1] : o.lanterns === false ? [] : [-1, 1];
+  for (const e of ends) for (const s of [-1, 1]) {
+    const px = s * (width / 2 + 0.05), pz = e * (len / 2 - 0.1);
+    add(g, B(0.3, 1.3, 0.3), mat(0x9a948a), px, 0.65, pz);
+    add(g, B(0.38, 0.08, 0.38), mat(0xbdb6a8), px, 1.34, pz, false);
+    const head = add(g, B(0.22, 0.3, 0.22), glow(0xffe2a0, 0.55), px, 1.55, pz, false);
+    add(g, new THREE.ConeGeometry(0.22, 0.18, 4), mat(0x2f3438), px, 1.79, pz, false).rotation.y = Math.PI / 4;
+    nightLamp(cx + px, (z0 + z1) / 2 + pz, 1.5, head, { pool: 2.2, power: 7, range: 7, color: 0xffd894 });
+  }
+  // Jembatan panjang (Alte Brücke di atas Elbe) bertumpu pada pilar batu
+  if (len > 7) {
+    const n = Math.round(len / 3.6);
+    for (let i = 1; i < n; i++) {
+      const pz = -len / 2 + i * len / n;
+      add(g, B(width + 0.3, 0.5, 0.8), mat(0x8c867b), 0, -0.12, pz, false);
+      for (const s of [-1, 1]) {                       // pemecah arus runcing
+        const cw = add(g, new THREE.CylinderGeometry(0.4, 0.4, 0.5, 4), mat(0x8c867b), s * (width / 2 + 0.15), -0.12, pz, false);
+        cw.rotation.y = Math.PI / 4;
+      }
+      add(g, B(width + 0.4, 0.08, 0.9), mat(0xbdb6a8), 0, 0.15, pz, false);
+    }
   }
   g.position.set(cx, 0, (z0 + z1) / 2);
   g.name = name;
@@ -761,44 +871,435 @@ function busStop(x, z) {
   blockPost(x - 2.4, z - 1.0, 0.12);
 }
 
-/** Titik pandang di tepi Elbe: pelataran batu, pagar, teropong, papan nama. */
-function elbblick(x, z) {
-  const g = new THREE.Group(); g.name = 'elbblick';
-  const plaza = add(g, new THREE.CylinderGeometry(2.3, 2.4, 0.1, 28), mat(0xbcb2a0), 0, 0.05, 0, false);
-  World.walkables.push(plaza);
-  // Pagar setengah lingkaran menghadap sungai (selatan)
-  for (let i = 0; i <= 8; i++) {
-    const a = Math.PI * (i / 8);
-    add(g, B(0.1, 0.9, 0.1), mat(0x3a3f45), Math.cos(a) * 2.25, 0.45, Math.sin(a) * 0.9 + 1.1, false);
-  }
-  add(g, B(4.6, 0.08, 0.08), mat(0x3a3f45), 0, 0.92, 1.1 + 0.45, false);
-  // Teropong koin (Fernrohr)
-  add(g, new THREE.CylinderGeometry(0.09, 0.12, 1.0, 8), mat(0x2f5f8a), 0.8, 0.5, 0.9);
-  const scope = add(g, new THREE.CylinderGeometry(0.13, 0.17, 0.75, 10), mat(0x3f7fb5), 0.8, 1.15, 1.0);
-  scope.rotation.x = Math.PI / 2 - 0.25;
-  add(g, new THREE.SphereGeometry(0.16, 8, 6), mat(0x2f5f8a), 0.8, 1.05, 0.9, false);
-  // Papan nama
-  const s = signBoard('Elbblick', 1.8, 0.5, { bg: '#1f4f96', fg: '#ffffff', border: '#ffffff', both: true });
-  s.position.set(-1.4, 1.65, -1.2); g.add(s);
-  add(g, new THREE.CylinderGeometry(0.05, 0.05, 1.4, 6), mat(0x8a8f96), -1.4, 0.7, -1.2, false);
-  g.position.set(x, 0, z);
-  Game.worldGroup.add(g);
-  blockPost(x + 0.8, z + 0.9, 0.2);
-  blockPost(x - 1.4, z - 1.2, 0.12);
+// ── Tekstur kecil untuk Elbblick ──────────────────────────────────
+function canvasTex(w, h, draw) {
+  const c = document.createElement('canvas'); c.width = w; c.height = h;
+  draw(c.getContext('2d'), w, h);
+  const t = new THREE.CanvasTexture(c);
+  t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4;
+  return t;
+}
+/** Bendera Hamburg: merah dengan benteng putih bermenara tiga. */
+function hamburgFlagTex() {
+  return canvasTex(192, 128, (x, W, H) => {
+    x.fillStyle = '#c8102e'; x.fillRect(0, 0, W, H);
+    x.fillStyle = '#ffffff';
+    x.fillRect(52, 70, 88, 34);                                  // tembok
+    x.fillRect(84, 34, 24, 40);                                  // menara tengah
+    x.fillRect(58, 50, 18, 24); x.fillRect(116, 50, 18, 24);     // menara samping
+    for (const [tx, ty, tw] of [[84, 34, 24], [58, 50, 18], [116, 50, 18]]) {
+      for (let i = 0; i < 3; i++) x.fillRect(tx + i * tw / 3 + 1, ty - 7, tw / 3 - 3, 8);   // kerucut/gerigi
+    }
+    x.fillStyle = '#c8102e';
+    x.beginPath(); x.arc(96, 104, 11, Math.PI, 0); x.fillRect(85, 92, 22, 12); x.fill();       // gerbang
+  });
+}
+/** Mawar angin untuk lantai teras. */
+function compassTex() {
+  return canvasTex(256, 256, (x, W) => {
+    const c = W / 2;
+    x.fillStyle = '#d9cdb5'; x.fillRect(0, 0, W, W);
+    x.strokeStyle = '#8a7a5e'; x.lineWidth = 6; x.beginPath(); x.arc(c, c, 118, 0, Math.PI * 2); x.stroke();
+    x.lineWidth = 2; x.beginPath(); x.arc(c, c, 100, 0, Math.PI * 2); x.stroke();
+    for (let i = 0; i < 8; i++) {
+      const a = i * Math.PI / 4, long = i % 2 === 0 ? 96 : 60;
+      x.fillStyle = i % 2 === 0 ? '#2b5f8e' : '#8a7a5e';
+      x.beginPath();
+      x.moveTo(c + Math.sin(a) * long, c - Math.cos(a) * long);
+      x.lineTo(c + Math.sin(a + 0.32) * 18, c - Math.cos(a + 0.32) * 18);
+      x.lineTo(c, c);
+      x.lineTo(c + Math.sin(a - 0.32) * 18, c - Math.cos(a - 0.32) * 18);
+      x.closePath(); x.fill();
+    }
+    x.fillStyle = '#c8102e'; x.beginPath(); x.arc(c, c, 10, 0, Math.PI * 2); x.fill();
+    x.fillStyle = '#3a2e1e'; x.font = 'bold 28px Georgia, serif'; x.textAlign = 'center'; x.textBaseline = 'middle';
+    x.fillText('N', c, 18); x.fillText('S', c, W - 18); x.fillText('O', W - 18, c); x.fillText('W', 18, c);
+  });
+}
+/** Papan informasi Elbblick: judul, gambar sungai dengan kapal & mercusuar. */
+function elbInfoTex() {
+  return canvasTex(384, 256, (x, W, H) => {
+    x.fillStyle = '#f3ead6'; x.fillRect(0, 0, W, H);
+    x.fillStyle = '#1f4f96'; x.fillRect(0, 0, W, 58);
+    x.fillStyle = '#ffffff'; x.font = 'bold 40px Georgia, serif'; x.textAlign = 'center'; x.textBaseline = 'middle';
+    x.fillText('ELBBLICK', W / 2, 31);
+    x.fillStyle = '#9fd3ee'; x.fillRect(22, 74, W - 44, 120);                         // langit
+    x.fillStyle = '#3d8ec4'; x.fillRect(22, 150, W - 44, 44);                         // Elbe
+    x.fillStyle = '#ffffff';
+    for (let i = 0; i < 9; i++) x.fillRect(32 + i * 38, 166 + (i % 2) * 10, 20, 3);  // riak
+    x.fillStyle = '#7bb661'; x.fillRect(22, 138, W - 44, 12);                          // tepi seberang
+    x.fillStyle = '#c0392b'; x.fillRect(300, 92, 14, 46); x.fillStyle = '#ffffff'; x.fillRect(300, 104, 14, 10); x.fillRect(300, 124, 14, 8);
+    x.fillStyle = '#ffd34d'; x.fillRect(298, 84, 18, 8);                              // mercusuar
+    x.fillStyle = '#1d3557'; x.beginPath(); x.moveTo(70, 150); x.lineTo(190, 150); x.lineTo(176, 166); x.lineTo(84, 166); x.closePath(); x.fill();
+    x.fillStyle = '#ffffff'; x.fillRect(96, 132, 66, 18); x.fillRect(116, 122, 26, 10);   // kapal feri
+    x.fillStyle = '#3a2e1e'; x.font = '20px Georgia, serif';
+    x.fillText('Die Elbe fließt bis zur Nordsee.', W / 2, 220);
+    x.font = 'italic 16px Georgia, serif';
+    x.fillText('Sungai Elbe mengalir sampai Laut Utara', W / 2, 243);
+  });
 }
 
-/** Perahu kecil di sungai (pemandangan Elbe). */
-function boat(x, z) {
-  const g = new THREE.Group(); g.name = 'boot';
-  add(g, B(4.2, 0.55, 1.3), mat(0xf2f2ee), 0, 0.3, 0);
-  add(g, B(4.3, 0.12, 1.36), mat(0xc0392b), 0, 0.12, 0, false);
-  const bow = add(g, new THREE.ConeGeometry(0.66, 1.1, 4), mat(0xf2f2ee), 2.55, 0.3, 0);
-  bow.rotation.set(0, Math.PI / 4, -Math.PI / 2); bow.scale.set(1, 1, 0.75);
-  add(g, B(1.6, 0.7, 1.0), mat(0x2e5a88), -0.5, 0.9, 0);
-  add(g, B(1.4, 0.3, 1.02), glassMat(), -0.5, 1.0, 0, false);
-  add(g, new THREE.CylinderGeometry(0.05, 0.05, 1.3, 6), mat(0x555555), 0.6, 1.2, 0, false);
+/**
+ * Elbblick — teras setengah lingkaran yang menjorok ke Elbe: lantai batu
+ * dengan mawar angin, pagar besi melengkung, dua teropong koin, tiang
+ * bendera Hamburg, papan informasi, dan lentera di kedua sisi masuk.
+ * cx = pusat, zq = garis kaimauer utara (riverN).
+ */
+function elbblick(cx, zq) {
+  const g = new THREE.Group(); g.name = 'elbblick';
+  const R = 2.6;
+  const HALF = [-Math.PI / 2, Math.PI];      // setengah lingkaran ke arah +z (sungai)
+  add(g, new THREE.CylinderGeometry(R + 0.2, R + 0.4, 0.55, 40, 1, false, ...HALF), mat(0x8c867b), 0, -0.22, 0, false);
+  const pav = canvasTex(256, 256, (x, W) => {
+    x.fillStyle = '#d6cbb4'; x.fillRect(0, 0, W, W);
+    x.strokeStyle = 'rgba(120,105,80,0.45)'; x.lineWidth = 2;
+    for (let r = 20; r < 180; r += 22) { x.beginPath(); x.arc(W / 2, W / 2, r, 0, Math.PI * 2); x.stroke(); }
+    for (let i = 0; i < 36; i++) { const a = i * Math.PI / 18; x.beginPath(); x.moveTo(W / 2 + Math.cos(a) * 40, W / 2 + Math.sin(a) * 40); x.lineTo(W / 2 + Math.cos(a) * 180, W / 2 + Math.sin(a) * 180); x.stroke(); }
+  });
+  const deck = add(g, new THREE.CylinderGeometry(R, R, 0.06, 40, 1, false, ...HALF),
+    new THREE.MeshLambertMaterial({ map: pav }), 0, 0.05, 0, false);
+  World.walkables.push(deck);
+  const rose = new THREE.Mesh(new THREE.CircleGeometry(1.05, 36), new THREE.MeshLambertMaterial({ map: compassTex() }));
+  rose.rotation.x = -Math.PI / 2; rose.position.set(0, 0.085, 1.05); g.add(rose);
+  // Tepi batu (coping) melengkung + pagar besi dua palang
+  add(g, new THREE.CylinderGeometry(R + 0.1, R + 0.1, 0.24, 40, 1, true, ...HALF), mat(0xa8a092), 0, 0.12, 0, false);
+  const cap = new THREE.Mesh(new THREE.RingGeometry(R - 0.08, R + 0.16, 40, 1, Math.PI, Math.PI), mat(0xbdb6a8));
+  cap.material.side = THREE.DoubleSide;
+  cap.rotation.x = -Math.PI / 2; cap.position.y = 0.245; g.add(cap);
+  const iron = mat(0x2f3438);
+  const RP = R + 0.02;
+  for (let i = 0; i <= 12; i++) {
+    const a = -Math.PI / 2 + i * Math.PI / 12;
+    add(g, new THREE.CylinderGeometry(0.035, 0.035, 0.95, 6), iron, Math.sin(a) * RP, 0.72, Math.cos(a) * RP, false);
+  }
+  for (const y of [1.18, 0.72]) {
+    const rail = add(g, new THREE.TorusGeometry(RP, y > 1 ? 0.04 : 0.025, 6, 48, Math.PI), iron, 0, y, 0, false);
+    rail.rotation.x = Math.PI / 2;
+  }
+  // Teropong koin, menghadap sungai
+  for (const a of [-0.55, 0.55]) {
+    const px = Math.sin(a) * 1.95, pz = Math.cos(a) * 1.95;
+    const t = new THREE.Group();
+    add(t, new THREE.CylinderGeometry(0.07, 0.12, 0.95, 8), mat(0x2e6f78), 0, 0.5, 0);
+    add(t, new THREE.SphereGeometry(0.13, 10, 8), mat(0x2e6f78), 0, 1.0, 0, false);
+    const body = add(t, new THREE.CylinderGeometry(0.17, 0.12, 0.62, 10), mat(0x3f97a3), 0, 1.12, 0.08);
+    body.rotation.x = Math.PI / 2 - 0.22;
+    for (const s of [-1, 1]) add(t, new THREE.CylinderGeometry(0.045, 0.045, 0.14, 8), mat(0x1d2a2e), s * 0.06, 1.05, -0.24, false).rotation.x = Math.PI / 2;
+    t.position.set(px, 0.08, pz); t.rotation.y = a;
+    g.add(t);
+    blockPost(cx + px, zq + pz, 0.2);
+  }
+  // Tiang bendera (timur) dengan bendera Hamburg yang berkibar
+  const pole = new THREE.Group();
+  add(pole, new THREE.CylinderGeometry(0.045, 0.06, 4.4, 8), mat(0xf2f2ee), 0, 2.2, 0);
+  add(pole, new THREE.SphereGeometry(0.08, 8, 6), mat(0xd4af37), 0, 4.45, 0, false);
+  const flagMat = new THREE.MeshLambertMaterial({ map: hamburgFlagTex(), side: THREE.DoubleSide });
+  const flagGeo = new THREE.PlaneGeometry(1.2, 0.8, 8, 1); flagGeo.translate(0.6, 0, 0);
+  const flag = new THREE.Mesh(flagGeo, flagMat); flag.position.set(0.05, 3.95, 0); pole.add(flag);
+  const fp = flagGeo.attributes.position, fx0 = Float32Array.from(fp.array);
+  pole.position.set(R + 0.55, 0, -0.55); g.add(pole);
+  blockPost(cx + R + 0.55, zq - 0.55, 0.14);
+  _anims.push((dt, t) => {
+    for (let i = 0; i < fp.count; i++) {
+      const x = fx0[i * 3];
+      fp.setZ(i, Math.sin(t * 3.2 - x * 4) * 0.09 * x);
+    }
+    fp.needsUpdate = true;
+  });
+  // Papan informasi (barat), condong ke arah kamera supaya terbaca
+  const info = new THREE.Group();
+  for (const s of [-1, 1]) add(info, new THREE.CylinderGeometry(0.05, 0.05, 1.7, 6), mat(0x5a4630), s * 0.86, 0.85, 0);
+  add(info, B(1.92, 1.28, 0.08), mat(0x5a4630), 0, 1.35, 0, false);
+  const board = new THREE.Mesh(new THREE.PlaneGeometry(1.8, 1.2), new THREE.MeshBasicMaterial({ map: elbInfoTex() }));
+  board.position.set(0, 1.35, 0.045); info.add(board);
+  add(info, B(2.1, 0.08, 0.3), mat(0x5a4630), 0, 2.03, 0.05, false);
+  info.position.set(-R - 1.0, 0, -0.75); info.rotation.y = 0.45; g.add(info);
+  blockBox(cx - R - 1.95, zq - 1.1, cx - R - 0.05, zq - 0.4, 'elbblick-info', 2);
+  // Lentera di kedua ujung pagar (pintu masuk teras)
+  for (const s of [-1, 1]) {
+    const l = new THREE.Group();
+    add(l, B(0.32, 0.5, 0.32), mat(0x9a948a), 0, 0.25, 0);
+    add(l, new THREE.CylinderGeometry(0.05, 0.06, 1.4, 6), iron, 0, 1.2, 0);
+    const head = add(l, new THREE.CylinderGeometry(0.15, 0.11, 0.32, 6), glow(0xffe2a0, 0.55), 0, 2.02, 0, false);
+    add(l, new THREE.ConeGeometry(0.2, 0.2, 6), iron, 0, 2.28, 0, false);
+    l.position.set(s * (R + 0.05), 0, 0.12); g.add(l);
+    blockPost(cx + s * (R + 0.05), zq + 0.12, 0.22);
+    nightLamp(cx + s * (R + 0.05), zq + 0.12, 2.0, head, { pool: 2.2, power: 8, range: 7, color: 0xffd894 });
+  }
+  // Pot bunga di depan papan & tiang bendera
+  for (const [px, pz] of [[-R - 2.25, -0.2], [R + 1.3, -0.25]]) {
+    add(g, new THREE.CylinderGeometry(0.32, 0.26, 0.4, 8), mat(0x9a5a3a), px, 0.2, pz);
+    for (let i = 0; i < 7; i++) add(g, new THREE.IcosahedronGeometry(0.1, 0), mat([0xe84a5f, 0xffd34d, 0xffffff][i % 3]),
+      px + Math.cos(i * 0.9) * 0.18, 0.46 + (i % 2) * 0.06, pz + Math.sin(i * 0.9) * 0.18, false);
+    blockPost(cx + px, zq + pz, 0.32);
+  }
+  g.position.set(cx, 0, zq);
+  Game.worldGroup.add(g);
+  // Pagar teras = tumbukan: tiang rapat di sepanjang busur
+  for (let i = 0; i <= 12; i++) {
+    const a = -Math.PI / 2 + i * Math.PI / 12;
+    blockPost(cx + Math.sin(a) * (R + 0.15), zq + Math.cos(a) * (R + 0.15), 0.2);
+  }
+}
+
+// ── Pagar kaimauer & dermaga ──────────────────────────────────────
+/** Pagar besi rendah di atas kaimauer (satu InstancedMesh per ruas). */
+function quayRail(x0, x1, z, gaps = []) {
+  const iron = mat(0x2f3a3a);
+  const segs = [];
+  let xa = x0;
+  for (const [g0, g1] of gaps.slice().sort((a, b) => a[0] - b[0])) { if (g0 > xa) segs.push([xa, g0]); xa = Math.max(xa, g1); }
+  if (xa < x1) segs.push([xa, x1]);
+  const posts = [];
+  for (const [a, b] of segs) {
+    const n = Math.max(1, Math.round((b - a) / 1.6));
+    for (let i = 0; i <= n; i++) posts.push(a + (b - a) * i / n);
+    for (const y of [1.16, 0.78]) add(Game.worldGroup, B(b - a, y > 1 ? 0.07 : 0.04, y > 1 ? 0.08 : 0.04), iron, (a + b) / 2, y, z, false);
+  }
+  const inst = new THREE.InstancedMesh(new THREE.CylinderGeometry(0.04, 0.045, 0.82, 6), iron, posts.length);
+  const m4 = new THREE.Matrix4();
+  posts.forEach((px, i) => { m4.makeTranslation(px, 0.78, z); inst.setMatrixAt(i, m4); });
+  Game.worldGroup.add(inst);
+}
+
+/** Ponton Fähre (dermaga apung) dengan jembatan penghubung & halte kecil. */
+function pontoon(cx, zq, label) {
+  const g = new THREE.Group(); g.name = 'anleger';
+  const L = 5;
+  add(g, B(L, 0.34, 1.3), mat(0x56616b), 0, 0.12, 1.7, false);                 // badan apung
+  add(g, B(L - 0.1, 0.04, 1.2), mat(0x9a8668), 0, 0.31, 1.7, false);           // lantai papan
+  add(g, B(L, 0.08, 0.08), mat(0xf2c230), 0, 0.33, 2.33, false);                // tepi kuning
+  for (const s of [-1, 1]) add(g, new THREE.CylinderGeometry(0.08, 0.1, 0.32, 8), mat(0x222222), s * (L / 2 - 0.35), 0.46, 2.2, false);
+  // Jembatan penghubung miring dari kaimauer
+  const ramp = add(g, B(1.0, 0.06, 1.3), mat(0x7a7f86), 0, 0.36, 0.45, false);
+  ramp.rotation.x = 0.05;
+  for (const s of [-1, 1]) add(g, B(0.05, 0.05, 1.3), mat(0xeeeeee), s * 0.5, 0.95, 0.45, false);
+  // Halte beratap di ponton
+  for (const sx of [-1.6, 0.2]) for (const sz of [1.25, 2.1]) add(g, B(0.08, 1.7, 0.08), mat(0xeeeeee), sx, 1.18, sz, false);
+  add(g, B(2.2, 0.1, 1.15), mat(0x1f4f96), -0.7, 2.06, 1.68, false);
+  add(g, B(1.7, 0.08, 0.32), mat(0x9a6a3a), -0.7, 0.72, 1.35, false);           // bangku
+  const sign = signBoard(`Fähre · ${label}`, 1.9, 0.38, { bg: '#1f4f96', fg: '#ffffff', both: true });
+  sign.position.set(-0.7, 2.38, 1.68); g.add(sign);
+  // Pelampung oranye
+  const ring = add(g, new THREE.TorusGeometry(0.2, 0.06, 6, 14), mat(0xff7a1a), 1.6, 0.85, 1.12, false);
+  add(g, B(0.06, 0.9, 0.06), mat(0xeeeeee), 1.6, 0.75, 1.08, false);
+  ring.rotation.y = 0;
+  g.position.set(cx, 0, zq);
+  Game.worldGroup.add(g);
+  // Rantai penutup di ujung jembatan (pemain tetap di promenade)
+  for (const s of [-1, 1]) add(Game.worldGroup, new THREE.CylinderGeometry(0.06, 0.06, 0.8, 6), mat(0x2f3a3a), cx + s * 0.55, 0.4, zq - 0.25, false);
+  add(Game.worldGroup, B(1.1, 0.05, 0.05), mat(0xd62828), cx, 0.62, zq - 0.25, false);
+}
+
+// ── Kapal-kapal di Elbe ───────────────────────────────────────────
+/** Feri pelabuhan (dua ujung sama) — lambung biru tua, kabin putih, dek atas. */
+function makeFerry(name = 'Elbe 7') {
+  const g = new THREE.Group(); g.name = 'faehre';
+  const L = 4.6, Bw = 1.5;
+  const hull = mat(0x1d3557), white = mat(0xf4f4f0);
+  add(g, B(L, 0.55, Bw), hull, 0, 0.12, 0);
+  for (const s of [-1, 1]) {
+    const end = add(g, new THREE.CylinderGeometry(Bw / 2, Bw / 2 - 0.12, 0.55, 14, 1, false, s > 0 ? 0 : Math.PI, Math.PI), hull, s * L / 2, 0.12, 0);
+    end.scale.x = 1.25;
+    const band = add(g, new THREE.CylinderGeometry(Bw / 2 + 0.01, Bw / 2 + 0.01, 0.09, 14, 1, false, s > 0 ? 0 : Math.PI, Math.PI), mat(0xc0392b), s * L / 2, -0.06, 0, false);
+    band.scale.x = 1.25;
+  }
+  add(g, B(L + 0.02, 0.09, Bw + 0.02), mat(0xc0392b), 0, -0.06, 0, false);       // garis air merah
+  add(g, B(L + 0.02, 0.07, Bw + 0.02), white, 0, 0.36, 0, false);                 // garis putih
+  add(g, B(L + 1.0, 0.05, Bw - 0.1), mat(0x7a6a55), 0, 0.42, 0, false);           // dek
+  // Kabin panjang berjendela lebar
+  add(g, B(3.4, 0.8, Bw - 0.25), white, 0, 0.84, 0);
+  for (const s of [-1, 1]) add(g, B(3.0, 0.36, 0.02), glassMat(), 0, 0.9, s * (Bw - 0.25) / 2 + s * 0.012, false);
+  for (const s of [-1, 1]) add(g, B(0.02, 0.36, 0.9), glassMat(), s * 1.71, 0.9, 0, false);
+  // Dek atas dengan pagar + ruang kemudi di tengah
+  add(g, B(3.6, 0.06, Bw - 0.15), mat(0xdedcd4), 0, 1.27, 0, false);
+  for (const s of [-1, 1]) {
+    add(g, B(3.6, 0.04, 0.04), white, 0, 1.58, s * (Bw - 0.2) / 2, false);
+    for (let i = -4; i <= 4; i++) add(g, B(0.03, 0.3, 0.03), white, i * 0.44, 1.43, s * (Bw - 0.2) / 2, false);
+  }
+  add(g, B(1.0, 0.6, 0.8), white, 0, 1.6, 0);
+  add(g, B(1.02, 0.24, 0.82), glassMat(), 0, 1.72, 0, false);
+  add(g, B(1.2, 0.07, 0.95), mat(0x1d3557), 0, 1.93, 0, false);
+  add(g, new THREE.CylinderGeometry(0.03, 0.03, 0.9, 6), mat(0x555555), 0, 2.38, 0, false);
+  add(g, new THREE.SphereGeometry(0.06, 6, 4), new THREE.MeshBasicMaterial({ color: 0xfff6d0 }), 0, 2.85, 0, false);
+  // Bangku penumpang di dek atas
+  for (const x of [-1.25, 1.25]) add(g, B(0.7, 0.14, 0.9), mat(0x9a6a3a), x, 1.38, 0, false);
+  // Pelampung & papan nama di kedua sisi
+  for (const s of [-1, 1]) {
+    const lr = add(g, new THREE.TorusGeometry(0.13, 0.04, 6, 12), mat(0xff7a1a), 0.9, 0.86, s * ((Bw - 0.25) / 2 + 0.05), false);
+    lr.rotation.y = 0;
+    const plate = signPlane(name, 1.0, 0.2, { bg: '#1d3557', fg: '#ffffff' });
+    plate.position.set(-0.4, 0.15, s * (Bw / 2 + 0.012)); if (s < 0) plate.rotation.y = Math.PI;
+    g.add(plate);
+  }
+  // Lampu navigasi merah/hijau
+  for (const s of [-1, 1]) add(g, new THREE.SphereGeometry(0.05, 6, 4), new THREE.MeshBasicMaterial({ color: s < 0 ? 0xff3b30 : 0x34c759 }), 0, 1.98, s * 0.5, false);
+  return g;
+}
+
+/** Perahu layar kecil berlabuh, layar putih bergaris merah. */
+function makeSailboat() {
+  const g = new THREE.Group(); g.name = 'segelboot';
+  add(g, B(1.7, 0.35, 0.78), mat(0xf7f7f2), 0, 0.12, 0);
+  const bow = add(g, new THREE.CylinderGeometry(0.39, 0.3, 0.35, 10, 1, false, 0, Math.PI), mat(0xf7f7f2), 0.85, 0.12, 0);
+  bow.scale.x = 1.6;
+  add(g, B(1.72, 0.06, 0.8), mat(0x1f4f96), 0, -0.02, 0, false);
+  add(g, B(1.5, 0.04, 0.6), mat(0xb08a5a), 0.1, 0.31, 0, false);
+  add(g, new THREE.CylinderGeometry(0.03, 0.035, 2.9, 6), mat(0xdddddd), 0.15, 1.75, 0, false);
+  add(g, new THREE.CylinderGeometry(0.025, 0.025, 1.3, 6), mat(0xdddddd), -0.5, 0.75, 0, false).rotation.z = Math.PI / 2;
+  const sailMat = new THREE.MeshLambertMaterial({ color: 0xfbfbf6, side: THREE.DoubleSide });
+  const main = new THREE.Shape(); main.moveTo(0, 0); main.lineTo(-1.25, 0); main.lineTo(0, 2.6); main.closePath();
+  const ms = new THREE.Mesh(new THREE.ShapeGeometry(main), sailMat); ms.position.set(0.12, 0.8, 0); g.add(ms);
+  const jib = new THREE.Shape(); jib.moveTo(0, 0); jib.lineTo(0.95, 0); jib.lineTo(0, 2.2); jib.closePath();
+  const js = new THREE.Mesh(new THREE.ShapeGeometry(jib), sailMat); js.position.set(0.2, 0.75, 0.01); g.add(js);
+  const stripe = new THREE.Shape(); stripe.moveTo(0, 0.55); stripe.lineTo(-0.99, 0.55); stripe.lineTo(-0.92, 0.7); stripe.lineTo(0, 0.7); stripe.closePath();
+  const st = new THREE.Mesh(new THREE.ShapeGeometry(stripe), new THREE.MeshLambertMaterial({ color: 0xc0392b, side: THREE.DoubleSide }));
+  st.position.set(0.12, 0.8, 0.005); g.add(st);
+  return g;
+}
+
+/** Barkasse — perahu wisata pelabuhan: lambung kayu, kabin rendah, tenda belang. */
+function makeBarkasse() {
+  const g = new THREE.Group(); g.name = 'barkasse';
+  const L = 3.0, Bw = 0.95;
+  const wood = mat(0x6b4426);
+  add(g, B(L, 0.45, Bw), wood, 0, 0.12, 0);
+  for (const s of [-1, 1]) {
+    const e = add(g, new THREE.CylinderGeometry(Bw / 2, Bw / 2 - 0.08, 0.45, 12, 1, false, s > 0 ? 0 : Math.PI, Math.PI), wood, s * L / 2, 0.12, 0);
+    e.scale.x = s > 0 ? 1.7 : 0.7;
+  }
+  add(g, B(L + 0.02, 0.1, Bw + 0.02), mat(0x1a1a1a), 0, -0.05, 0, false);
+  add(g, B(L + 0.02, 0.05, Bw + 0.02), mat(0xf4f4f0), 0, 0.33, 0, false);
+  add(g, B(1.3, 0.42, 0.8), mat(0xf4f4f0), 0.45, 0.55, 0);
+  for (const s of [-1, 1]) add(g, B(1.1, 0.18, 0.02), glassMat(), 0.45, 0.6, s * 0.41, false);
+  add(g, B(1.4, 0.05, 0.9), mat(0x7a2f2f), 0.45, 0.78, 0, false);
+  // Tenda belang merah-putih di dek belakang
+  for (let i = 0; i < 4; i++) add(g, B(0.25, 0.04, 0.86), mat(i % 2 ? 0xffffff : 0xd62828), -0.55 - i * 0.25, 0.92, 0, false);
+  for (const sx of [-0.45, -1.4]) for (const sz of [-0.38, 0.38]) add(g, B(0.03, 0.6, 0.03), mat(0xeeeeee), sx, 0.62, sz, false);
+  add(g, new THREE.CylinderGeometry(0.02, 0.02, 0.6, 6), mat(0xdddddd), -1.5, 0.7, 0, false);
+  const fl = new THREE.Mesh(new THREE.PlaneGeometry(0.34, 0.22), new THREE.MeshLambertMaterial({ map: hamburgFlagTex(), side: THREE.DoubleSide }));
+  fl.position.set(-1.67, 0.9, 0); g.add(fl);
+  return g;
+}
+
+/** Feri bolak-balik antar dua ponton: keluar ke jalur, melaju, merapat, menunggu. */
+function runFerry(g, xa, xb, dockZ, laneZ) {
+  const T = Math.abs(xb - xa) / 1.8 + 5, WAIT = 7;
+  let phase = 'wait', time = 3, dir = 1;
+  _anims.push((dt, t) => {
+    time += dt;
+    let x = dir > 0 ? xa : xb, z = dockZ, yaw = 0;
+    if (phase === 'wait' && time > WAIT) { phase = 'go'; time = 0; }
+    if (phase === 'go') {
+      const s = Math.min(1, time / T);
+      const e = s * s * (3 - 2 * s);
+      x = dir > 0 ? xa + (xb - xa) * e : xb + (xa - xb) * e;
+      const k = Math.min(1, Math.min(s, 1 - s) / 0.2);
+      z = dockZ + (laneZ - dockZ) * k * k * (3 - 2 * k);
+      yaw = (s < 0.2 ? 1 : s > 0.8 ? -1 : 0) * Math.sin(Math.PI * k) * 0.12 * -dir;
+      if (s >= 1) { phase = 'wait'; time = 0; dir = -dir; }
+    }
+    g.position.set(x, Math.sin(t * 1.6) * 0.03, z);
+    g.rotation.set(0, yaw, Math.sin(t * 1.1) * 0.015);
+  });
+}
+
+/** Perahu berkeliling pada lintasan "stadion" (dua jalur lurus + dua putaran). */
+function runLoop(g, x0, x1, zA, zB, speed) {
+  const r = Math.abs(zB - zA) / 2, zm = (zA + zB) / 2, straight = x1 - x0, arc = Math.PI * r;
+  const total = 2 * straight + 2 * arc;
+  let d = straight * 0.35;
+  _anims.push((dt, t) => {
+    d = (d + dt * speed) % total;
+    let x, z, h;
+    if (d < straight) { x = x0 + d; z = zA; h = 0; }
+    else if (d < straight + arc) { const a = (d - straight) / r; x = x1 + Math.sin(a) * r; z = zm - Math.cos(a) * r * Math.sign(zm - zA); h = -a * Math.sign(zB - zA); }
+    else if (d < 2 * straight + arc) { x = x1 - (d - straight - arc); z = zB; h = Math.PI; }
+    else { const a = (d - 2 * straight - arc) / r; x = x0 - Math.sin(a) * r; z = zm + Math.cos(a) * r * Math.sign(zm - zA); h = Math.PI - a * Math.sign(zB - zA); }
+    g.position.set(x, Math.sin(t * 2.1) * 0.03, z);
+    g.rotation.set(0, h, Math.sin(t * 1.4) * 0.03);
+  });
+}
+
+/** Mercusuar merah-putih di tepi seberang; malam hari cahayanya berputar. */
+function lighthouse(x, z) {
+  const g = new THREE.Group(); g.name = 'leuchtturm';
+  add(g, new THREE.CylinderGeometry(1.1, 1.3, 0.5, 10), mat(0x8c867b), 0, 0.25, 0);
+  const rings = 5, hTower = 3.8;
+  for (let i = 0; i < rings; i++) {
+    const y0 = 0.5 + i * hTower / rings, r0 = 0.62 - i * 0.05, r1 = 0.62 - (i + 1) * 0.05;
+    add(g, new THREE.CylinderGeometry(r1, r0, hTower / rings, 12), mat(i % 2 ? 0xffffff : 0xd62828), 0, y0 + hTower / rings / 2, 0);
+  }
+  add(g, new THREE.CylinderGeometry(0.6, 0.6, 0.08, 12), mat(0x2f3438), 0, 4.34, 0, false);
+  for (let i = 0; i < 10; i++) { const a = i / 10 * Math.PI * 2; add(g, B(0.03, 0.3, 0.03), mat(0x2f3438), Math.cos(a) * 0.56, 4.5, Math.sin(a) * 0.56, false); }
+  const lampHead = add(g, new THREE.CylinderGeometry(0.3, 0.3, 0.45, 10), glow(0xfff1b0, 0.5), 0, 4.62, 0, false);
+  add(g, new THREE.ConeGeometry(0.42, 0.4, 10), mat(0xd62828), 0, 5.05, 0, false);
+  add(g, new THREE.SphereGeometry(0.06, 6, 4), mat(0x2f3438), 0, 5.28, 0, false);
+  add(g, B(0.3, 0.5, 0.05), mat(0x5a3a22), 0, 0.75, 0.62, false);                // pintu
+  // Berkas cahaya (hanya malam): kerucut tipis yang berputar pelan
+  const beamMat = new THREE.MeshBasicMaterial({ color: 0xfff1b0, transparent: true, opacity: 0.16, depthWrite: false, side: THREE.DoubleSide, blending: THREE.AdditiveBlending });
+  const beamGeo = new THREE.ConeGeometry(0.9, 7, 12, 1, true); beamGeo.rotateZ(Math.PI / 2); beamGeo.translate(3.5, 0, 0);
+  const beam = new THREE.Mesh(beamGeo, beamMat); beam.position.set(0, 4.62, 0); beam.visible = false; g.add(beam);
   g.position.set(x, 0, z);
   Game.worldGroup.add(g);
+  blockPost(x, z, 1.3);
+  nightLamp(x, z, 4.6, lampHead, { noPool: true, power: 6, range: 9, color: 0xfff1b0 });
+  _anims.push((dt, t) => {
+    const night = isNightNow();
+    beam.visible = night;
+    if (night) beam.rotation.y = t * 0.6;
+  });
+}
+
+/**
+ * Tepi seberang Elbe: pasir, batu & alang-alang, jalan setapak dengan
+ * lentera rendah, bangku, beberapa pohon rendah (tidak menutupi sungai),
+ * jalan tanah lanjutan Alte Brücke ke arah rumah Oma, dan mercusuar.
+ */
+function elbeSouthBank(riverS, roadX) {
+  const r = rng(77);
+  flat(140, 1.3, 0xd9cdb2, 0, riverS + 2.6, 0.028);                              // jalan setapak
+  flat(3.2, 30, 0xc9b48a, roadX, riverS + 15.8, 0.03);                            // jalan tanah ke rumah Oma
+  // Batu & alang-alang di garis air (instanced)
+  const stoneGeo = new THREE.IcosahedronGeometry(0.22, 0);
+  const stones = new THREE.InstancedMesh(stoneGeo, mat(0x9a958c), 70);
+  const reedGeo = new THREE.ConeGeometry(0.05, 0.9, 4); reedGeo.translate(0, 0.45, 0);
+  const reeds = new THREE.InstancedMesh(reedGeo, mat(0x6f8f3a), 220);
+  const m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), e = new THREE.Euler(), v = new THREE.Vector3(), sc = new THREE.Vector3();
+  let ns = 0, nr = 0;
+  for (let i = 0; i < 400 && (ns < 70 || nr < 220); i++) {
+    const x = -62 + r() * 124;
+    if (Math.abs(x - roadX) < 3.6) continue;
+    if (ns < 70 && r() < 0.35) {
+      const s = 0.6 + r() * 1.1;
+      e.set(r() * 3, r() * 3, r() * 3); q.setFromEuler(e); v.set(x, 0.06, riverS + 0.1 + r() * 0.6); sc.set(s * 1.3, s * 0.6, s);
+      stones.setMatrixAt(ns++, m4.compose(v, q, sc));
+    }
+    for (let k = 0; k < 3 && nr < 220; k++) {
+      e.set((r() - 0.5) * 0.4, 0, (r() - 0.5) * 0.4); q.setFromEuler(e);
+      v.set(x + (r() - 0.5) * 0.5, 0, riverS + 0.55 + r() * 0.5); const s = 0.6 + r() * 0.7; sc.set(1, s, 1);
+      reeds.setMatrixAt(nr++, m4.compose(v, q, sc));
+    }
+  }
+  stones.count = ns; reeds.count = nr;
+  Game.worldGroup.add(stones, reeds);
+  // Lentera rendah & bangku menghadap sungai di jalan setapak
+  for (const lx of [-40, -12, 8, 28, 48]) {
+    const l = new THREE.Group();
+    add(l, new THREE.CylinderGeometry(0.05, 0.07, 1.8, 6), mat(0x2f3a3a), 0, 0.9, 0);
+    const head = add(l, B(0.22, 0.28, 0.22), glow(0xffe2a0, 0.5), 0, 1.92, 0, false);
+    add(l, new THREE.ConeGeometry(0.2, 0.16, 4), mat(0x2f3a3a), 0, 2.14, 0, false).rotation.y = Math.PI / 4;
+    l.position.set(lx, 0, riverS + 1.75); Game.worldGroup.add(l);
+    nightLamp(lx, riverS + 1.75, 1.9, head, { pool: 2.0, power: 6, range: 6, color: 0xffd894 });
+  }
+  for (const bx of [-30, 0, 18, 38]) bench(bx, riverS + 1.6, Math.PI);
+  // Pohon rendah di belakang jalan setapak
+  for (let i = 0; i < 16; i++) {
+    const tx = -58 + i * 7.8 + (r() - 0.5) * 3;
+    if (Math.abs(tx - roadX) < 4.5 || Math.abs(tx - 52) < 3) continue;
+    tree(tx, riverS + 4.4 + r() * 2.5, 0.75 + r() * 0.3, r() < 0.3 ? 'pine' : 'round');
+  }
+  lighthouse(52, riverS + 1.9);
 }
 
 /** Alas bercahaya + label di depan pintu gedung yang bisa dimasuki saat quest. */
@@ -872,6 +1373,7 @@ function stadtpark(x0, z0, x1, z1, allee) {
 
 export function buildStadt() {
   _mats = new Map(); _glass = null;
+  _anims.length = 0;
   const variant = (typeof window !== 'undefined' && window.__stadtVariant__) || 'A';
   const V = VARIANTS[variant] || VARIANTS.A;
 
@@ -936,17 +1438,24 @@ export function buildStadt() {
   zebra(eE + 1.4, LIND_Z, false);
 
   // ═════════════════════════ AIR & JEMBATAN ═══════════════════════
-  water(-70, canalN, 70, canalS);
+  water(-70, canalN, 70, canalS, { colors: WATER.kanal, seed: 5, tile: 8, flow: 0.006, name: 'kanal',
+    gaps: [[wW + 0.2, wE - 0.2], [eW + 0.2, eE - 0.2]] });
   blockBox(-70, canalN, wW + 0.2, canalS, 'kanal-w', 2);
   blockBox(wE - 0.2, canalN, eW + 0.2, canalS, 'kanal-m', 2);
   blockBox(eE - 0.2, canalN, 70, canalS, 'kanal-o', 2);
   bridge(WEST_X, canalN - 0.6, canalS + 0.6, RW - 0.4, 'kanalbruecke-west');
   bridge(EAST_X, canalN - 0.6, canalS + 0.6, RW - 0.4, 'kanalbruecke-ost');
 
-  water(-70, riverN, 70, riverS);
+  // ── Elbe: sungai lebar dengan Elbblick, dua ponton feri dan kapal ──
+  const ELB_X = 37, PONT_W = -2, PONT_E = 26.5;
+  water(-70, riverN, 70, riverS, { colors: WATER.elbe, seed: 11, tile: 11, flow: 0.01, name: 'elbe', south: 'natural',
+    gaps: [[WEST_X - 2.7, WEST_X + 2.7], [ELB_X - 2.6, ELB_X + 2.6, -1]] });
+  // Air tidak bisa dimasuki — kecuali teras Elbblick yang menjorok ke sungai
   blockBox(-70, riverN, wW + 0.4, riverS + 3, 'fluss-w', 2);
-  blockBox(wE - 0.4, riverN, 70, riverS + 3, 'fluss-o', 2);
-  bridge(WEST_X, riverN - 0.8, riverS + 0.8, RW - 0.8, 'alte-bruecke');
+  blockBox(wE - 0.4, riverN, ELB_X - 2.7, riverS + 3, 'fluss-o1', 2);
+  blockBox(ELB_X + 2.7, riverN, 70, riverS + 3, 'fluss-o2', 2);
+  blockBox(ELB_X - 2.7, riverN + 2.9, ELB_X + 2.7, riverS + 3, 'fluss-o3', 2);
+  bridge(WEST_X, riverN - 0.8, riverS + 0.8, RW - 0.8, 'alte-bruecke', { lanterns: 'north' });
   { // Papan nama "Alte Brücke" di pangkal jembatan
     const s = signBoard('Alte Brücke', 2.2, 0.45, { bg: '#5a4630', fg: '#fff3d6', both: true });
     s.position.set(wE + 0.25, 1.45, riverN - 1.0); Game.worldGroup.add(s);
@@ -961,11 +1470,29 @@ export function buildStadt() {
   }
   // Elbpromenade di tepi sungai (selatan Deichstraße & taman)
   flat(70 - 13.4, riverN - (lindS + SW), 0xcfc6b2, (13.4 + 70) / 2, (lindS + SW + riverN) / 2, 0.03, true);
-  for (const bx of [24, 32]) bench(bx, riverN - 1.1, 0);
-  for (const lx of [20, 28, 36]) lamp(lx, riverN - 0.6);
-  elbblick(39.5, riverN - 1.55);
-  reg.elbblick = { x: 39.5, z: riverN - 1.9, r: 2.6 };
-  boat(31, RIVER_Z + 0.15);
+  quayRail(wE + 0.3, 70, riverN - 0.05, [[PONT_W - 0.7, PONT_W + 0.7], [PONT_E - 0.7, PONT_E + 0.7], [ELB_X - 2.75, ELB_X + 2.75]]);
+  for (const bx of [18.6, 24, 28.8]) bench(bx, riverN - 1.1, 0);
+  for (const lx of [16, 21.2, 31.2]) lamp(lx, riverN - 0.6);
+  elbblick(ELB_X, riverN);
+  reg.elbblick = { x: ELB_X, z: riverN + 0.2, r: 3.2 };
+  pontoon(PONT_W, riverN, 'Stadtpark');
+  pontoon(PONT_E, riverN, 'Deichstraße');
+  { // Kapal: feri bolak-balik, perahu layar berlabuh, Barkasse berkeliling
+    const ferry = makeFerry('Elbe 7');
+    Game.worldGroup.add(ferry);
+    runFerry(ferry, PONT_W, PONT_E, riverN + 3.15, riverN + 4.4);
+    const sail = makeSailboat();
+    sail.position.set(4, 0, riverN + 6.2);
+    Game.worldGroup.add(sail);
+    _anims.push((dt, t) => {
+      sail.position.y = Math.sin(t * 1.3) * 0.04;
+      sail.rotation.set(0, 0.35 + Math.sin(t * 0.13) * 0.25, Math.sin(t * 0.9) * 0.05);
+    });
+    const bk = makeBarkasse();
+    Game.worldGroup.add(bk);
+    runLoop(bk, 12, 60, riverN + 6.6, riverN + 8.0, 1.3);
+  }
+  elbeSouthBank(riverS, WEST_X);
 
   // ═════════════════════════ GEDUNG ════════════════════════════════
   const place = (kind, x, z, facing, i) => MAKERS[kind](x, z, facing, i);
@@ -981,8 +1508,10 @@ export function buildStadt() {
   regFront(V.opposite, opp);
   regFront('baeckerei', place('baeckerei', -2.5, -8.5, 'S'));
   regFront('kino', place('kino', 8.5, -9.5, 'S'));
-  regFront('hotel', place('hotel', 27, -10.5, 'S'));
-  regFront('tourismusbuero', place('tourismus', 37, -9, 'S'));
+  // Tourist-Info (rendah) di sudut Bachstraße, Hotel (tinggi) lebih ke timur:
+  // dari sudut kamera Hotel dulu menutupi Kanalbrücke menuju rumah Tante.
+  regFront('tourismusbuero', place('tourismus', 27, -9, 'S'));
+  regFront('hotel', place('hotel', 38, -10.5, 'S'));
 
   // — Blok barat-daya (menghadap timur ke Schillerstraße) —
   const kirche = makeKirche(-35.5, 12);
@@ -1117,10 +1646,11 @@ export function buildStadt() {
   barrier(-bx, MAIN_Z, RW, false); barrier(bx, MAIN_Z, RW, false);
   barrier(bx, LIND_Z, RW, false);
   barrier(WEST_X, -bz, RW, true);
+  blockBox(-70, -37, 70, -35, 'nordrand', 3);     // zona lebih tinggi ke selatan (Elbe) — utara tetap sama
 
   // ═════════════════════════ POHON & LAMPU ════════════════════════
   for (const [tx, tz] of [
-    [-16, -17.2], [-8, -17.2], [0, -16.2], [8, -16.2], [24, -16.9], [31, -16.9], [37, -15.2],
+    [-16, -17.2], [-8, -17.2], [0, -16.2], [8, -16.2], [24, -16.9], [31, -16.9], [44.5, -16.4],
     [-39.5, -7], [-39.5, -13], [-39, -23], [-39, -31],
     [25, 7.6], [31, 7.6], [37, 7.6], [-41, 5.8],
   ]) tree(tx, tz, 1);
@@ -1136,10 +1666,10 @@ export function buildStadt() {
     let tx, tz;
     if (side === 0) { tx = -44 - u * 14; tz = t * 48; }
     else if (side === 1) { tx = 44 + u * 14; tz = t * 48; }
-    else if (side === 2) { tx = t * 56; tz = 36.5 + u * 12; }
+    else if (side === 2) { tx = t * 56; tz = riverS + 7.5 + u * 9; }
     else { tx = t * 56; tz = -37 - u * 10; }
     if (Math.abs(tx - WEST_X) < 4.5 || Math.abs(tz - MAIN_Z) < 4.5 || Math.abs(tz - CANAL_Z) < 3.5 ||
-        (Math.abs(tz - LIND_Z) < 4.5 && tx > 14)) continue;
+        (Math.abs(tz - LIND_Z) < 4.5 && tx > 14) || (tz > riverN - 1.5 && tz < riverS + 5)) continue;
     tree(tx, tz, 0.9 + rnd(i + 7) * 0.5, i % 3 ? 'round' : 'pine');
   }
 
@@ -1173,6 +1703,9 @@ export function buildStadt() {
   const qs = (typeof window !== 'undefined' && window.__questState__) || {};
   if (qs.quest_7 === 'active') entrancePad(reg.kino.door.x, reg.kino.door.z - 0.25, '🎬 Kino — Eingang');
   if (qs.quest_8 === 'active') entrancePad(reg.restaurant.door.x, reg.restaurant.door.z - 0.25, '🍽️ Restaurant — Eingang');
+
+  // Animasi air, kapal & bendera
+  World._updateRiver = (dt, t) => { for (const fn of _anims) fn(dt, t); };
 
   if (CONFIG.DEBUG) console.log('[stadt] variant', variant, 'registry', Object.keys(reg));
 }
