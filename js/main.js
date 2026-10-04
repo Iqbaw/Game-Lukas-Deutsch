@@ -44,6 +44,7 @@ import { initZones, loadZone, updateZones } from './zone.js';
 // Gameplay Loop Systems
 import { ScoreSystem } from './scoring.js';
 import { QuestSystem } from './quest.js';
+import { initNight } from './night.js';
 import { clearSave, enableAutosave, readSave, restoreSave } from './savegame.js';
 
 
@@ -371,6 +372,7 @@ function initPostProcessing() {
     CONFIG.BLOOM_THRESHOLD
   );
   Game.composer.addPass(bloomPass);
+  Game.bloomPass = bloomPass;
 
   // Vignette ringan
   const vignetteShader = {
@@ -493,6 +495,22 @@ function resumeGame() {
   Game.clock?.start();
 }
 
+// Pindah tab/jendela menghentikan game sementara. Dulu game TIDAK pernah
+// lanjut lagi (tanpa menu pause yang terlihat) — layar membeku dan WASD /
+// tombol panah seolah mati. Sekarang game lanjut sendiri saat kembali,
+// kecuali pemain sendiri membuka menu pause.
+let autoPaused = false;
+function onVisibilityChange() {
+  if (document.hidden) {
+    if (Game.isRunning && !Game.isPaused) { autoPaused = true; pauseGame(); }
+  } else if (autoPaused) {
+    autoPaused = false;
+    const pauseMenu = document.getElementById('pause-menu');
+    const menuOpen = pauseMenu && !pauseMenu.classList.contains('hud-hidden');
+    if (Game.isRunning && Game.isPaused && !menuOpen) resumeGame();
+  }
+}
+
 
 // ═══════════════════════════════════════════════════════════════════
 // 8.  BOOTSTRAP
@@ -537,16 +555,13 @@ async function bootstrap() {
     // Initialize gameplay systems
     ScoreSystem.init();
     QuestSystem.init();
+    initNight();
 
     // Setup clock & event listeners
     Game.clock = new THREE.Clock(false);
     window.addEventListener('resize', onWindowResize);
 
-    document.addEventListener('visibilitychange', () => {
-      if (document.hidden && Game.isRunning && !Game.isPaused) {
-        pauseGame();
-      }
-    });
+    document.addEventListener('visibilitychange', onVisibilityChange);
 
     setLoadingProgress(100, 'Bereit!');
     loadingComplete();

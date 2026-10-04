@@ -16,7 +16,7 @@
 //        z=-6   Apotheke*  Schule* Bäckerei Kino │ Hotel  Tourist-Info
 //        z= 0  ════════ Ampel ═══ Hauptstraße ═══╪═══════════════════════
 //               Kirche   │ EDEKA  P  Allee  Café │  Post   Restaurant
-//               Mall*    │                 Eis   │═══ Lindenstraße ════
+//               Mall*    │                 Eis   │═══ Deichstraße ═════
 //               (Eingang)│   Stadtpark    Blumen │
 //        z=32  ~~~~~~~~[Alte Brücke → Omas Haus]~~~~~~~ Fluss ~~~~~~~~~~~~
 //                    x=-24 (Schillerstr.)       x=18 (Bachstr.)
@@ -36,7 +36,7 @@ const SW = 1.6;        // lebar trotoar
 const MAIN_Z  = 0;     // Hauptstraße (E-W)
 const WEST_X  = -24;   // Schillerstraße / Blumenstraße (N-S)
 const EAST_X  = 18;    // Bachstraße (N-S)
-const LIND_Z  = 23;    // Lindenstraße (E-W, mulai dari Bachstraße ke timur)
+const LIND_Z  = 23;    // Deichstraße (E-W, mulai dari Bachstraße ke timur, dekat Elbe)
 const CANAL_Z = -20;   // kanal utara (air z -21.8..-18.2)
 const RIVER_Z = 32.2;  // sungai selatan (air z 30.4..34.0)
 const CANAL_HW = 1.8, RIVER_HW = 1.8;
@@ -60,8 +60,15 @@ function glow(color, intensity = 0.9) {
 }
 let _glass = null;
 function glassMat() {
-  if (!_glass) _glass = new THREE.MeshLambertMaterial({ color: 0x9fd0ec, emissive: 0x2a5874, emissiveIntensity: 0.45 });
+  if (!_glass) {
+    _glass = new THREE.MeshLambertMaterial({ color: 0x9fd0ec, emissive: 0x2a5874, emissiveIntensity: 0.45 });
+    _glass.userData.nightWindow = true;          // menyala hangat di malam hari (js/night.js)
+  }
   return _glass;
+}
+/** Daftarkan lampu untuk malam hari (halo, lingkaran cahaya, lampu titik). */
+function nightLamp(x, z, y, head, o = {}) {
+  (World.nightLamps || (World.nightLamps = [])).push({ x, z, y, head, ...o });
 }
 function shade(c, f) {
   const r = Math.min(255, ((c >> 16) & 255) * f), g = Math.min(255, ((c >> 8) & 255) * f), b = Math.min(255, (c & 255) * f);
@@ -228,6 +235,18 @@ function building(o) {
   const front = faceGroup(g, 'front', w, d);
   if (door) doorAt(front, door, doorColor, doorX);
   const doorHalf = door === 'glass' ? 1.5 : 0.95;
+  // Lampu dinding di samping pintu — setiap gedung punya cahaya di malam hari
+  if (door && o.doorLamp !== false) {
+    const lx = doorX + (doorX > 0 ? -1 : 1) * (doorHalf + 0.32);
+    let lantern = null;
+    if (!awning) {            // di bawah markise cahaya berasal dari etalase
+      add(front, B(0.1, 0.1, 0.3), mat(0x2b2b2b), lx, 2.62, 0.15, false);
+      lantern = add(front, B(0.24, 0.32, 0.24), glow(0xffe2a8, 0.35), lx, 2.44, 0.3, false);
+    }
+    const lz = d / 2 + 0.7;
+    const wx = facing === 'E' ? x + lz : x + lx, wz = facing === 'E' ? z - lx : z + lz;
+    nightLamp(wx, wz, 2.4, lantern, { pool: 2.3, power: 7, range: 7, color: 0xffd08a });
+  }
   // Erdgeschoss
   const gw = shopWindows ? 1.7 : 0.95, gh = shopWindows ? 1.55 : 1.15, gy = shopWindows ? 1.45 : 1.55;
   if (o.groundWindows !== false) {
@@ -571,10 +590,23 @@ function lamp(x, z) {
   const l = new THREE.Group();
   add(l, new THREE.CylinderGeometry(0.06, 0.09, 3.6, 6), mat(0x3a3f45), 0, 1.8, 0);
   add(l, B(0.5, 0.14, 0.5), mat(0x3a3f45), 0, 3.65, 0);
-  add(l, B(0.36, 0.12, 0.36), glow(0xfff2c0, 0.6), 0, 3.54, 0, false);
+  const head = add(l, B(0.36, 0.12, 0.36), glow(0xfff2c0, 0.6), 0, 3.54, 0, false);
   l.position.set(x, 0, z);
   Game.worldGroup.add(l);
   blockPost(x, z, 0.15);
+  nightLamp(x, z, 3.4, head);
+}
+/** Lampu taman bergaya klasik (tiang hijau, kap kaca bundar). */
+function parkLamp(x, z) {
+  const l = new THREE.Group();
+  add(l, new THREE.CylinderGeometry(0.05, 0.08, 2.5, 6), mat(0x2f4a3a), 0, 1.25, 0);
+  add(l, new THREE.CylinderGeometry(0.16, 0.12, 0.12, 8), mat(0x2f4a3a), 0, 2.55, 0, false);
+  const head = add(l, new THREE.SphereGeometry(0.24, 10, 8), glow(0xfff0c8, 0.5), 0, 2.8, 0, false);
+  add(l, new THREE.ConeGeometry(0.2, 0.16, 8), mat(0x2f4a3a), 0, 3.08, 0, false);
+  l.position.set(x, 0, z);
+  Game.worldGroup.add(l);
+  blockPost(x, z, 0.12);
+  nightLamp(x, z, 2.8, head, { pool: 2.8, power: 10, range: 9, color: 0xffd894 });
 }
 function hedge(x0, z0, x1, z1, h = 0.6) {
   const w = Math.abs(x1 - x0) || 0.4, d = Math.abs(z1 - z0) || 0.4;
@@ -693,6 +725,99 @@ function bridge(cx, z0, z1, width, name) {
 }
 
 // ═══════════════════════════════════════════════════════════════════
+// HALTESTELLE, ELBBLICK, BOOT, PINTU MASUK
+// ═══════════════════════════════════════════════════════════════════
+
+/** Halte bus beratap kaca menghadap Hauptstraße (utara) + tiang "H". */
+function busStop(x, z) {
+  const g = new THREE.Group(); g.name = 'haltestelle';
+  const steel = mat(0x4a5560);
+  for (const sx of [-1.55, 1.55]) for (const sz of [-0.55, 0.55]) add(g, B(0.1, 2.5, 0.1), steel, sx, 1.25, sz);
+  add(g, B(3.5, 0.12, 1.5), mat(0x2e7d4f), 0, 2.56, 0);                   // atap hijau
+  add(g, B(3.2, 1.9, 0.05), glassMat(), 0, 1.25, 0.6, false);              // dinding kaca belakang
+  for (const sx of [-1.55, 1.55]) add(g, B(0.05, 1.6, 1.0), glassMat(), sx, 1.15, 0.05, false);
+  add(g, B(2.4, 0.08, 0.42), mat(0x9a6a3a), 0, 0.5, 0.3);                  // bangku
+  for (const sx of [-1, 1]) add(g, B(0.06, 0.5, 0.36), steel, sx, 0.25, 0.3, false);
+  const fahrplan = signBoard('Linie 5 · Hauptstraße', 1.3, 0.34, { bg: '#2e7d4f', fg: '#ffffff' });
+  fahrplan.position.set(-0.8, 1.75, 0.56); g.add(fahrplan);
+  const roofLight = add(g, B(2.6, 0.05, 0.2), glow(0xf6f2dc, 0.4), 0, 2.48, 0, false);
+  g.position.set(x, 0, z);
+  Game.worldGroup.add(g);
+  blockBox(x - 1.7, z + 0.45, x + 1.7, z + 0.75, 'haltestelle', 2.5);
+  for (const sx of [-1.55, 1.55]) blockPost(x + sx, z - 0.55, 0.12);
+  nightLamp(x, z - 0.2, 2.4, roofLight, { pool: 2.6, power: 9, range: 8, color: 0xfff1d0 });
+  // Tiang H (Haltestelle) di tepi trotoar
+  const p = new THREE.Group();
+  add(p, new THREE.CylinderGeometry(0.06, 0.06, 2.9, 6), mat(0x8a8f96), 0, 1.45, 0);
+  const h = add(p, new THREE.CylinderGeometry(0.42, 0.42, 0.06, 20), mat(0xf6d500), 0, 2.85, 0, false);
+  h.rotation.x = Math.PI / 2;
+  const hs = signPlane('H', 0.55, 0.55, { bg: '#f6d500', fg: '#1f7a3e', scale: 0.8 });
+  hs.position.set(0, 2.85, 0.035); p.add(hs);
+  const hs2 = signPlane('H', 0.55, 0.55, { bg: '#f6d500', fg: '#1f7a3e', scale: 0.8 });
+  hs2.position.set(0, 2.85, -0.035); hs2.rotation.y = Math.PI; p.add(hs2);
+  p.rotation.y = Math.PI / 4;
+  p.position.set(x - 2.4, 0, z - 1.0);
+  Game.worldGroup.add(p);
+  blockPost(x - 2.4, z - 1.0, 0.12);
+}
+
+/** Titik pandang di tepi Elbe: pelataran batu, pagar, teropong, papan nama. */
+function elbblick(x, z) {
+  const g = new THREE.Group(); g.name = 'elbblick';
+  const plaza = add(g, new THREE.CylinderGeometry(2.3, 2.4, 0.1, 28), mat(0xbcb2a0), 0, 0.05, 0, false);
+  World.walkables.push(plaza);
+  // Pagar setengah lingkaran menghadap sungai (selatan)
+  for (let i = 0; i <= 8; i++) {
+    const a = Math.PI * (i / 8);
+    add(g, B(0.1, 0.9, 0.1), mat(0x3a3f45), Math.cos(a) * 2.25, 0.45, Math.sin(a) * 0.9 + 1.1, false);
+  }
+  add(g, B(4.6, 0.08, 0.08), mat(0x3a3f45), 0, 0.92, 1.1 + 0.45, false);
+  // Teropong koin (Fernrohr)
+  add(g, new THREE.CylinderGeometry(0.09, 0.12, 1.0, 8), mat(0x2f5f8a), 0.8, 0.5, 0.9);
+  const scope = add(g, new THREE.CylinderGeometry(0.13, 0.17, 0.75, 10), mat(0x3f7fb5), 0.8, 1.15, 1.0);
+  scope.rotation.x = Math.PI / 2 - 0.25;
+  add(g, new THREE.SphereGeometry(0.16, 8, 6), mat(0x2f5f8a), 0.8, 1.05, 0.9, false);
+  // Papan nama
+  const s = signBoard('Elbblick', 1.8, 0.5, { bg: '#1f4f96', fg: '#ffffff', border: '#ffffff', both: true });
+  s.position.set(-1.4, 1.65, -1.2); g.add(s);
+  add(g, new THREE.CylinderGeometry(0.05, 0.05, 1.4, 6), mat(0x8a8f96), -1.4, 0.7, -1.2, false);
+  g.position.set(x, 0, z);
+  Game.worldGroup.add(g);
+  blockPost(x + 0.8, z + 0.9, 0.2);
+  blockPost(x - 1.4, z - 1.2, 0.12);
+}
+
+/** Perahu kecil di sungai (pemandangan Elbe). */
+function boat(x, z) {
+  const g = new THREE.Group(); g.name = 'boot';
+  add(g, B(4.2, 0.55, 1.3), mat(0xf2f2ee), 0, 0.3, 0);
+  add(g, B(4.3, 0.12, 1.36), mat(0xc0392b), 0, 0.12, 0, false);
+  const bow = add(g, new THREE.ConeGeometry(0.66, 1.1, 4), mat(0xf2f2ee), 2.55, 0.3, 0);
+  bow.rotation.set(0, Math.PI / 4, -Math.PI / 2); bow.scale.set(1, 1, 0.75);
+  add(g, B(1.6, 0.7, 1.0), mat(0x2e5a88), -0.5, 0.9, 0);
+  add(g, B(1.4, 0.3, 1.02), glassMat(), -0.5, 1.0, 0, false);
+  add(g, new THREE.CylinderGeometry(0.05, 0.05, 1.3, 6), mat(0x555555), 0.6, 1.2, 0, false);
+  g.position.set(x, 0, z);
+  Game.worldGroup.add(g);
+}
+
+/** Alas bercahaya + label di depan pintu gedung yang bisa dimasuki saat quest. */
+function entrancePad(x, z, text) {
+  const pad = new THREE.Mesh(new THREE.PlaneGeometry(2.6, 1.6),
+    new THREE.MeshBasicMaterial({ color: 0xffd34d, transparent: true, opacity: 0.55, depthWrite: false }));
+  pad.rotation.x = -Math.PI / 2; pad.position.set(x, 0.08, z);
+  Game.worldGroup.add(pad);
+  const ring = new THREE.Mesh(new THREE.RingGeometry(0.95, 1.2, 4, 1),
+    new THREE.MeshBasicMaterial({ color: 0xfff1a8, transparent: true, opacity: 0.9, depthWrite: false }));
+  ring.rotation.set(-Math.PI / 2, 0, Math.PI / 4); ring.scale.set(1.25, 0.8, 1); ring.position.set(x, 0.09, z);
+  Game.worldGroup.add(ring);
+  const label = signBoard(text, 3.0, 0.5, { bg: '#2b1f4a', fg: '#ffe066', border: '#ffe066', both: true });
+  label.position.set(x, 2.75, z + 1.7);
+  Game.worldGroup.add(label);
+  nightLamp(x, z, 2.4, null, { pool: 2.2, power: 6, range: 6, color: 0xffd34d });
+}
+
+// ═══════════════════════════════════════════════════════════════════
 // STADTPARK
 // ═══════════════════════════════════════════════════════════════════
 
@@ -728,6 +853,10 @@ function stadtpark(x0, z0, x1, z1, allee) {
   gap(x0, x1, [[allee.x - allee.w / 2 - 0.2, allee.x + allee.w / 2 + 0.2]]);
   hedge(x0, z0, x0, cz - 1.1); hedge(x0, cz + 1.1, x0, z1);
   hedge(x1, z0, x1, cz - 1.1); hedge(x1, cz + 1.1, x1, z1);
+  // Lampu taman di sekitar plaza & sepanjang jalur — taman tetap terang di malam hari
+  for (const [lx, lz] of [[allee.x - 3.4, cz - 2.4], [allee.x + 3.4, cz + 2.4],
+                          [x0 + 5, cz - 1.4], [x0 + 11, cz + 1.4], [x1 - 4, cz - 1.4]]) parkLamp(lx, lz);
+  (World.fireflyAreas || (World.fireflyAreas = [])).push({ x0: x0 + 0.5, x1: x1 - 0.5, z0: z0 + 0.5, z1: z1 - 0.3, n: 30 });
 }
 
 // ═══════════════════════════════════════════════════════════════════
@@ -765,8 +894,8 @@ export function buildStadt() {
   asphalt(wW, canalS + 0.6, wE, mainN);                   // Schillerstr. Nord (bis Kanal)
   asphalt(wW, -70, wE, canalN - 0.6);                     // Schillerstr. jenseits Kanal
   asphalt(eW, canalS + 0.6, eE, mainN);                   // Bachstr. Nord (bis Kanalbrücke)
-  asphalt(eW, mainS, eE, lindS);                          // Bachstr. Süd (endet an Lindenstr.)
-  asphalt(eE, lindN, 70, lindS);                          // Lindenstraße
+  asphalt(eW, mainS, eE, lindS);                          // Bachstr. Süd (endet an Deichstr.)
+  asphalt(eE, lindN, 70, lindS);                          // Deichstraße
 
   dashesX(MAIN_Z, -70, 70, [[wW, wE], [eW, eE]]);
   dashesZ(WEST_X, mainS, riverN - 0.8, []);
@@ -823,10 +952,13 @@ export function buildStadt() {
     add(Game.worldGroup, new THREE.CylinderGeometry(0.06, 0.06, 2.0, 6), mat(0x8a8f96), wW - 0.9, 1.0, riverN - 2.4, false);
     blockPost(wW - 0.9, riverN - 2.4, 0.15);
   }
-  // Promenade di tepi sungai (selatan Lindenstraße & taman)
+  // Elbpromenade di tepi sungai (selatan Deichstraße & taman)
   flat(70 - 13.4, riverN - (lindS + SW), 0xcfc6b2, (13.4 + 70) / 2, (lindS + SW + riverN) / 2, 0.03, true);
-  for (const bx of [24, 32, 40]) bench(bx, riverN - 1.1, 0);
+  for (const bx of [24, 32]) bench(bx, riverN - 1.1, 0);
   for (const lx of [20, 28, 36]) lamp(lx, riverN - 0.6);
+  elbblick(39.5, riverN - 1.55);
+  reg.elbblick = { x: 39.5, z: riverN - 1.9, r: 2.6 };
+  boat(31, RIVER_Z + 0.15);
 
   // ═════════════════════════ GEDUNG ════════════════════════════════
   const place = (kind, x, z, facing, i) => MAKERS[kind](x, z, facing, i);
@@ -913,7 +1045,7 @@ export function buildStadt() {
   }
   regFront('blumenladen', place('blumenladen', 10.95, 19.4, 'E'));
 
-  // — Tenggara: menghadap selatan ke Lindenstraße —
+  // — Tenggara: menghadap selatan ke Deichstraße —
   regFront('post', place('post', 25.5, 15.2, 'S'));
   regFront('restaurant', place('restaurant', 35.5, 14.7, 'S'));
 
@@ -971,7 +1103,7 @@ export function buildStadt() {
   streetSign(wW - 0.8, mainS + 0.8, V.main, V.west, 1, 1);
   streetSign(eW - 0.8, mainS + 0.8, V.main, 'Bachstraße', 1, 1);
   streetSign(eE + 0.8, mainN - 0.8, V.main, 'Bachstraße', 1, -1);
-  streetSign(eE + 0.8, lindN - 0.8, 'Lindenstraße', 'Bachstraße', 1, -1);
+  streetSign(eE + 0.8, lindN - 0.8, 'Deichstraße', 'Bachstraße', 1, -1);
 
   // Batas peta: palang di ujung jalan (pemain tidak bisa keluar zona)
   const bx = 42.4, bz = 35.4;
@@ -1006,6 +1138,31 @@ export function buildStadt() {
   stadtpark(-19, 22.8, 13.4, riverN - 0.6, ALLEE);
   reg.stadtpark = { x: (-19 + 13.4) / 2, z: (22.8 + riverN - 0.6) / 2, hw: 16.2, hd: 3.6 };
   reg.marktplatz = reg.stadtpark;
+
+  // ═════════════════════════ HALTESTELLE (Quest 5: Lukas kommt mit dem Bus) ══
+  busStop(34, mainS + SW + 1.35);
+  reg.haltestelle = { x: 34, z: mainS + 1.2, r: 3 };
+
+  // ═════════════════════════ LAMPU MALAM TAMBAHAN ═════════════════
+  for (const lx of [-20.5, 4.2, 20.6, 31.6]) lamp(lx, mainN - SW + 0.3);       // Hauptstraße Nord
+  for (const lz of [24, -30]) lamp(wE + SW - 0.3, lz);                           // Schillerstraße
+  lamp(eW - SW + 0.35, 12.6); lamp(eE + 0.35, 12);                               // Bachstraße
+  lamp(30.5, lindN - SW + 0.3); lamp(41, lindN - SW + 0.3);                      // Deichstraße
+  lamp(0.2, 14.5);                                                               // Parkplatz EDEKA
+  for (const [lx, lz] of [[ALLEE.x + 2.2, 8.6], [ALLEE.x - 2.2, 12.2], [ALLEE.x + 2.2, 15.8], [ALLEE.x - 2.2, 19.4]]) parkLamp(lx, lz);
+  parkLamp(EAST_X - 1.8, (parkN.z0 + parkN.z1) / 2 - 1.6);
+  parkLamp(EAST_X + 1.8, (parkN.z0 + parkN.z1) / 2 + 1.4);
+  parkLamp(41.6, riverN - 2.2);
+  const ff = World.fireflyAreas || (World.fireflyAreas = []);
+  ff.push({ x0: parkN.x0 + 0.5, x1: parkN.x1 - 0.5, z0: parkN.z0 + 0.5, z1: parkN.z1 - 0.5, n: 22 });
+  ff.push({ x0: ALLEE.x - 3, x1: ALLEE.x + 3, z0: mainS + SW + 1, z1: 22.5, n: 14 });
+  ff.push({ x0: 14, x1: 42, z0: lindS + SW + 0.3, z1: riverN - 0.2, n: 18 });
+  ff.push({ x0: -17, x1: 5, z0: -33, z1: canalN - 3, n: 12 });
+
+  // ═════════════════════════ PINTU MASUK QUEST (Kino, Restaurant) ═════
+  const qs = (typeof window !== 'undefined' && window.__questState__) || {};
+  if (qs.quest_7 === 'active') entrancePad(reg.kino.door.x, reg.kino.door.z - 0.25, '🎬 Kino — Eingang');
+  if (qs.quest_8 === 'active') entrancePad(reg.restaurant.door.x, reg.restaurant.door.z - 0.25, '🍽️ Restaurant — Eingang');
 
   if (CONFIG.DEBUG) console.log('[stadt] variant', variant, 'registry', Object.keys(reg));
 }

@@ -45,6 +45,16 @@ export function buildQuestItem(name, color) {
   } else if(name==='gemuese') {
     for(let i=0;i<5;i++){const a=i*Math.PI*2/5;ball(Math.cos(a)*0.09,0.12,Math.sin(a)*0.09,0.11,0.12,0.11,base);}
     ball(0,0.2,0,0.12,0.14,0.12,mat(0x81b94b));
+  } else if(name==='kartoffeln') {
+    box(0.5,0.05,0.36,mat(0x9c7a4c),0,0.03,0);
+    for(let i=0;i<7;i++){const a=i*2.4;ball(Math.cos(a)*0.13*(i%3?1:0.4),0.11+(i>4?0.07:0),Math.sin(a)*0.1*(i%3?1:0.4),0.08,0.065,0.07,base);}
+  } else if(name==='salat') {
+    for(let i=0;i<6;i++){const a=i*Math.PI/3;ball(Math.cos(a)*0.08,0.12,Math.sin(a)*0.08,0.12,0.1,0.12,base);}
+    ball(0,0.18,0,0.11,0.11,0.11,mat(0xa6d96a));
+  } else if(name==='butter') {
+    box(0.3,0.1,0.18,mat(0xf6efd8),0,0.055,0);
+    box(0.3,0.03,0.18,base,0,0.12,0);
+    box(0.12,0.012,0.19,mat(0x2a6fb0),0,0.08,0);
   } else if(name==='eis') {
     mesh(new THREE.ConeGeometry(0.1,0.27,12),mat(0xc89b64),0,0.135,0).rotation.z=Math.PI;
     ball(0,0.32,0,0.13,0.13,0.13,base);

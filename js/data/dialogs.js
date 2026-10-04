@@ -35,13 +35,13 @@ export const DIALOGS = {
       g1: {
         id:      'g1',
         speaker: 'oma_helga',
-        text:    'Lukas, mein Schatz! Du bist endlich da. Komm, setz dich!',
+        text:    'Lukas, mein Schatz! Schön, dass du da bist.',
         next:    'g2',
       },
       g2: {
         id:      'g2',
         speaker: 'oma_helga',
-        text:    'Bist du müde von der Reise? <vocab title="Penerbangan">Der Flug</vocab> war bestimmt anstrengend.',
+        text:    'Wenn du nicht weißt, was du tun sollst: Schau in dein <vocab title="Buku harian perjalanan">Reisetagebuch</vocab> (Taste TAB).',
         end:     true,
       },
     },
@@ -73,13 +73,13 @@ export const DIALOGS = {
       g1: {
         id:      'g1',
         speaker: 'onkel_andre',
-        text:    'Hallo Lukas! Wie war dein <vocab title="Penerbangan">Flug</vocab> aus Indonesien?',
+        text:    'Hallo Lukas! Schade, dass du morgen schon nach Indonesien <vocab title="terbang">fliegst</vocab>.',
         next:    'g2',
       },
       g2: {
         id:      'g2',
         speaker: 'onkel_andre',
-        text:    'Leni freut sich schon wahnsinnig auf dich. Sie ist nur noch in der Schule.',
+        text:    'Leni redet nur noch von dir. Du musst bald wiederkommen!',
         end:     true,
       },
     },
@@ -92,13 +92,13 @@ export const DIALOGS = {
       g1: {
         id:      'g1',
         speaker: 'tante_maria',
-        text:    'Lukas! Du bist so groß geworden! Ich erinnere mich noch, als du sieben warst.',
+        text:    'Lukas! Danke noch einmal für Omas <vocab title="Kue apel">Apfelkuchen</vocab> — er war köstlich!',
         next:    'g2',
       },
       g2: {
         id:      'g2',
         speaker: 'tante_maria',
-        text:    'Wie geht es deiner <vocab title="Ibu">Mutter</vocab> in Indonesien? Erzähl mir später alles.',
+        text:    'Grüß deine <vocab title="Ibu">Mutter</vocab> in Indonesien von mir, ja?',
         end:     true,
       },
     },
@@ -307,8 +307,6 @@ export const DIALOGS = {
         text:    'Lecker! Das war ein <vocab title="sarapan yang enak">leckeres Frühstück</vocab>! Mmmmh~ 😋',
         onEnter: [
           { type: 'progress_quest', step: 'step5_cook' },
-          { type: 'complete_quest', questId: 'quest_1' },
-          { type: 'add_score',      delta: 500, label: 'Quest 1 abgeschlossen!' },
         ],
         end: true,
       },
@@ -411,13 +409,13 @@ export const DIALOGS = {
       t2_2: {
         id:      't2_2',
         speaker: 'tante_maria',
-        text:    'Kannst du mir bitte 3 Sachen suchen? Ich brauche sie heute.',
+        text:    'Ich bin noch im <vocab title="Kantor">Büro</vocab>. Kannst du mir bitte drei Sachen suchen? Ich brauche sie heute Abend.',
         next:    't2_3',
       },
       t2_3: {
         id:      't2_3',
         speaker: 'tante_maria',
-        text:    'Such bitte: die <vocab title="kaos kaki">Socken</vocab>, das <vocab title="kertas">Papier</vocab>, und das <vocab title="mainan">Spielzeug</vocab> von Lina.',
+        text:    'Such bitte: die <vocab title="kaos kaki">Socken</vocab>, das <vocab title="kertas">Papier</vocab>, und das <vocab title="mainan">Spielzeug</vocab> von Leni.',
         next:    't2_4',
       },
       t2_4: {
@@ -439,7 +437,6 @@ export const DIALOGS = {
         onEnter: [
           // Setelah dialog Tante selesai → step3 (collect items) mulai
           { type: 'progress_quest', step: 'step2_phone_call2' },
-          { type: 'show_quest',     questId: 'quest_2' },
         ],
         end: true,
       },
@@ -555,7 +552,7 @@ export const DIALOGS = {
       lg2: {
         id:      'lg2',
         speaker: 'leni',
-        text:    'Komm, lass uns nach Hause gehen. Mama hat gesagt, du holst mich ab.',
+        text:    'Mama hat gesagt, du bringst mich zu Oma. Komm, lass uns gehen!',
         next:    'lg3',
       },
       lg3: {
@@ -564,7 +561,6 @@ export const DIALOGS = {
         text:    'Klar Leni! Folge mir, ich kenne den Weg zurück zu Omas Haus.',
         onEnter: [
           { type: 'progress_quest', step: 'step4_meet_leni' },
-          { type: 'add_score',      delta: 100, label: 'Leni getroffen!' },
         ],
         end: true,
       },
@@ -582,7 +578,7 @@ export const DIALOGS = {
       t3_1: {
         id:      't3_1',
         speaker: 'tante_maria',
-        text:    'Lukas, kannst du bitte Leni von der <vocab title="Sekolah">Schule</vocab> <vocab title="menjemput">abholen</vocab>? Sie wartet schon!',
+        text:    'Lukas, ich muss heute länger arbeiten. Kannst du bitte Leni von der <vocab title="Sekolah">Schule</vocab> <vocab title="menjemput">abholen</vocab> und zu Oma bringen? Sie wartet schon!',
         next:    't3_2',
       },
       // Panel 2
@@ -648,7 +644,6 @@ export const DIALOGS = {
         onEnter: [
           { type: 'progress_quest', step: 'step2_get_directions3' },
           { type: 'add_journal',    entry: 'leni_abholen_notiz' },
-          { type: 'show_quest',     questId: 'quest_3' },
         ],
         end:     true,
       },
@@ -711,7 +706,6 @@ export const DIALOGS = {
         onEnter: [
           { type: 'progress_quest', step: 'step3_read_brief' },
           { type: 'add_journal',    entry: 'einkaufen_notiz' },
-          { type: 'show_quest',     questId: 'quest_4' },
         ],
         end:     true,
       },
@@ -731,7 +725,7 @@ export const DIALOGS = {
       fw1: {
         id:      'fw1',
         speaker: 'lukas',
-        text:    'Entschuldigung, können Sie mir helfen? Ich habe mich <vocab title="tersesat">verlaufen</vocab> und finde den Weg nicht mehr.',
+        text:    'Entschuldigung, können Sie mir helfen? Ich bin gerade mit dem <vocab title="Bus">Bus</vocab> gekommen und kenne den Weg nicht.',
         next:    'fw2',
       },
       fw2: {
@@ -755,80 +749,22 @@ export const DIALOGS = {
       fw5: {
         id:      'fw5',
         speaker: 'lukas',
-        text:    'Vielen Dank, jetzt weiß ich wieder, wo ich bin!',
+        text:    'Vielen Dank! Jetzt weiß ich, wohin ich gehen muss.',
         next:    'fw6',
       },
       fw6: {
         id:      'fw6',
         speaker: 'frau_weber',
-        text:    'Kein Problem. Gute Heimreise!',
+        text:    'Gern geschehen. Viel Spaß bei deiner Tante!',
         onEnter: [
-          { type: 'progress_quest', step: 'step1_ask_frau' },
+          { type: 'progress_quest', step: 'step3_ask_frau' },
           { type: 'add_journal',    entry: 'tantes_haus_notiz' },
-          { type: 'show_quest',     questId: 'quest_5' },
-          { type: 'add_score',      delta: 100, label: 'Nach dem Weg gefragt!' },
         ],
         end:     true,
       },
     },
   },
 
-  // Dialog belanja di EDEKA (step5_shopping)
-  lukas_einkaufen: {
-    id:      'lukas_einkaufen',
-    start:   'ek1',
-    questId: 'quest_4',
-    nodes: {
-      ek1: {
-        id:      'ek1',
-        speaker: 'lukas',
-        text:    'Da ist der EDEKA — genau gegenüber dem Mall! Ich gehe hinein und kaufe ein: <vocab title="kentang">Kartoffeln</vocab>, <vocab title="daging">Fleisch</vocab>, <vocab title="selada">Salat</vocab> und <vocab title="mentega">Butter</vocab>...',
-        next:    'ek2',
-      },
-      ek2: {
-        id:      'ek2',
-        speaker: 'lukas',
-        text:    'Fertig! Ich habe alles eingekauft. Jetzt schnell zurück zu Oma — heute Abend kochen wir zusammen! 🛒',
-        onEnter: [
-          { type: 'progress_quest', step: 'step5_shopping' },
-        ],
-        end:     true,
-      },
-    },
-  },
-
-  oma_quest4_intro: {
-    id:      'oma_quest4_intro',
-    start:   'q4_1',
-    questId: 'quest_4',
-    nodes: {
-      q4_1: {
-        id:      'q4_1',
-        speaker: 'oma_helga',
-        text:    'Lukas, für das <vocab title="Makan malam">Abendessen</vocab> brauche ich: <vocab title="Daging">Fleisch</vocab>, <vocab title="Sayuran">Gemüse</vocab> und <vocab title="Roti">Brot</vocab>.',
-        next:    'q4_2',
-      },
-      q4_2: {
-        id:      'q4_2',
-        speaker: 'oma_helga',
-        text:    'Kannst du das bitte im <vocab title="Supermarket">Supermarkt</vocab> kaufen? Ich —',
-        next:    'q4_3',
-      },
-      q4_3: {
-        id:      'q4_3',
-        speaker: 'lukas',
-        text:    'Klar, Oma! Ich gehe sofort! ... Warte, wo ist eigentlich der Supermarkt? Ich muss jemanden fragen!',
-        onEnter: [
-          { type: 'progress_quest', step: 'step1_talk_oma' },
-          { type: 'add_journal',    entry: 'einkaufen_notiz' },
-          { type: 'show_quest',     questId: 'quest_4' },
-        ],
-        end: true,
-      },
-    },
-  },
-
-  // Dialog passant_1 saat Lukas tanya arah Supermarkt (quest_4, step2)
   passant1_directions: {
     id:    'passant1_directions',
     start: 'p1_1',
@@ -871,9 +807,6 @@ export const DIALOGS = {
         id:      'p1_correct',
         speaker: 'passant_1',
         text:    '<vocab title="Benar">Richtig</vocab>! Neben dem Parkplatz. Guten Einkauf!',
-        onEnter: [
-          { type: 'progress_quest', step: 'step2_ask_passant' },
-        ],
         end: true,
       },
       p1_wrong: {
@@ -928,10 +861,6 @@ export const DIALOGS = {
         id:      'p2_correct',
         speaker: 'passant_2',
         text:    'Genau! Zwischen dem Blumenladen und dem Café. Guten Appetit!',
-        onEnter: [
-          { type: 'progress_quest', step: 'step1_ask_eisstand' },
-          { type: 'show_quest',     questId: 'quest_5' },
-        ],
         end: true,
       },
       p2_wrong: {
@@ -957,19 +886,19 @@ export const DIALOGS = {
       p3_1: {
         id:      'p3_1',
         speaker: 'lukas',
-        text:    'Entschuldigung! Ich habe mich <vocab title="Tersesat">verlaufen</vocab>. Wissen Sie, wo die alte Brücke ist?',
+        text:    'Entschuldigung, Herr Fischer! Wo bin ich hier eigentlich? Ich kenne diesen Teil der Stadt nicht. Wissen Sie, wo die alte Brücke ist? Dort wohnt meine Oma.',
         next:    'p3_2',
       },
       p3_2: {
         id:      'p3_2',
         speaker: 'passant_3',
-        text:    'Die alte Brücke? Kein Problem! Gehen Sie <vocab title="kembali">zurück</vocab> durch den Park bis zur <vocab title="Jalan utama">Hauptstraße</vocab>. Dort biegen Sie rechts ab und gehen geradeaus bis zur Ampel.',
+        text:    'Die alte Brücke? Kein Problem! Geh <vocab title="kembali">zurück</vocab> durch den Park bis zur <vocab title="Jalan utama">Hauptstraße</vocab>. Dort biegst du rechts ab und gehst geradeaus bis zur Ampel.',
         next:    'p3_3',
       },
       p3_3: {
         id:      'p3_3',
         speaker: 'passant_3',
-        text:    'An der Ampel gehen Sie links in die Schillerstraße, immer geradeaus bis zum Fluss. <vocab title="Menyeberangi">Überqueren</vocab> Sie die alte <vocab title="Jembatan">Brücke</vocab> — dahinter wohnen Ihre Großeltern, gleich neben der <vocab title="Kincir angin">Windmühle</vocab>.',
+        text:    'An der Ampel gehst du links in die Schillerstraße, immer geradeaus bis zum Fluss. <vocab title="Menyeberangi">Überquere</vocab> die alte <vocab title="Jembatan">Brücke</vocab> — dahinter wohnen deine Großeltern, gleich neben der <vocab title="Kincir angin">Windmühle</vocab>.',
         next:    'p3_quiz',
       },
       p3_quiz: {
@@ -989,7 +918,6 @@ export const DIALOGS = {
         onEnter: [
           { type: 'progress_quest', step: 'step1_ask_way_home' },
           { type: 'add_journal',    entry: 'verloren_notiz' },
-          { type: 'show_quest',     questId: 'quest_6' },
         ],
         next: 'p3_done',
       },
@@ -1022,19 +950,19 @@ export const DIALOGS = {
       p4_1: {
         id:      'p4_1',
         speaker: 'lukas',
-        text:    'Entschuldigung! Ich bin verloren! Ich muss <vocab title="Segera">schnell</vocab> ins <vocab title="Bioskop">Kino</vocab>! Der Film fängt bald an!',
+        text:    'Entschuldigung! Ich habe mich im Park <vocab title="tersesat">verlaufen</vocab>. Ich muss <vocab title="Segera">schnell</vocab> ins <vocab title="Bioskop">Kino</vocab> — der Film fängt bald an!',
         next:    'p4_2',
       },
       p4_2: {
         id:      'p4_2',
         speaker: 'passant_4',
-        text:    'Oh! Das Kino ist nicht weit. Hören Sie gut zu: Gehen Sie diese <vocab title="Jalan pohon">Allee</vocab> <vocab title="lurus">geradeaus</vocab> entlang bis zum Ende.',
+        text:    'Oh! Das Kino ist nicht weit. Hör gut zu: Geh diese <vocab title="Jalan pohon">Allee</vocab> <vocab title="lurus">geradeaus</vocab> entlang bis zum Ende.',
         next:    'p4_3',
       },
       p4_3: {
         id:      'p4_3',
         speaker: 'passant_4',
-        text:    'Dann biegen Sie <vocab title="kanan">rechts</vocab> auf die <vocab title="Jalan utama">Hauptstraße</vocab> ab. Das Kino ist das große Gebäude mit den <vocab title="lampu berwarna-warni">bunten Lichtern</vocab> auf der linken Seite.',
+        text:    'Dann biegst du <vocab title="kanan">rechts</vocab> in die <vocab title="Jalan utama">Hauptstraße</vocab> ab. Das Kino ist das große Gebäude mit den <vocab title="lampu berwarna-warni">bunten Lichtern</vocab> auf der linken Seite.',
         next:    'p4_quiz',
       },
       p4_quiz: {
@@ -1052,9 +980,8 @@ export const DIALOGS = {
         speaker: 'passant_4',
         text:    'Richtig! RECHTS! <vocab title="Cepat-cepat">Beeil dich</vocab> — der Film fängt gleich an!',
         onEnter: [
-          { type: 'progress_quest', step: 'step2_ask_kino' },
+          { type: 'progress_quest', step: 'step3_ask_kino' },
           { type: 'add_journal',    entry: 'kino_notiz' },
-          { type: 'show_quest',     questId: 'quest_7' },
         ],
         next: 'p4_done',
       },
@@ -1078,30 +1005,344 @@ export const DIALOGS = {
   // QUEST 8-10 — Dialog Penutup
   // ════════════════════════════════════════════════════════════════
 
-  opa_quest8_intro: {
-    id: 'opa_quest8_intro', start: 'n1',
+  // ════════════════════════════════════════════════════════════════
+  // QUEST 4 — Bezahlen & nach Hause
+  // ════════════════════════════════════════════════════════════════
+
+  kasse_bezahlen: {
+    id: 'kasse_bezahlen', start: 'k1', questId: 'quest_4',
     nodes: {
-      n1: { id: 'n1', speaker: 'opa_klaus',
-            text: 'Heute Abend essen wir alle zusammen im <vocab title="Restoran">Restaurant</vocab> Deichstraße. Komm mit!',
+      k1: { id: 'k1', speaker: 'kassiererin',
+            text: 'Guten Tag! Haben Sie alles gefunden?', next: 'k2' },
+      k2: { id: 'k2', speaker: 'lukas',
+            text: 'Ja, danke! <vocab title="kentang">Kartoffeln</vocab>, <vocab title="daging">Fleisch</vocab>, <vocab title="selada">Salat</vocab> und <vocab title="mentega">Butter</vocab>.', next: 'k3' },
+      k3: { id: 'k3', speaker: 'kassiererin',
+            text: '<i>*piep, piep, piep*</i> Das <vocab title="totalnya">macht</vocab> zwölf Euro fünfzig, bitte.', next: 'kq' },
+      kq: { id: 'kq', speaker: 'lukas',
+            text: 'Wie viel muss ich <vocab title="membayar">bezahlen</vocab>?',
+            choices: [
+              { text: '2,50 €',  correct: false, score: -10, next: 'kw' },
+              { text: '12,50 €', correct: true,  score: 100, next: 'k4' },
+              { text: '20,15 €', correct: false, score: -10, next: 'kw' },
+            ] },
+      kw: { id: 'kw', speaker: 'kassiererin',
+            text: 'Nein, nein — <b>zwölf</b> Euro <b>fünfzig</b>. Zwölf = 12, fünfzig = 50.', next: 'kq' },
+      k4: { id: 'k4', speaker: 'lukas',
+            text: 'Hier sind zwölf Euro fünfzig. Brauche ich eine <vocab title="kantong belanja">Tüte</vocab>?', next: 'k5' },
+      k5: { id: 'k5', speaker: 'kassiererin',
+            text: 'Die Tüte ist schon dabei. Danke schön und einen schönen Tag noch!',
+            onEnter: [ { type: 'progress_quest', step: 'step7_pay' } ],
             end: true },
     },
   },
+
+  oma_einkauf_danke: {
+    id: 'oma_einkauf_danke', start: 'o1', questId: 'quest_4',
+    nodes: {
+      o1: { id: 'o1', speaker: 'oma_helga',
+            text: 'Da bist du ja, Lukas! Hast du meinen <vocab title="surat">Brief</vocab> gefunden?', next: 'o2' },
+      o2: { id: 'o2', speaker: 'lukas',
+            text: 'Ja, Oma! Der EDEKA liegt gegenüber dem Mall. Hier ist die Tüte.', next: 'oq' },
+      oq: { id: 'oq', speaker: 'oma_helga',
+            text: 'Wunderbar! Und was hast du alles gekauft?',
+            choices: [
+              { text: 'Kartoffeln, Fleisch, Salat und Butter.', correct: true,  score: 100, next: 'o3' },
+              { text: 'Brot, Eier und Milch.',                  correct: false, score: -10, next: 'ow' },
+              { text: 'Äpfel, Käse und Wurst.',                 correct: false, score: -10, next: 'ow' },
+            ] },
+      ow: { id: 'ow', speaker: 'oma_helga',
+            text: 'Hm? Schau noch einmal in die Tüte, mein Schatz.', next: 'oq' },
+      o3: { id: 'o3', speaker: 'oma_helga',
+            text: 'Alles da — danke, mein Schatz! Jetzt koche ich das Abendessen und backe einen <vocab title="kue apel">Apfelkuchen</vocab> für Tante Maria.',
+            onEnter: [ { type: 'progress_quest', step: 'step9_give_oma' } ],
+            end: true },
+    },
+  },
+
+  // ════════════════════════════════════════════════════════════════
+  // QUEST 5 — Apfelkuchen für Tante Maria
+  // ════════════════════════════════════════════════════════════════
+
+  oma_kuchen_bus: {
+    id: 'oma_kuchen_bus', start: 'b1', questId: 'quest_5',
+    nodes: {
+      b1: { id: 'b1', speaker: 'oma_helga',
+            text: 'Lukas, der <vocab title="kue apel">Apfelkuchen</vocab> ist fertig! Bringst du ihn bitte zu Tante Maria?', next: 'b2' },
+      b2: { id: 'b2', speaker: 'oma_helga',
+            text: 'Sie wohnt in der Stadt, direkt <vocab title="di samping">neben</vocab> der alten <vocab title="perpustakaan">Bibliothek</vocab>. Nimm den <vocab title="bus">Bus</vocab> — er hält an der Hauptstraße.', next: 'b3' },
+      b3: { id: 'b3', speaker: 'lukas',
+            text: 'Neben der alten Bibliothek … Gut, Oma! Den Weg von der <vocab title="halte">Haltestelle</vocab> finde ich schon.',
+            onEnter: [ { type: 'progress_quest', step: 'step1_cake' } ],
+            end: true },
+    },
+  },
+
+  tante_kuchen: {
+    id: 'tante_kuchen', start: 't1', questId: 'quest_5',
+    nodes: {
+      t1: { id: 't1', speaker: 'tante_maria_stadt',
+            text: 'Lukas! Was für eine Überraschung! Wie hast du mein Haus gefunden?', next: 't2' },
+      t2: { id: 't2', speaker: 'lukas',
+            text: 'Ich habe eine Frau an der Haltestelle gefragt. Ich bin über die <vocab title="jembatan">Brücke</vocab> und durch den <vocab title="taman">Park</vocab> gegangen.', next: 'tq' },
+      tq: { id: 'tq', speaker: 'tante_maria_stadt',
+            text: 'Sehr gut! Und welches Gebäude steht direkt neben meinem Haus?',
+            choices: [
+              { text: 'Die Kirche.',          correct: false, score: -10, next: 'tw' },
+              { text: 'Die alte Bibliothek.', correct: true,  score: 100, next: 't3' },
+              { text: 'Das Kino.',            correct: false, score: -10, next: 'tw' },
+            ] },
+      tw: { id: 'tw', speaker: 'tante_maria_stadt',
+            text: 'Schau dich noch einmal um, Lukas. Was steht gleich <vocab title="di sebelahnya">daneben</vocab>?', next: 'tq' },
+      t3: { id: 't3', speaker: 'lukas',
+            text: 'Und das hier ist für dich: ein Apfelkuchen von Oma!', next: 't4' },
+      t4: { id: 't4', speaker: 'tante_maria_stadt',
+            text: 'Mmh, der riecht herrlich! Danke, Lukas. Leni wird sich freuen.', next: 't5' },
+      t5: { id: 't5', speaker: 'tante_maria_stadt',
+            text: 'Oh, es wird schon spät, und der letzte Bus ist weg. Frag doch Herrn Fischer, unseren Nachbarn — er steht da drüben im Park und kennt jede Straße.',
+            onEnter: [ { type: 'progress_quest', step: 'step5_give_cake' } ],
+            end: true },
+    },
+  },
+
+  // ════════════════════════════════════════════════════════════════
+  // QUEST 6 — Zu Hause angekommen
+  // ════════════════════════════════════════════════════════════════
+
+  oma_abendessen: {
+    id: 'oma_abendessen', start: 'a1', questId: 'quest_6',
+    nodes: {
+      a1: { id: 'a1', speaker: 'oma_helga',
+            text: 'Da bist du ja, Lukas! Ich habe mir schon Sorgen gemacht. Wie war es bei Tante Maria?', next: 'a2' },
+      a2: { id: 'a2', speaker: 'lukas',
+            text: 'Schön! Aber der Bus fuhr nicht mehr. Ein Nachbar hat mir den Weg erklärt.', next: 'aq' },
+      aq: { id: 'aq', speaker: 'oma_helga',
+            text: 'Und wie bist du dann nach Hause gekommen?',
+            choices: [
+              { text: 'Mit dem Taxi.',                                 correct: false, score: -10, next: 'aw' },
+              { text: 'Zu Fuß — über die alte Brücke.',                correct: true,  score: 100, next: 'a3' },
+              { text: 'Mit dem Boot über die Elbe.',                   correct: false, score: -10, next: 'aw' },
+            ] },
+      aw: { id: 'aw', speaker: 'oma_helga',
+            text: 'Wirklich? Erzähl noch einmal: Was musstest du <vocab title="menyeberangi">überqueren</vocab>?', next: 'aq' },
+      a3: { id: 'a3', speaker: 'oma_helga',
+            text: 'Ganz allein! Ich bin stolz auf dich. Komm rein — das <vocab title="makan malam">Abendessen</vocab> ist fertig!',
+            onEnter: [ { type: 'progress_quest', step: 'step3_dinner' } ],
+            end: true },
+    },
+  },
+
+  // ════════════════════════════════════════════════════════════════
+  // QUEST 7 — Kino am Abend
+  // ════════════════════════════════════════════════════════════════
+
+  lukas_kino_plan: {
+    id: 'lukas_kino_plan', start: 'p1', questId: 'quest_7',
+    nodes: {
+      p1: { id: 'p1', speaker: 'lukas',
+            text: '<i>*Handy vibriert*</i> Eine Nachricht von Felix: „Der Film beginnt um acht Uhr im <vocab title="bioskop">Kino</vocab>. Ich warte drinnen!"', next: 'p2' },
+      p2: { id: 'p2', speaker: 'lukas',
+            text: 'Schon so spät! Aber wo ist das Kino? Ich gehe in die Stadt und frage jemanden.',
+            onEnter: [ { type: 'progress_quest', step: 'step1_plan' } ],
+            end: true },
+    },
+  },
+
+  kino_karte: {
+    id: 'kino_karte', start: 'c1', questId: 'quest_7',
+    nodes: {
+      c1: { id: 'c1', speaker: 'kinokasse',
+            text: 'Guten Abend! Was möchtest du sehen?', next: 'c2' },
+      c2: { id: 'c2', speaker: 'lukas',
+            text: 'Eine <vocab title="tiket">Karte</vocab> für „Abenteuer an der Elbe", bitte. Mein Freund Felix ist schon drin.', next: 'cq' },
+      cq: { id: 'cq', speaker: 'kinokasse',
+            text: 'Gern. Der Film beginnt um <b>acht Uhr</b> in Saal 2. Das macht acht Euro. — Wann beginnt der Film?',
+            choices: [
+              { text: 'Um sechs Uhr.', correct: false, score: -10, next: 'cw' },
+              { text: 'Um acht Uhr.',  correct: true,  score: 100, next: 'c3' },
+              { text: 'Um zehn Uhr.',  correct: false, score: -10, next: 'cw' },
+            ] },
+      cw: { id: 'cw', speaker: 'kinokasse',
+            text: 'Nein — um <b>acht</b> Uhr (20 Uhr). Hör gut zu!', next: 'cq' },
+      c3: { id: 'c3', speaker: 'kinokasse',
+            text: 'Genau! Hier ist deine Karte. Viel Spaß im Film!', end: true },
+    },
+  },
+
+  // ════════════════════════════════════════════════════════════════
+  // QUEST 8 — Restaurant Deichstraße (am nächsten Tag)
+  // ════════════════════════════════════════════════════════════════
+
+  opa_quest8_intro: {
+    id: 'opa_quest8_intro', start: 'r1', questId: 'quest_8',
+    nodes: {
+      r1: { id: 'r1', speaker: 'opa_klaus',
+            text: 'Guten Morgen, Lukas! Heute ist dein letzter Tag in Hamburg. Zum <vocab title="makan siang">Mittagessen</vocab> lade ich alle ins <vocab title="restoran">Restaurant</vocab> in der Deichstraße ein!', next: 'r2' },
+      r2: { id: 'r2', speaker: 'opa_klaus',
+            text: 'Geh schon vor, wir kommen gleich nach. Hör gut zu: Über die alte Brücke und die Schillerstraße <vocab title="lurus">geradeaus</vocab> bis zur Ampel. Dort <vocab title="kanan">rechts</vocab> in die Hauptstraße.', next: 'r3' },
+      r3: { id: 'r3', speaker: 'opa_klaus',
+            text: 'An der großen Kreuzung <vocab title="kanan">rechts</vocab> in die Bachstraße und dann <vocab title="kiri">links</vocab> in die Deichstraße. Das Restaurant ist auf der <vocab title="sisi kiri">linken Seite</vocab>.', next: 'rq' },
+      rq: { id: 'rq', speaker: 'lukas',
+            text: 'Also … von der Bachstraße biege ich in die Deichstraße …',
+            choices: [
+              { text: '… nach links.',    correct: true,  score: 100, next: 'r4' },
+              { text: '… nach rechts.',   correct: false, score: -10, next: 'rw' },
+              { text: '… gar nicht ab.',  correct: false, score: -10, next: 'rw' },
+            ] },
+      rw: { id: 'rw', speaker: 'opa_klaus',
+            text: 'Nein, mein Junge: von der Bachstraße <b>links</b> in die Deichstraße.', next: 'rq' },
+      r4: { id: 'r4', speaker: 'opa_klaus',
+            text: 'Genau! Bis gleich im Restaurant.',
+            onEnter: [
+              { type: 'progress_quest', step: 'step1_talk_opa' },
+              { type: 'add_journal',    entry: 'restaurant_notiz' },
+            ],
+            end: true },
+    },
+  },
+
+  restaurant_bestellen: {
+    id: 'restaurant_bestellen', start: 'e1', questId: 'quest_8',
+    nodes: {
+      e1: { id: 'e1', speaker: 'kellner',
+            text: 'Herzlich willkommen im Restaurant Deichstraße! Ihre Familie sitzt schon am Fenster. Hier ist die <vocab title="daftar menu">Speisekarte</vocab>.', next: 'e2' },
+      e2: { id: 'e2', speaker: 'kellner',
+            text: 'Heute gibt es: <b>Fischbrötchen</b> (4,50 €), <b>Labskaus</b> (9,80 €) und <b>Rote Grütze</b> zum Nachtisch (3,90 €). Was <vocab title="mau">möchten</vocab> Sie?', next: 'eq' },
+      eq: { id: 'eq', speaker: 'lukas',
+            text: 'Hmm … Wie bestelle ich höflich ein Fischbrötchen?',
+            choices: [
+              { text: 'Ich hätte gern ein Fischbrötchen, bitte.', correct: true,  score: 100, next: 'e3' },
+              { text: 'Fischbrötchen. Jetzt!',                    correct: false, score: -10, next: 'ew' },
+              { text: 'Ich bin ein Fischbrötchen.',               correct: false, score: -10, next: 'ew' },
+            ] },
+      ew: { id: 'ew', speaker: 'kellner',
+            text: 'Wie bitte? Sagen Sie einfach: „Ich <vocab title="ingin (sopan)">hätte gern</vocab> …, bitte."', next: 'eq' },
+      e3: { id: 'e3', speaker: 'kellner',
+            text: 'Sehr gern. Und was kostet das Fischbrötchen?',
+            choices: [
+              { text: '4,50 €', correct: true,  score: 100, next: 'e4' },
+              { text: '9,80 €', correct: false, score: -10, next: 'ew2' },
+              { text: '3,90 €', correct: false, score: -10, next: 'ew2' },
+            ] },
+      ew2: { id: 'ew2', speaker: 'kellner',
+             text: 'Schauen Sie noch einmal auf die Speisekarte: Fischbrötchen …', next: 'e3' },
+      e4: { id: 'e4', speaker: 'kellner',
+            text: 'Richtig, vier Euro fünfzig. Kommt sofort! <i>*Wenig später …*</i> Guten Appetit!', next: 'e5' },
+      e5: { id: 'e5', speaker: 'opa_klaus',
+            text: 'Na, Lukas? Ein echtes Hamburger Fischbrötchen! Schmeckt es dir?', next: 'e6' },
+      e6: { id: 'e6', speaker: 'lukas',
+            text: 'Sehr <vocab title="enak">lecker</vocab>, Opa! Danke für die Einladung!', end: true },
+    },
+  },
+
+  // ════════════════════════════════════════════════════════════════
+  // QUEST 9 — Spaziergang an der Elbe
+  // ════════════════════════════════════════════════════════════════
 
   felix_quest9_intro: {
-    id: 'felix_quest9_intro', start: 'n1',
+    id: 'felix_quest9_intro', start: 'f1', questId: 'quest_9',
     nodes: {
-      n1: { id: 'n1', speaker: 'felix',
-            text: 'Komm schnell an die <vocab title="Sungai Elbe">Elbe</vocab> — der <vocab title="Matahari terbenam">Sonnenuntergang</vocab> ist heute genial!',
+      f1: { id: 'f1', speaker: 'felix',
+            text: 'Lukas! Leni und ich machen einen <vocab title="jalan-jalan">Spaziergang</vocab> an der <vocab title="sungai Elbe">Elbe</vocab>. Kommst du mit?', next: 'f2' },
+      f2: { id: 'f2', speaker: 'felix',
+            text: 'Wir gehen die Promenade <vocab title="menyusuri">entlang</vocab>, immer Richtung Osten, bis zum <vocab title="titik pandang">Aussichtspunkt</vocab> mit dem Fernrohr.', next: 'f3' },
+      f3: { id: 'f3', speaker: 'lukas',
+            text: 'Klar komme ich mit! Geht ihr vor?',
+            onEnter: [
+              { type: 'progress_quest', step: 'step1_talk_felix' },
+              { type: 'add_journal',    entry: 'elbe_notiz' },
+            ],
             end: true },
     },
   },
 
-  oma_quest10_intro: {
-    id: 'oma_quest10_intro', start: 'n1',
+  felix_elbe_gespraech: {
+    id: 'felix_elbe_gespraech', start: 'g1', questId: 'quest_9',
     nodes: {
-      n1: { id: 'n1', speaker: 'oma_helga',
-            text: 'Heute Abend ist dein letzter. Lass uns alle zusammen <vocab title="Merayakan">feiern</vocab>. Die ganze Familie ist hier!',
+      g1: { id: 'g1', speaker: 'felix',
+            text: 'Schau mal, die Schiffe auf der Elbe! Und die Sonne geht bald unter.', next: 'g2' },
+      g2: { id: 'g2', speaker: 'leni',
+            text: 'Lukas, kommst du nächstes Jahr wieder nach Hamburg?', next: 'gq' },
+      gq: { id: 'gq', speaker: 'lukas',
+            text: 'Was antwortet Lukas?',
+            choices: [
+              { text: 'Ja, ich komme bestimmt wieder!',      correct: true, score: 50, next: 'g3' },
+              { text: 'Vielleicht — ich hoffe es sehr.',     correct: true, score: 50, next: 'g3' },
+            ] },
+      g3: { id: 'g3', speaker: 'felix',
+            text: 'Super! Und was willst du in der <vocab title="masa depan">Zukunft</vocab> machen? Ich möchte Kapitän werden — auf einem großen Schiff.', next: 'g4' },
+      g4: { id: 'g4', speaker: 'lukas',
+            text: 'Ich lerne weiter Deutsch. Vielleicht studiere ich später in Hamburg!', next: 'g5' },
+      g5: { id: 'g5', speaker: 'leni',
+            text: 'Dann wohnst du bei uns! Komm, Oma wartet heute Abend mit dem großen Abschiedsessen.',
+            onEnter: [ { type: 'progress_quest', step: 'step3_sunset_talk' } ],
             end: true },
+    },
+  },
+
+  // ════════════════════════════════════════════════════════════════
+  // QUEST 10 — Abschiedsabend
+  // ════════════════════════════════════════════════════════════════
+
+  oma_abschied: {
+    id: 'oma_abschied', start: 'z1', questId: 'quest_10',
+    nodes: {
+      z1: { id: 'z1', speaker: 'oma_helga',
+            text: 'Da ist ja unser Lukas! Heute ist dein letzter Abend. Die ganze <vocab title="keluarga">Familie</vocab> ist hier.', next: 'z2' },
+      z2: { id: 'z2', speaker: 'opa_klaus',
+            text: 'Du hast so viel erlebt: die Schule von Leni, der EDEKA, die alte Brücke, das Kino …', next: 'z3' },
+      z3: { id: 'z3', speaker: 'tante_maria',
+            text: 'Und den Weg zu meinem Haus hast du ganz allein gefunden!', next: 'zq' },
+      zq: { id: 'zq', speaker: 'oma_helga',
+            text: 'Sag mal, Lukas: Wo war das Kino?',
+            choices: [
+              { text: 'Neben dem Bahnhof.',                                 correct: false, score: -10, next: 'zw' },
+              { text: 'An der Hauptstraße — das Gebäude mit den bunten Lichtern.', correct: true,  score: 100, next: 'z4' },
+              { text: 'Hinter der Kirche.',                                 correct: false, score: -10, next: 'zw' },
+            ] },
+      zw: { id: 'zw', speaker: 'oma_helga',
+            text: 'Hmm, denk noch einmal an die bunten Lichter …', next: 'zq' },
+      z4: { id: 'z4', speaker: 'lukas',
+            text: 'Danke für alles! Ich habe hier so viel Deutsch gelernt. Ich werde euch <vocab title="merindukan">vermissen</vocab>.', next: 'z5' },
+      z5: { id: 'z5', speaker: 'oma_helga',
+            text: 'Wir dich auch, mein Schatz. Komm bald wieder! <i>*Alle heben die Gläser*</i> Auf Lukas!',
+            onEnter: [ { type: 'progress_quest', step: 'step2_farewell' } ],
+            end: true },
+    },
+  },
+
+  // ════════════════════════════════════════════════════════════════
+  // NPC tambahan — sapaan di luar langkah quest
+  // ════════════════════════════════════════════════════════════════
+
+  kassiererin_greeting: {
+    id: 'kassiererin_greeting', start: 'g1',
+    nodes: {
+      g1: { id: 'g1', speaker: 'kassiererin',
+            text: 'Guten Tag! Die <vocab title="kasir">Kasse</vocab> ist hier vorne, wenn Sie fertig sind.', end: true },
+    },
+  },
+
+  tante_stadt_greeting: {
+    id: 'tante_stadt_greeting', start: 'g1',
+    nodes: {
+      g1: { id: 'g1', speaker: 'tante_maria_stadt',
+            text: 'Lukas! Komm gut nach Hause — und grüß Oma von mir!', end: true },
+    },
+  },
+
+  felix_greeting: {
+    id: 'felix_greeting', start: 'g1',
+    nodes: {
+      g1: { id: 'g1', speaker: 'felix',
+            text: 'Hey Lukas! Was für ein schöner Tag an der Elbe.', end: true },
+    },
+  },
+
+  leni_greeting: {
+    id: 'leni_greeting', start: 'g1',
+    nodes: {
+      g1: { id: 'g1', speaker: 'leni',
+            text: 'Lukas! Ich bin so froh, dass du hier bist!', end: true },
     },
   },
 };
@@ -1112,144 +1353,163 @@ export const DIALOGS = {
 // ═══════════════════════════════════════════════════════════════════
 
 export const JOURNAL_ENTRIES = {
+  // Setiap entri: title, subtitle, body (teks catatan, baris baru dipertahankan),
+  // words: [[Jerman, Indonesia], …], done: catatan tambahan setelah quest selesai.
 
   // ── STAGE 1 ───────────────────────────────────────────────────
   frühstück_notiz: {
     title:    'Omas Hinweise für die Küche',
-    subtitle: 'Geschrieben von Oma Helga (via SMS)',
+    subtitle: 'Am Telefon mit Oma Helga',
     body: `
-Mein Schatz Lukas,
+Oma ist nicht zu Hause. Am Telefon hat sie mir gesagt, wo alles ist:
 
-Ich bin kurz im Garten. Hier sind die Hinweise für die Küche:
-
-• Die <b>Pfanne</b> liegt <span class="prep-highlight">AUF</span> dem Herd
-• Die <b>Wurst</b> ist <span class="prep-highlight">AUF</span> dem Serviertisch
-• Die <b>Eier</b> findest du <span class="prep-highlight">IN</span> der Schublade
-• Der <b>Teller</b> ist <span class="prep-highlight">AUF</span> dem Regal
-• Das <b>Besteck</b> liegt <span class="prep-highlight">UNTER</span> dem Kochbuch
-
-Viel Spaß beim Kochen! 🍳
-Deine Oma Helga
+• Die <b>Pfanne</b> ist <span class="prep-highlight">IN</span> dem Schrank.
+• Die <b>Wurst</b> ist <span class="prep-highlight">AUF</span> dem Serviertisch.
+• Die <b>Eier</b> sind <span class="prep-highlight">UNTER</span> dem kleinen Tisch.
+• Der <b>Teller</b> ist <span class="prep-highlight">AUF</span> dem Küchentisch.
+• Das <b>Besteck</b> ist <span class="prep-highlight">IN</span> der Schublade.
     `.trim(),
+    words: [['in', 'di dalam'], ['auf', 'di atas'], ['unter', 'di bawah'], ['der Schrank', 'lemari'], ['die Schublade', 'laci']],
+    done: 'Ich habe alles gefunden und ein leckeres Frühstück gekocht! 🍳',
   },
 
   wohnzimmer_notiz: {
-    title:    'Das Wohnzimmer',
-    subtitle: 'Lukas\' Notizen',
+    title:    'Tantes drei Sachen',
+    subtitle: 'Tante Maria ruft aus dem Büro an',
     body: `
-Tante Maria hat angerufen. Das Spielzeug von Leni ist irgendwo im Wohnzimmer:
+Tante Maria braucht drei Sachen: die <b>Socken</b>, das <b>Papier</b> und das <b>Spielzeug</b> von Leni.
+Sie weiß nicht, wo sie sind — ich muss selbst suchen.
 
-• <span class="prep-highlight">AUF</span> dem Sofa?
-• <span class="prep-highlight">UNTER</span> dem Tisch?
-• <span class="prep-highlight">NEBEN</span> dem Regal?
-
-Wichtige Wörter:
-• das Wohnzimmer = ruang tamu
-• das Sofa = sofa
-• der Tisch = meja
-• das Spielzeug = mainan
+Tipp: Merk dir, WO du jede Sache findest. Du musst es Tante schreiben!
     `.trim(),
+    words: [['die Socken', 'kaus kaki'], ['das Papier', 'kertas'], ['das Spielzeug', 'mainan'], ['der Esstisch', 'meja makan']],
+    done: `Gefunden:
+• Die Socken sind <span class="prep-highlight">IM</span> Schrank.
+• Das Papier liegt <span class="prep-highlight">AUF</span> dem Tisch.
+• Das Spielzeug ist <span class="prep-highlight">UNTER</span> dem Esstisch.`,
   },
 
   // ── STAGE 2 ───────────────────────────────────────────────────
   leni_abholen_notiz: {
     title:    'Wegbeschreibung zur Schule',
-    subtitle: 'Tante Marias Anweisungen',
+    subtitle: 'Tante Maria am Telefon',
     body: `
-So komme ich zur Schule:
+So komme ich zur Schule von Leni:
 
-1. Zuerst <span class="prep-highlight">geradeaus</span> bis zur Ampel
-2. <span class="prep-highlight">An der Ampel</span> (große Apotheke!) <span class="prep-highlight">nach rechts</span> in die Gutenbergstraße
-3. Weiter geradeaus bis zum Supermarkt
-4. Die Schule liegt <span class="prep-highlight">gegenüber</span> dem Supermarkt
-
-🏫 Das große gelbe Gebäude — neben einer kleinen Bäckerei!
-
-Nützliche Wörter:
-• geradeaus = lurus
-• nach rechts = ke kanan
-• gegenüber = di seberang
-• neben = di samping
+1. Über die alte Brücke in die Stadt, dann <span class="prep-highlight">geradeaus</span> bis zur Ampel.
+2. <span class="prep-highlight">An der Ampel</span> (große Apotheke!) <span class="prep-highlight">nach rechts</span> in die Gutenbergstraße.
+3. Weiter geradeaus bis zum Supermarkt.
+4. Die Schule liegt <span class="prep-highlight">gegenüber</span> dem Supermarkt — das große gelbe Gebäude <span class="prep-highlight">neben</span> der Bäckerei.
     `.trim(),
+    words: [['geradeaus', 'lurus'], ['nach rechts', 'ke kanan'], ['gegenüber', 'di seberang'], ['neben', 'di samping'], ['die Ampel', 'lampu lalu lintas']],
+    done: 'Leni ist sicher bei Oma. 👧',
   },
 
   einkaufen_notiz: {
     title:    'Omas Einkaufsliste',
-    subtitle: 'Für das Abendessen',
+    subtitle: 'Ein Brief von Oma',
     body: `
-Was Oma braucht:
-• Kartoffeln (kentang)
-• Fleisch (daging)
-• Salat (selada)
-• Butter (mentega)
+Was Oma braucht: Kartoffeln 🥔, Fleisch 🥩, Salat 🥬, Butter 🧈
 
-Wo ist der Supermarkt EDEKA?
+Wo ist der EDEKA?
 → Aus dem Haus <span class="prep-highlight">nach rechts</span> in die Blumenstraße
 → <span class="prep-highlight">Geradeaus</span> bis zur Kreuzung (dort: eine Bank!)
 → <span class="prep-highlight">Nach rechts</span> in die Wolfgangstraße
 → EDEKA liegt <span class="prep-highlight">gegenüber</span> dem Mall
 
-Tipp: Frag einen Passanten wenn du nicht weißt wo!
+Im EDEKA: alles einsammeln, an der Kasse bezahlen, dann nach Hause zu Oma.
     `.trim(),
+    words: [['die Kreuzung', 'perempatan'], ['die Kasse', 'kasir'], ['bezahlen', 'membayar'], ['zwölf Euro fünfzig', '12,50 €']],
+    done: 'Bezahlt: zwölf Euro fünfzig. Oma hat sich gefreut! 🛒',
   },
 
   tantes_haus_notiz: {
     title:    'Der Weg zu Tantes Haus',
-    subtitle: 'Frau Webers Wegbeschreibung',
+    subtitle: 'Frau Weber an der Bushaltestelle',
     body: `
-So komme ich zu Tantes Haus:
+Ich bringe Tante Maria Omas Apfelkuchen. Von der Haltestelle:
 
 1. Diese Straße <span class="prep-highlight">geradeaus</span> bis zur großen Kreuzung
 2. Dort <span class="prep-highlight">nach rechts</span> abbiegen und immer weiter
 3. Nach der <span class="prep-highlight">Brücke</span> kommt ein Park
 4. <span class="prep-highlight">Durch</span> den Park hindurch
 5. Auf der anderen Seite: die alte <span class="prep-highlight">Bibliothek</span>
-
 🏠 Tantes Haus ist gleich <span class="prep-highlight">daneben</span>!
-
-Nützliche Wörter:
-• die Brücke = jembatan
-• hindurch = menembus / melewati
-• daneben = di sebelahnya
     `.trim(),
+    words: [['die Haltestelle', 'halte'], ['die Brücke', 'jembatan'], ['hindurch', 'menembus'], ['daneben', 'di sebelahnya']],
+    done: 'Tante hat sich über den Apfelkuchen gefreut. 🥧',
   },
 
   verloren_notiz: {
-    title:    'Ich habe mich verlaufen!',
-    subtitle: 'Lukas\' Notizen',
+    title:    'Wo bin ich?',
+    subtitle: 'Herr Fischer erklärt den Heimweg',
     body: `
-Ich bin verloren... aber ein netter Passant hat mir geholfen:
+Der letzte Bus ist weg. Herr Fischer, Tantes Nachbar, hat mir geholfen:
 
-Um nach Hause zu kommen:
-1. <span class="prep-highlight">ZURÜCK</span> durch den Park bis zur Hauptstraße
-2. <span class="prep-highlight">RECHTS</span> bis zur Ampel
-3. An der Ampel <span class="prep-highlight">LINKS</span> in die Schillerstraße
-4. Die alte <span class="prep-highlight">BRÜCKE</span> überqueren
-5. Omas Haus steht neben der WINDMÜHLE
-
-Wichtige Ausdrücke:
-• Entschuldigung, wissen Sie... = Permisi, apakah Anda tahu...
-• in der Nähe von = di dekat
-• sich verirren = tersesat
+1. <span class="prep-highlight">Zurück</span> durch den Park bis zur Hauptstraße
+2. <span class="prep-highlight">Rechts</span> bis zur Ampel
+3. An der Ampel <span class="prep-highlight">links</span> in die Schillerstraße
+4. Die alte <span class="prep-highlight">Brücke</span> <span class="prep-highlight">überqueren</span>
+5. Omas Haus steht neben der Windmühle
     `.trim(),
+    words: [['zurück', 'kembali'], ['überqueren', 'menyeberangi'], ['links', 'kiri'], ['die Windmühle', 'kincir angin']],
+    done: 'Ich habe den Weg ganz allein gefunden. Dann gab es Abendessen. 🍲',
   },
 
   kino_notiz: {
     title:    'Zum Kino!',
-    subtitle: 'Schnell — der Film fängt an!',
+    subtitle: 'Frau Müller im Stadtpark',
     body: `
-Ich war im Stadtpark verloren, aber jetzt weiß ich wo das Kino ist:
+Felix wartet im Kino (Film um acht Uhr). Ich war im Stadtpark verloren …
 
-1. Diese <span class="prep-highlight">ALLEE</span> geradeaus entlang
-2. <span class="prep-highlight">RECHTS</span> auf die Hauptstraße
-3. Das Kino = großes Gebäude mit <span class="prep-highlight">BUNTEN LICHTERN</span> (links)
+1. Diese <span class="prep-highlight">Allee</span> geradeaus entlang bis zum Ende
+2. <span class="prep-highlight">Rechts</span> auf die Hauptstraße
+3. Das Kino = großes Gebäude mit <span class="prep-highlight">bunten Lichtern</span> (<span class="prep-highlight">links</span>)
 
-Nützliche Wörter:
-• das Kino = bioskop
-• sich beeilen = terburu-buru / bergegas
-• die Allee = jalan beravenue
-• die Hauptstraße = jalan utama
+An der Kinokasse: „Eine Karte, bitte."
     `.trim(),
+    words: [['das Kino', 'bioskop'], ['die Allee', 'jalan berpohon'], ['die Karte', 'tiket'], ['um acht Uhr', 'jam delapan']],
+    done: 'Der Film „Abenteuer an der Elbe" war super! 🎬',
+  },
+
+  // ── PENUTUP ───────────────────────────────────────────────────
+  restaurant_notiz: {
+    title:    'Mittagessen in der Deichstraße',
+    subtitle: 'Opas Einladung',
+    body: `
+Opa lädt alle ins Restaurant ein. Der Weg:
+
+1. Über die alte Brücke, Schillerstraße <span class="prep-highlight">geradeaus</span> bis zur Ampel
+2. <span class="prep-highlight">Rechts</span> in die Hauptstraße bis zur großen Kreuzung
+3. <span class="prep-highlight">Rechts</span> in die Bachstraße
+4. <span class="prep-highlight">Links</span> in die Deichstraße — das Restaurant ist <span class="prep-highlight">links</span>
+
+Höflich bestellen: „Ich hätte gern …, bitte."
+    `.trim(),
+    words: [['die Speisekarte', 'daftar menu'], ['Ich hätte gern …', 'Saya mau … (sopan)'], ['lecker', 'enak'], ['das Fischbrötchen', 'roti isi ikan']],
+    done: 'Mein Fischbrötchen kostete vier Euro fünfzig. Lecker! 🐟',
+  },
+
+  elbe_notiz: {
+    title:    'Spaziergang an der Elbe',
+    subtitle: 'Mit Felix und Leni',
+    body: `
+Nach dem Essen gehen wir an der Elbe <span class="prep-highlight">entlang</span> — immer Richtung Osten bis zum Aussichtspunkt mit dem Fernrohr.
+    `.trim(),
+    words: [['die Elbe', 'sungai Elbe'], ['entlang', 'menyusuri'], ['der Aussichtspunkt', 'titik pandang'], ['die Zukunft', 'masa depan']],
+    done: 'Felix will Kapitän werden. Ich lerne weiter Deutsch! 🌅',
+  },
+
+  abschied_notiz: {
+    title:    'Mein letzter Abend',
+    subtitle: 'Abschied von der Familie',
+    body: `
+Heute Abend feiert die ganze Familie im Garten. Morgen fliege ich nach Indonesien zurück.
+
+Danke, Hamburg — für die Schule von Leni, den EDEKA, die alte Brücke, das Kino und die Elbe.
+    `.trim(),
+    words: [['der Abschied', 'perpisahan'], ['die Familie', 'keluarga'], ['vermissen', 'merindukan'], ['auf Wiedersehen', 'sampai jumpa']],
+    done: 'Auf Wiedersehen, Hamburg! Ich komme wieder. 💛',
   },
 };
 
@@ -1269,16 +1529,21 @@ export function getJournalEntry(id) {
 
 // Map: NPC id → dialog id default (greeting saat tidak ada quest aktif)
 export const NPC_DEFAULT_DIALOG = {
-  oma_helga:    'oma_quest1_intro',
+  oma_helga:    'oma_helga_greeting',
   opa_klaus:    'opa_klaus_greeting',
   onkel_andre:  'onkel_andre_greeting',
   tante_maria:  'tante_maria_greeting',
   nachbar_hans: 'hans_hint_quest1',
   // Stage 2 NPCs
   leni:         'leni_quest3_greeting',
+  leni_elbe:    'leni_greeting',
+  leni_haus:    'leni_greeting',
   frau_weber:   'frau_weber_weg',
   passant_1:    'passant1_directions',
   passant_2:    'passant2_quest5_intro',
   passant_3:    'passant3_quest6_intro',
   passant_4:    'passant4_quest7_intro',
+  kassiererin:  'kassiererin_greeting',
+  tante_maria_stadt: 'tante_stadt_greeting',
+  felix:        'felix_greeting',
 };

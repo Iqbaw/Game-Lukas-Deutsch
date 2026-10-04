@@ -90,60 +90,61 @@ function buildLukasMesh() {
 // ═══════════════════════════════════════════════════════════════════
 
 function setupInput() {
-  const keyMap = {
-    // e.code (Physical location)
-    KeyW: 'fwd',       ArrowUp:    'fwd',
-    KeyS: 'back',      ArrowDown:  'back',
-    KeyA: 'left',      ArrowLeft:  'left',
-    KeyD: 'right',     ArrowRight: 'right',
-    
-    // e.key fallback (Case-insensitive)
-    w: 'fwd',          W: 'fwd',
-    s: 'back',         S: 'back',
-    a: 'left',         A: 'left',
-    d: 'right',        D: 'right'
+  // WASD dan tombol panah sama-sama menggerakkan Lukas. Tombol yang sedang
+  // ditekan disimpan per tombol fisik, jadi melepas W tidak menghentikan
+  // gerak selama ↑ masih ditekan (dan sebaliknya).
+  const CODE_ACTION = {
+    KeyW: 'fwd',  ArrowUp:    'fwd',
+    KeyS: 'back', ArrowDown:  'back',
+    KeyA: 'left', ArrowLeft:  'left',
+    KeyD: 'right', ArrowRight: 'right',
+  };
+  // Cadangan untuk browser/keyboard yang tidak mengirim e.code
+  const KEY_ACTION = {
+    w: 'fwd', s: 'back', a: 'left', d: 'right',
+    arrowup: 'fwd', arrowdown: 'back', arrowleft: 'left', arrowright: 'right',
+    up: 'fwd', down: 'back', left: 'left', right: 'right',
+  };
+  const pressed = new Map();   // tombol → aksi
+  const actionOf = (e) => CODE_ACTION[e.code] || KEY_ACTION[(e.key || '').toLowerCase()];
+  const keyId = (e) => e.code || (e.key || '').toLowerCase();
+  const sync = () => {
+    for (const a of ['fwd', 'back', 'left', 'right']) Player.input[a] = 0;
+    pressed.forEach(a => { Player.input[a] = 1; });
   };
 
   window.addEventListener('keydown', (e) => {
+    const action = actionOf(e);
+    if (action && (e.code || '').startsWith('Arrow')) e.preventDefault();   // halaman tidak ikut scroll
     if (!Player.inputEnabled) return;
     if (Game.isPaused) return;
+    if (e.ctrlKey || e.metaKey || e.altKey) return;
     if (e.code === 'Space') {
       e.preventDefault();
       if (!e.repeat) requestJump();
       return;
     }
-
-    const action = keyMap[e.code] || keyMap[e.key];
-    if (action) {
-      Player.input[action] = 1;
-      if (e.code.startsWith('Arrow') || ['w','a','s','d'].includes(e.key.toLowerCase())) {
-        // Only prevent default for arrows to avoid scrolling, 
-        // WASD usually doesn't need it unless it's a specific browser conflict
-        if (e.code.startsWith('Arrow')) e.preventDefault();
-      }
-    }
-
+    if (action) { pressed.set(keyId(e), action); sync(); }
     if (e.code === 'ShiftLeft' || e.code === 'ShiftRight' || e.key === 'Shift') {
       Player.input.run = true;
     }
   });
 
   window.addEventListener('keyup', (e) => {
-    // Always clear input on keyup regardless of inputEnabled
-    const action = keyMap[e.code] || keyMap[e.key];
-    if (action) {
-      Player.input[action] = 0;
-    }
+    // Selalu lepas, apa pun status inputEnabled
+    if (pressed.delete(keyId(e)) || actionOf(e)) sync();
     if (e.code === 'ShiftLeft' || e.code === 'ShiftRight' || e.key === 'Shift') {
       Player.input.run = false;
     }
   });
 
-  window.addEventListener('blur', () => {
-    Player.input.fwd = Player.input.back = 0;
-    Player.input.left = Player.input.right = 0;
+  const releaseAll = () => {
+    pressed.clear();
+    sync();
     Player.input.run = false;
-  });
+  };
+  window.addEventListener('blur', releaseAll);
+  Player._releaseKeys = releaseAll;
 }
 
 
@@ -364,6 +365,7 @@ export function buildPlayer() {
 
 export function setInputEnabled(enabled) {
   Player.inputEnabled = enabled;
+  if (!enabled && Player._releaseKeys) Player._releaseKeys();
   if (!enabled) {
     Player.input.fwd = Player.input.back = 0;
     Player.input.left = Player.input.right = 0;

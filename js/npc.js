@@ -82,7 +82,7 @@ function buildNPCMesh(npcData) {
 function makeLabel(npcData) {
   const div = document.createElement('div');
   div.className = 'npc-label';
-  if (npcData.hasQuest) div.classList.add('npc-label-quest');
+  // Tanda "!" diatur checkProximity(): hanya NPC yang dicari quest sekarang
 
   // Inner wrapper — semua styling visual di sini supaya CSS2DRenderer
   // bebas pakai transform di element root tanpa konflik animasi.
@@ -230,10 +230,11 @@ export function despawnAllNPCs() {
 }
 
 /** Set NPC mengikuti Lukas (mis. Leni pulang bersama). */
-export function setNPCFollowing(id, following = true) {
+export function setNPCFollowing(id, following = true, gap = 1.6) {
   const rec = NPCs.get(id);
   if (!rec) return false;
   rec._following = following;
+  rec._followGap = gap;
 
   if (following) {
     // PENTING: hapus collider NPC follower supaya TIDAK menjebak/menghalangi
@@ -362,7 +363,7 @@ export function updateNPCs(delta, elapsed) {
       const dx = px - gx;
       const dz = pz - gz;
       const dist = Math.hypot(dx, dz);
-      const FOLLOW_GAP = 1.6;       // jaga jarak di belakang Lukas
+      const FOLLOW_GAP = rec._followGap || 1.6;   // jaga jarak di belakang Lukas
       if (dist > FOLLOW_GAP) {
         const speed = Math.min(3.2, 1.6 + dist * 0.4); // sedikit lebih cepat jika tertinggal
         const step = speed * delta;
@@ -642,6 +643,8 @@ function checkProximity() {
 
   let closest = null;
   let closestDist2 = _interactionRadius2;
+  let questTarget = null;
+  const quests = window.__QUEST_SYSTEM__;
 
   NPCs.forEach((rec) => {
     _tmpDist2.x = rec.group.position.x - Player.position.x;
@@ -651,7 +654,15 @@ function checkProximity() {
       closestDist2 = d2;
       closest = rec;
     }
+    // NPC yang sedang dicari quest selalu didahulukan bila dalam jangkauan
+    const wanted = !!quests?.dialogForNPC?.(rec.data.id);
+    if (rec._questMark !== wanted) {
+      rec._questMark = wanted;
+      rec.labelEl.classList.toggle('npc-label-quest', wanted);
+    }
+    if (wanted && d2 < _interactionRadius2) questTarget = rec;
   });
+  if (questTarget) closest = questTarget;
 
   if (closest !== activeNPC) {
     setActiveNPC(closest);

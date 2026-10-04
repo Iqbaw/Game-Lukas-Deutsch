@@ -20,6 +20,7 @@ import { Player, teleportPlayer }   from './player.js';
 import { spawnNPC, despawnAllNPCs }  from './npc.js';
 import { getNPCsInZone }            from './data/npcs.js';
 import { showToast }                from './ui.js';
+import { applyTimeOfDay }           from './night.js';
 
 // ═══════════════════════════════════════════════════════════════════
 // 0. ZONE DEFINITIONS
@@ -141,6 +142,8 @@ export const ZONE_DEFS = {
 
 // Zona lama (kota A/B/C terpisah) sudah digabung ke STADT. Simpanan lama
 // yang masih menyebut zona itu diarahkan ke kota terpadu.
+if (typeof window !== 'undefined') window.__ZONE_DEFS__ = ZONE_DEFS;
+
 const LEGACY_ZONES = {
   [ZONES.SUPERMARKT]: ZONES.STADT,
   [ZONES.SCHULE]:     ZONES.STADT,
@@ -204,6 +207,7 @@ export async function loadZone(zoneId, customSpawn = null, instant = false) {
 
   if (_transitionBusy) return;
   _transitionBusy = true;
+  window.__zoneTransitionBusy__ = true;
   let usedSpawn = null;
 
   try {
@@ -234,6 +238,12 @@ export async function loadZone(zoneId, customSpawn = null, instant = false) {
     try {
       const worldModule = await import('./world.js');
       worldModule.buildZone(zoneId, def);
+    } catch (buildErr) {
+      console.error('[zone] buildZone error:', buildErr);
+    }
+    // Siang / malam sesuai kemajuan cerita (js/night.js)
+    try {
+      applyTimeOfDay(zoneId);
     } catch (buildErr) {
       console.error('[zone] buildZone error:', buildErr);
     }
@@ -283,6 +293,7 @@ export async function loadZone(zoneId, customSpawn = null, instant = false) {
     }
   } finally {
     _transitionBusy = false;
+    window.__zoneTransitionBusy__ = false;
   }
   return usedSpawn;   // titik spawn yang benar-benar dipakai (atau null bila gagal)
 }
@@ -317,6 +328,8 @@ function unloadCurrentZone() {
   World.walkables.length = 0;
   World.streetLamps.length = 0;
   World.windowLights.length = 0;
+  World.nightLamps = [];
+  World.fireflyAreas = [];
 
   // Clear portal meshes
   portalMeshes.forEach(p => {

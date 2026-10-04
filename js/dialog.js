@@ -14,7 +14,21 @@ import { Game }             from './main.js';
 import { CONFIG, EVENTS }   from './config.js';
 import { setInputEnabled }  from './player.js';
 import { getDialog, NPC_DEFAULT_DIALOG } from './data/dialogs.js';
+import { NPC_DATA }         from './data/npcs.js';
 import { showToast }        from './ui.js';
+
+// Nama pembicara per node (dialog bisa berisi beberapa orang: Oma, Opa, Kellner …)
+const SPEAKER_NAMES = {
+  lukas:     'Lukas',
+  kellner:   'Kellner',
+  kinokasse: 'Kinokasse',
+  oma_helga: 'Oma Helga',
+  opa_klaus: 'Opa Klaus',
+  tante_maria: 'Tante Maria',
+};
+for (const npc of NPC_DATA) if (!SPEAKER_NAMES[npc.id]) SPEAKER_NAMES[npc.id] = npc.name;
+// Varian lokasi NPC yang sama → nama dasar
+const SPEAKER_ALIAS = { tante_maria_stadt: 'tante_maria', leni_elbe: 'leni', leni_haus: 'leni' };
 
 // ═══════════════════════════════════════════════════════════════════
 // STATE
@@ -84,10 +98,9 @@ export function initDialog() {
 export function openDialogForNPC(npcData) {
   if (Dialog.isOpen) return;
 
-  // Cari dialog yang relevan:
-  // 1. Kalau ada quest aktif yang givernya NPC ini → pakai intro_dialog quest tsb
-  // 2. Fallback ke greeting dialog default
-  const questDialogId = getActiveQuestDialogForNPC(npcData.id);
+  // 1. Langkah quest aktif "bicara dengan NPC ini" → dialog langkah itu
+  // 2. Selain itu → sapaan default NPC
+  const questDialogId = window.__QUEST_SYSTEM__?.dialogForNPC?.(npcData.id) || null;
   const dialogId = questDialogId || NPC_DEFAULT_DIALOG[npcData.id] || null;
 
   if (!dialogId) {
@@ -102,24 +115,6 @@ export function openDialogForNPC(npcData) {
   }
 
   openDialog(dialogData, npcData);
-}
-
-
-function getActiveQuestDialogForNPC(npcId) {
-  // Ambil dari quest manager (window.__questState__ di-set oleh quest.js nanti)
-  const qs = window.__questState__;
-  if (!qs) return null;
-
-  // Cari quest yang sedang aktif dengan giver = npcId
-  for (const [questId, state] of Object.entries(qs)) {
-    if (state === 'active' && window.__questData__) {
-      const q = window.__questData__[questId];
-      if (q && q.giver === npcId && q.intro_dialog) {
-        return q.intro_dialog;
-      }
-    }
-  }
-  return null;
 }
 
 
@@ -215,11 +210,17 @@ function showNode(nodeId) {
   Dialog.choicesShown  = false;
   Dialog.attempts      = 0;
 
-  // Update nama speaker jika berubah (mis. Lukas ngomong)
-  if (node.speaker === 'lukas') {
+  // Nama & ikon pembicara node ini (dialog bisa berisi beberapa orang)
+  const spk = node.speaker && node.speaker !== Dialog.currentNPC?.id &&
+    SPEAKER_ALIAS[Dialog.currentNPC?.id] !== node.speaker ? node.speaker : null;
+  if (spk === 'lukas' || (!spk && node.speaker === 'lukas')) {
     $name.textContent = 'Lukas';
     $name.style.color = '#88ccff';
     if ($avatar?.parentElement) $avatar.parentElement.dataset.emoji = '🧑';
+  } else if (spk && SPEAKER_NAMES[spk]) {
+    $name.textContent = SPEAKER_NAMES[spk];
+    $name.style.color = '';
+    if ($avatar?.parentElement) $avatar.parentElement.dataset.emoji = getNPCEmoji(spk);
   } else if (Dialog.currentNPC) {
     $name.textContent = Dialog.currentNPC.name;
     $name.style.color = '';
@@ -328,7 +329,10 @@ function skipTypewriter() {
   } else if (node?.end) {
     if ($continueBtn) $continueBtn.innerHTML = 'Schließen <span class="arrow">×</span>';
   }
-  if (node?.onEnter) executeEffects(node.onEnter);
+  if (node?.onEnter && !Dialog.firedEffects.has(Dialog.currentNodeId)) {
+    Dialog.firedEffects.add(Dialog.currentNodeId);
+    executeEffects(node.onEnter);
+  }
   return true;
 }
 
@@ -597,36 +601,12 @@ function progressQuest(stepId) {
 }
 
 function completeQuest(questId) {
+  // Kartu "Quest selesai" ditampilkan oleh quest.js setelah dialog ditutup
   window.dispatchEvent(new CustomEvent('quest:complete', { detail: { questId } }));
-  showToast({
-    title: 'Quest abgeschlossen!',
-    body: `+${window.__questData__?.[questId]?.reward?.score || 0} Punkte`,
-    type: 'success',
-    icon: '⭐',
-    duration: 4000,
-  });
 }
 
-function showQuestTracker(questId) {
-  const questData = window.__questData__?.[questId];
-  if (!questData) return;
-
-  const nameEl = document.getElementById('quest-name');
-  const tracker = document.getElementById('quest-tracker');
-  if (nameEl) nameEl.textContent = questData.title;
-  if (tracker) {
-    tracker.classList.remove('hud-hidden');
-    tracker.classList.add('quest-tracker-new');
-    setTimeout(() => tracker.classList.remove('quest-tracker-new'), 600);
-  }
-
-  // Toast notification
-  showToast({
-    title: 'Neue Aufgabe!',
-    body: questData.title,
-    type: 'info',
-    icon: '📜',
-  });
+function showQuestTracker() {
+  // HUD quest dikelola quest.js (Quest n/10, langkah, instruksi) — tidak ada aksi di sini
 }
 
 function addScore(delta, label) {
@@ -726,8 +706,20 @@ function getNPCEmoji(id) {
     opa_klaus:   '👴',
     onkel_andre: '👨',
     tante_maria: '👩',
+    tante_maria_stadt: '👩',
     leni:        '👧',
-    felix:       '🧑',
+    leni_elbe:   '👧',
+    leni_haus:   '👧',
+    felix:       '🧢',
+    frau_weber:  '👩‍🦳',
+    kassiererin: '👩‍💼',
+    kellner:     '🤵',
+    kinokasse:   '🎟️',
+    passant_1:   '👨',
+    passant_2:   '👩',
+    passant_3:   '👨‍🦳',
+    passant_4:   '👩',
+    nachbar_hans:'👨‍🌾',
   };
   return map[id] || '🧑';
 }
