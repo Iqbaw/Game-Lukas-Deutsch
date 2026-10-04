@@ -952,6 +952,9 @@ function buildHausDiorama() {
     name: 'bench',
   });
 
+  // ── 8.2 LAMPU KEBUN & KUNANG-KUNANG (menyala di malam hari, js/night.js) ──
+  buildHausGardenLights();
+
   // ── 9. AMBIENT PARTICLES & BIRDS ──
   const partGeo=new THREE.BufferGeometry();
   const pc=40;
@@ -1104,26 +1107,29 @@ function buildSupermarktInterior() {
   floor.rotation.x = -Math.PI / 2; floor.position.y = 0.01; floor.receiveShadow = true;
   Game.worldGroup.add(floor);
 
-  // Dinding belakang + kiri (tinggi) dengan pita biru-kuning EDEKA
+  // Dinding belakang + kiri (tinggi) dengan pita biru-kuning EDEKA.
+  // Tidak ada dua permukaan yang sebidang (pita lebih rendah & lebih pendek
+  // dari dinding, dinding tidak saling tumpang) — sebidang = kedip-kedip.
   Game.worldGroup.add(mP(new THREE.BoxGeometry(15.5, H, 0.5), wallMat, 0, H / 2, -7.5));
-  Game.worldGroup.add(mP(new THREE.BoxGeometry(0.5, H, 15), wallMat, -7.5, H / 2, 0));
-  Game.worldGroup.add(mP(new THREE.BoxGeometry(15.5, 0.9, 0.54), blue, 0, H - 0.45, -7.5));
-  Game.worldGroup.add(mP(new THREE.BoxGeometry(0.54, 0.9, 15), blue, -7.5, H - 0.45, 0));
-  Game.worldGroup.add(mP(new THREE.BoxGeometry(15.5, 0.12, 0.56), yellow, 0, H - 0.96, -7.5));
-  Game.worldGroup.add(mP(new THREE.BoxGeometry(0.56, 0.12, 15), yellow, -7.5, H - 0.96, 0));
+  Game.worldGroup.add(mP(new THREE.BoxGeometry(0.5, H, 14.75), wallMat, -7.5, H / 2, 0.125));
+  const bandTop = H - 0.04;
+  Game.worldGroup.add(mP(new THREE.BoxGeometry(15.42, 0.9, 0.56), blue, 0, bandTop - 0.45, -7.5));
+  Game.worldGroup.add(mP(new THREE.BoxGeometry(0.56, 0.9, 14.6), blue, -7.5, bandTop - 0.45, 0.13));
+  Game.worldGroup.add(mP(new THREE.BoxGeometry(15.36, 0.12, 0.6), yellow, 0, bandTop - 0.96, -7.5));
+  Game.worldGroup.add(mP(new THREE.BoxGeometry(0.6, 0.12, 14.55), yellow, -7.5, bandTop - 0.96, 0.13));
   World.colliders.push({type:'box', box:new THREE.Box3(new THREE.Vector3(-7.5,0,-8), new THREE.Vector3(7.5,5,-7)), name:'wall-b'});
   World.colliders.push({type:'box', box:new THREE.Box3(new THREE.Vector3(-8,0,-7.5), new THREE.Vector3(-7,5,7.5)), name:'wall-l'});
   const logo = interiorSign('EDEKA', '#1d4fb8', '#ffd400', 3.4, 0.8);
-  logo.position.set(0, H - 0.45, -7.22); Game.worldGroup.add(logo);
+  logo.position.set(0, bandTop - 0.45, -7.2); Game.worldGroup.add(logo);
   const obst = interiorSign('Obst & Gemüse', '#2e8b3d', '#ffffff', 3.2, 0.6);
   obst.rotation.y = Math.PI / 2; obst.position.set(-7.22, 2.6, 3); Game.worldGroup.add(obst);
   const kuehl = interiorSign('Fleisch & Kühlung', '#2a6fb0', '#ffffff', 3.4, 0.6);
   kuehl.position.set(5, 2.9, -7.22); Game.worldGroup.add(kuehl);
 
   // Dinding depan (selatan) & kanan (timur): setinggi lutut, celah pintu di timur z 1..3
-  Game.worldGroup.add(mP(new THREE.BoxGeometry(15.5, K, 0.4), kneeMat, 0, K / 2, 7.5));
-  Game.worldGroup.add(mP(new THREE.BoxGeometry(0.4, K, 8.5), kneeMat, 7.5, K / 2, -3.25));
-  Game.worldGroup.add(mP(new THREE.BoxGeometry(0.4, K, 4.5), kneeMat, 7.5, K / 2, 5.25));
+  Game.worldGroup.add(mP(new THREE.BoxGeometry(14.6, K, 0.4), kneeMat, 0, K / 2, 7.5));
+  Game.worldGroup.add(mP(new THREE.BoxGeometry(0.4, K, 8.25), kneeMat, 7.5, K / 2, -3.125));
+  Game.worldGroup.add(mP(new THREE.BoxGeometry(0.4, K, 4.7), kneeMat, 7.5, K / 2, 5.35));
   World.colliders.push({type:'box', box:new THREE.Box3(new THREE.Vector3(-7.5,0,7.2), new THREE.Vector3(7.5,2,7.8)), name:'wall-f'});
   World.colliders.push({type:'box', box:new THREE.Box3(new THREE.Vector3(7.2,0,-7.5), new THREE.Vector3(7.8,2,1)), name:'wall-r1'});
   World.colliders.push({type:'box', box:new THREE.Box3(new THREE.Vector3(7.2,0,3), new THREE.Vector3(7.8,2,7.5)), name:'wall-r2'});
@@ -1170,25 +1176,23 @@ function buildSupermarktInterior() {
   const rack1 = createShelf(2, 2, 1, 0x44aa44); rack1.position.set(-6.2, 0, 4); rack1.rotation.y = Math.PI / 2; Game.worldGroup.add(rack1);
   const rack2 = createShelf(2, 2, 1, 0x44aa44); rack2.position.set(-6.2, 0, 1.8); rack2.rotation.y = Math.PI / 2; Game.worldGroup.add(rack2);
   World.colliders.push({type:'box', box:new THREE.Box3(new THREE.Vector3(-6.8,0,0.7), new THREE.Vector3(-5.6,2,5.1)), name:'obst'});
-  // Gemüse (Quest 4)
-  spawnQItem('gemuese', -4.9, 3, 0x44aa44, 'quest_4', '🥬');
+  // Kartoffeln & Salat (Quest 4) di depan rak Obst & Gemüse
+  spawnQItem('kartoffeln', -4.95, 1.9, 0xc8a26a, 'quest_4', '🥔');
+  spawnQItem('salat', -4.95, 4.1, 0x6cc04a, 'quest_4', '🥬');
 
   // Kühlregale di dinding utara (kanan belakang)
   const cool1 = createShelf(2, 2.6, 1, 0xeeeeee); cool1.position.set(6, 0, -6.3); Game.worldGroup.add(cool1);
   const cool2 = createShelf(2, 2.6, 1, 0xeeeeee); cool2.position.set(4, 0, -6.3); Game.worldGroup.add(cool2);
   World.colliders.push({type:'box', box:new THREE.Box3(new THREE.Vector3(3,0,-6.8), new THREE.Vector3(7,3,-5.8)), name:'cool'});
-  // Fleisch (Quest 4)
-  spawnQItem('fleisch', 5, -5, 0xcc4444, 'quest_4', '🥩');
+  // Fleisch & Butter (Quest 4) di depan rak pendingin
+  spawnQItem('fleisch', 5.3, -5.0, 0xcc4444, 'quest_4', '🥩');
+  spawnQItem('butter', 3.3, -5.0, 0xf3d65a, 'quest_4', '🧈');
 
   // Tengah: 2 deret rak
   const cRack1 = createShelf(4, 1.8, 1); cRack1.position.set(-0.5, 0, -2); Game.worldGroup.add(cRack1);
   const cRack2 = createShelf(4, 1.8, 1); cRack2.position.set(-0.5, 0, 1); Game.worldGroup.add(cRack2);
   World.colliders.push({type:'box', box:new THREE.Box3(new THREE.Vector3(-2.5,0,-2.5), new THREE.Vector3(1.5,2,-1.5)), name:'center1'});
   World.colliders.push({type:'box', box:new THREE.Box3(new THREE.Vector3(-2.5,0,0.5), new THREE.Vector3(1.5,2,1.5)), name:'center2'});
-  // Brot (Quest 4) di lorong antara dua rak
-  spawnQItem('brot', -0.5, -0.5, 0xc8965a, 'quest_4', '🍞');
-  // Eis (Quest 5) — dekat kasir
-  spawnQItem('eis', 1.2, 4.6, 0xffccdd, 'quest_5', '🍦');
 
   // Kasse tepat di samping pintu keluar (timur)
   const kasse = createKasse(); kasse.position.set(4.6, 0, 5); Game.worldGroup.add(kasse);
@@ -3067,6 +3071,100 @@ function buildHausInterior() {
   if (CONFIG.DEBUG) console.log('[world] buildHausInterior done — 7 items spawned in Küche');
 }
 
+
+// ═══════════════════════════════════════════════════════════════════
+// 15b. KEBUN OMA DI MALAM HARI — lampu taman, kunang-kunang, meja perpisahan
+// ═══════════════════════════════════════════════════════════════════
+
+function hausNightLamp(x, z, y, head, o = {}) {
+  (World.nightLamps || (World.nightLamps = [])).push({ x, z, y, head, ...o });
+}
+
+function buildHausGardenLights() {
+  const poleMat = lpMat(0x2f4a3a);
+  const gardenLamp = (x, z) => {
+    const g = new THREE.Group();
+    const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.07, 1.9, 6), poleMat);
+    pole.position.y = 0.95; pole.castShadow = true; g.add(pole);
+    const head = new THREE.Mesh(new THREE.SphereGeometry(0.2, 10, 8),
+      new THREE.MeshStandardMaterial({ color: 0xfff0c8, emissive: 0xfff0c8, emissiveIntensity: 0.4 }));
+    head.position.y = 2.05; g.add(head);
+    const cap = new THREE.Mesh(new THREE.ConeGeometry(0.18, 0.14, 8), poleMat);
+    cap.position.y = 2.3; g.add(cap);
+    g.position.set(x, 0, z);
+    Game.worldGroup.add(g);
+    World.colliders.push({ type: 'cylinder', x, z, radius: 0.12 });
+    hausNightLamp(x, z, 2.05, head, { pool: 2.6, power: 10, range: 8, color: 0xffd894 });
+  };
+  gardenLamp(-2.3, 4.4);     // jalan setapak ke jembatan
+  gardenLamp(-4.4, 3.7);     // ujung jembatan kayu
+  gardenLamp(3.0, -2.6);     // dekat kincir angin
+  gardenLamp(8.6, 3.6);      // sisi kanan rumah
+  // Lampu teras di samping pintu rumah Oma
+  const porch = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.28, 0.2),
+    new THREE.MeshStandardMaterial({ color: 0xffe2a8, emissive: 0xffd08a, emissiveIntensity: 0.35 }));
+  porch.position.set(0.62, 2.02, 2.5);   // tergantung di bawah atap teras
+  Game.worldGroup.add(porch);
+  hausNightLamp(0.62, 3.1, 2.0, porch, { pool: 2.4, power: 8, range: 7, color: 0xffd08a });
+
+  World.fireflyAreas = World.fireflyAreas || [];
+  World.fireflyAreas.push(
+    { x0: 1.5, x1: 11, z0: 6.5, z1: 12, n: 18 },
+    { x0: -4, x1: 1.5, z0: 5.5, z1: 11, n: 10 },
+    { x0: -12, x1: -5, z0: -9, z1: 9, n: 16 },
+    { x0: 6, x1: 12, z0: -11, z1: -2, n: 12 },
+  );
+
+  // Meja makan malam perpisahan (Quest 10) + lampu-lampu hias
+  const qs = (typeof window !== 'undefined' && window.__questState__) || {};
+  if (qs.quest_10 !== 'active' && qs.quest_10 !== 'completed') return;
+  const wood = lpMat(0x8a5a34), cloth = lpMat(0xf3ead6);
+  const table = new THREE.Group();
+  const top = new THREE.Mesh(new THREE.BoxGeometry(1.8, 0.08, 1.0), wood);
+  top.position.y = 0.76; top.castShadow = true; table.add(top);
+  const tc = new THREE.Mesh(new THREE.BoxGeometry(1.84, 0.02, 0.7), cloth);
+  tc.position.y = 0.81; table.add(tc);
+  for (const lx of [-0.8, 0.8]) for (const lz of [-0.4, 0.4]) {
+    const leg = new THREE.Mesh(new THREE.BoxGeometry(0.07, 0.74, 0.07), wood);
+    leg.position.set(lx, 0.37, lz); table.add(leg);
+  }
+  for (const [px, pz] of [[-0.55, -0.22], [0, -0.22], [0.55, -0.22], [-0.55, 0.22], [0.55, 0.22]]) {
+    const plate = new THREE.Mesh(new THREE.CylinderGeometry(0.13, 0.13, 0.02, 16), lpMat(0xffffff));
+    plate.position.set(px, 0.83, pz); table.add(plate);
+  }
+  const cake = new THREE.Mesh(new THREE.CylinderGeometry(0.17, 0.17, 0.12, 16), lpMat(0xd9a05b));
+  cake.position.set(0, 0.89, 0.18); table.add(cake);
+  const lantern = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.2, 0.14),
+    new THREE.MeshStandardMaterial({ color: 0xffd27a, emissive: 0xffc060, emissiveIntensity: 0.6 }));
+  lantern.position.set(-0.3, 0.92, 0.12); table.add(lantern);
+  table.position.set(4.2, 0, 5.65);
+  Game.worldGroup.add(table);
+  World.colliders.push({ type: 'box', name: 'abschied-tisch',
+    box: new THREE.Box3(new THREE.Vector3(3.25, 0, 5.1), new THREE.Vector3(5.15, 1, 6.2)) });
+  hausNightLamp(4.2, 5.65, 1.2, lantern, { pool: 2.6, power: 12, range: 8, color: 0xffc46a });
+
+  // Lichterkette di antara dua tiang di belakang meja
+  const postL = { x: 2.7, z: 4.3 }, postR = { x: 6.0, z: 4.3 };
+  for (const p of [postL, postR]) {
+    const post = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 2.5, 6), wood);
+    post.position.set(p.x, 1.25, p.z); post.castShadow = true;
+    Game.worldGroup.add(post);
+    World.colliders.push({ type: 'cylinder', x: p.x, z: p.z, radius: 0.1 });
+  }
+  const colors = [0xffd27a, 0xff8a7a, 0x9ad8ff, 0xb8ff9a, 0xffe08a];
+  const N = 13;
+  for (let i = 0; i < N; i++) {
+    const t = i / (N - 1);
+    const x = postL.x + (postR.x - postL.x) * t;
+    const y = 2.45 - Math.sin(Math.PI * t) * 0.45;
+    const bulb = new THREE.Mesh(new THREE.SphereGeometry(0.07, 8, 6),
+      new THREE.MeshStandardMaterial({ color: colors[i % colors.length], emissive: colors[i % colors.length], emissiveIntensity: 0.5 }));
+    bulb.position.set(x, y, postL.z);
+    Game.worldGroup.add(bulb);
+    if (i % 4 === 0) hausNightLamp(x, postL.z, y, bulb, { pool: 1.6, power: 4, range: 5, color: colors[i % colors.length] });
+    else hausNightLamp(x, postL.z, y, bulb, { pool: 0.01, power: 0, color: colors[i % colors.length], noPool: true });
+  }
+}
 
 // ═══════════════════════════════════════════════════════════════════
 // 16. API PUBLIK

@@ -230,6 +230,7 @@ function render() {
 
           <div class="mm-keys">
             <div class="mm-key-row"><kbd>W A S D</kbd><span>bewegen</span></div>
+            <div class="mm-key-row"><kbd>↑ ↓ ← →</kbd><span>bewegen (Pfeiltasten)</span></div>
             <div class="mm-key-row"><kbd>E</kbd><span>sprechen</span></div>
             <div class="mm-key-row"><kbd>Tab</kbd><span>Reisetagebuch</span></div>
             <div class="mm-key-row"><kbd>ESC</kbd><span>Pause</span></div>

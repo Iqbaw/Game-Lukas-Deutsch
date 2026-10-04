@@ -101,17 +101,23 @@
         <span class="onb-text">Du bist gerade aufgewacht. Schau dich um!</span>
       </div>
 
-      <!-- TOP LEFT: Quest Tracker -->
-      <div id="quest-tracker" class="hud-quest-tracker hud-hidden">
-        <div class="quest-icon">📜</div>
+      <!-- TOP LEFT: Quest Tracker — Quest n/10, judul, langkah x/y, instruksi (DE) + petunjuk (ID) -->
+      <div id="quest-tracker" class="hud-quest-tracker hud-hidden" aria-live="polite">
+        <div id="quest-icon" class="quest-icon">📜</div>
         <button type="button" id="quest-collapse" class="quest-collapse"
                 aria-expanded="true" aria-label="Auftrag ausblenden">&#9662;</button>
         <div class="quest-info">
-          <div class="quest-label">Lektion</div>
+          <div class="quest-head">
+            <span id="quest-label" class="quest-label">Quest</span>
+            <span id="quest-step-num" class="quest-step-num"></span>
+          </div>
+          <div id="quest-title" class="quest-title">—</div>
           <div id="quest-name" class="quest-name">—</div>
+          <div id="quest-hint" class="quest-hint"></div>
           <div class="quest-progress-track">
             <div id="quest-progress-fill" class="quest-progress-fill"></div>
           </div>
+          <div class="quest-keys"><kbd>Tab</kbd> Reisetagebuch <span class="journal-dot" aria-hidden="true"></span> · 💡 Tipp</div>
         </div>
       </div>
 
@@ -173,7 +179,7 @@
       </div>
 
       <div id="controls-hint" class="hud-controls-hint hud-hidden">
-        <span><kbd>WASD</kbd> bewegen</span>
+        <span><kbd>WASD</kbd> / <kbd>↑↓←→</kbd> bewegen</span>
         <span><kbd>Shift</kbd> rennen</span>
         <span><kbd>E</kbd> reden</span>
         <span>🖱️ Rechtsklick Kamera</span>
@@ -214,16 +220,7 @@
          REISETAGEBUCH — buku jurnal, dibangun di Step 29
          ═══════════════════════════════════════════════════════ -->
     <div id="reisetagebuch" class="reisetagebuch hud-hidden" aria-hidden="true">
-      <div class="reisetagebuch-book">
-        <div class="reisetagebuch-page reisetagebuch-page-left">
-          <h2>Mein Reisetagebuch</h2>
-          <p id="reisetagebuch-desc" class="reisetagebuch-empty">Noch keine Einträge. Erlebe Abenteuer, um diese Seiten zu füllen!</p>
-        </div>
-        <div class="reisetagebuch-page reisetagebuch-page-right">
-          <p class="reisetagebuch-empty-right">Hamburg wartet auf dich…</p>
-        </div>
-        <button id="reisetagebuch-close" class="reisetagebuch-close" aria-label="Schließen">×</button>
-      </div>
+      <!-- Diisi oleh js/journal.js (tab Aufgabe / Tagebuch / Wörter) -->
     </div>
 
     <!-- ═══════════════════════════════════════════════════════
