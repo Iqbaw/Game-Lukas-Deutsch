@@ -24,22 +24,22 @@ const PASSWORD_HASH = '33606b36c7aa4ac03db6d3c8266206c293178646bdae5c8b6be44990c
 
 const SESSION_KEY = 'lukas_admin_unlocked';
 
-// Zonen mit lesbaren Namen — Reihenfolge wie im Spielverlauf
+// Zonen mit lesbaren Namen — Reihenfolge wie im Spielverlauf.
+// Alle Orte der Stufe 2 liegen in EINER Stadt (js/stadt.js); `spot` springt
+// direkt vor den Eingang des Gebäudes (Registry window.__stadtBuildings__).
 const ZONE_LIST = [
   { id: 'haus_interior',        label: 'Haus — innen',        stage: 'Stufe 1' },
   { id: 'haus',                 label: 'Haus — außen',        stage: 'Stufe 1' },
   { id: 'stadt',               label: 'Die Stadt',            stage: 'Stufe 2' },
-  { id: 'supermarkt',          label: 'Supermarkt — außen',   stage: 'Stufe 2' },
-  { id: 'supermarket_interior', label: 'Supermarkt — innen',  stage: 'Stufe 2' },
-  { id: 'schule',              label: 'Schule',               stage: 'Stufe 2' },
-  { id: 'stadtpark',           label: 'Stadtpark',            stage: 'Stufe 2' },
-  { id: 'hafen',               label: 'Hafen',                stage: 'Stufe 3' },
-  { id: 'wochenmarkt',         label: 'Wochenmarkt',          stage: 'Stufe 3' },
-  { id: 'buecherei',           label: 'Bücherei',             stage: 'Stufe 3' },
-  { id: 'apotheke',            label: 'Apotheke',             stage: 'Stufe 3' },
-  { id: 'restaurant',          label: 'Restaurant',           stage: 'Stufe 3' },
-  { id: 'elbe',                label: 'Elbufer',              stage: 'Stufe 3' },
-  { id: 'haus_night',          label: 'Haus — nachts',        stage: 'Stufe 3' },
+  { id: 'stadt', spot: 'edeka',       label: 'EDEKA — außen',  stage: 'Stufe 2' },
+  { id: 'supermarket_interior', label: 'EDEKA — innen',       stage: 'Stufe 2' },
+  { id: 'stadt', spot: 'grundschule', label: 'Schule',         stage: 'Stufe 2' },
+  { id: 'stadt', spot: 'stadtpark',   label: 'Stadtpark',      stage: 'Stufe 2' },
+  { id: 'stadt', spot: 'kino',        label: 'Kino',           stage: 'Stufe 2' },
+  { id: 'stadt', spot: 'apotheke',    label: 'Apotheke',       stage: 'Stufe 2' },
+  { id: 'stadt', spot: 'buecherei',   label: 'Bibliothek',     stage: 'Stufe 2' },
+  { id: 'stadt', spot: 'tantes_haus', label: 'Tantes Haus',    stage: 'Stufe 2' },
+  { id: 'stadt', spot: 'restaurant',  label: 'Restaurant',     stage: 'Stufe 2' },
 ];
 
 const QUEST_COUNT = 10;
@@ -114,7 +114,7 @@ function render() {
           <p class="adm-stage">${stage}</p>
           <div class="adm-grid">
             ${zones.map((z) => `
-              <button type="button" class="adm-chip" data-zone="${z.id}">${z.label}</button>
+              <button type="button" class="adm-chip" data-zone="${z.id}" data-spot="${z.spot || ''}">${z.label}</button>
             `).join('')}
           </div>
         `).join('')}
@@ -157,11 +157,17 @@ function render() {
 // beim Start nichts mitzieht (und das Hauptmenü ohne Three.js lädt).
 // ═══════════════════════════════════════════════════════════════════
 
-async function jumpToZone(zoneId) {
+async function jumpToZone(zoneId, spot = '') {
   try {
     const { loadZone } = await import('./zone.js');
     await loadZone(zoneId, null, false);
-    notify(`Zone: ${zoneId}`);
+    const target = spot && window.__stadtBuildings__?.[spot];
+    if (target) {
+      const { teleportPlayer } = await import('./player.js');
+      const p = target.door || target;
+      teleportPlayer(p.x, p.z, 0);
+    }
+    notify(`Zone: ${zoneId}${spot ? ` · ${spot}` : ''}`);
   } catch (err) {
     notify(`Zone fehlgeschlagen: ${err.message}`, true);
   }
@@ -302,7 +308,7 @@ function bindEvents() {
 
   root.addEventListener('click', (e) => {
     const zone = e.target.closest('[data-zone]');
-    if (zone) { jumpToZone(zone.dataset.zone); return; }
+    if (zone) { jumpToZone(zone.dataset.zone, zone.dataset.spot); return; }
     const quest = e.target.closest('[data-quest]');
     if (quest) { jumpToQuest(quest.dataset.quest); }
   });

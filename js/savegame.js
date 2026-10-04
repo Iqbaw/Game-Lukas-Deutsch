@@ -94,12 +94,15 @@ export async function restoreSave(data, { loadZone, teleportPlayer, QuestSystem,
   window.__questState__ = { ...data.questState };
   window.__stadtVariant__ = data.cityVariant || undefined;
 
-  await loadZone(data.zone, {
+  const used = await loadZone(data.zone, {
     x: data.player.x,
     z: data.player.z,
     facing: finite(data.player.facing),
   }, true);
-  teleportPlayer(data.player.x, data.player.z, finite(data.player.facing));
+  // loadZone bisa mengganti posisi lama yang kini berada di dalam gedung
+  // (tata letak kota berubah) dengan spawn default zona.
+  const pos = used || { x: data.player.x, z: data.player.z, facing: finite(data.player.facing) };
+  teleportPlayer(pos.x, pos.z, finite(pos.facing));
 
   ScoreSystem.score = finite(data.score);
   ScoreSystem.streak = Math.max(0, finite(data.streak));

@@ -31,7 +31,8 @@ import { showToast }                from './ui.js';
  *   name     : nama tampilan
  *   size     : { w, h } ukuran area
  *   spawn    : { x, z, facing } titik spawn pemain
- *   portals  : array portal → { x, z, w, d, target, targetSpawn, label }
+ *   portals  : array portal → { kind, x, y, z, w, d, rotY, target, targetSpawn, label }
+ *              kind 'gate' = gerbang antar zona, 'door' = pintu gedung (lihat buildPortals)
  *   builder  : string nama fungsi builder di world.js
  */
 export const ZONE_DEFS = {
@@ -45,22 +46,23 @@ export const ZONE_DEFS = {
     spawn:  { x: 0, z: 4.8, facing: 0 },
     portals: [
       {
-        x: -10, y: 0.5, z: 2, w: 2, d: 1.2, rotY: Math.PI / 2, // Opening faces the bridge's east-west deck.
+        // Gerbang kota di ujung BARAT jembatan kayu. Lebar gerbang = lebar
+        // jembatan (pagar di z 0.8 & 3.2); lorong menghadap arah jalan (timur-barat).
+        kind: 'gate',
+        x: -10, y: 0.5, z: 2, w: 2.5, d: 1.2, rotY: Math.PI / 2,
         target: ZONES.STADT,                  // → Kota terpadu (Stage 2)
-        targetSpawn: { x: -24, z: 26, facing: Math.PI }, // masuk di ujung Schillerstraße
-        label:  '→ In die Stadt',
-        labelDE: 'Zur Stadt',
+        targetSpawn: { x: -24, z: 27.6, facing: Math.PI }, // ujung kota dari Alte Brücke
+        label:  'Zur Stadt',
       },
       {
-        // PORTAL MASUK rumah — tepat di DEPAN pintu kayu cabin (door world pos = 0, 2.06)
-        // Trigger zone: x=[-1.5..1.5], z=[1.5..3.7]. Spawn jauh di selatan (z=4.8) supaya
-        // player tidak langsung terjebak loop di portal.
+        // PINTU rumah — hanya alas bercahaya di depan pintu kayu (door world pos = 0, 2.06).
+        // Trigger zone: x=[-1.5..1.5], z=[1.5..3.7]. Spawn jauh di selatan (z=4.8).
+        kind: 'door',
         x: 0, z: 2.6, w: 2.0, d: 1.4,
         target: ZONES.HAUS_INTERIOR,
         // Spawn di Wohnzimmer, JAUH dari pintu exit (z<11.4) supaya tidak loop
         targetSpawn: { x: 3, z: 9, facing: 0 },
-        label:  '↑ Haus betreten',
-        labelDE: 'Haus betreten',
+        label:  'Haus betreten',
       },
     ],
   },
@@ -75,74 +77,45 @@ export const ZONE_DEFS = {
     portals: [
       {
         // Pintu depan rumah ada di Wohnzimmer (south wall, gap x=1..5)
+        kind: 'door',
         x: 3, z: 13.2, w: 3.8, d: 2.6,
         target: ZONES.HAUS,
         // Spawn JAUH di selatan pintu masuk (z=4.8 > portal masuk z=3.3 max),
         // supaya player tidak langsung re-enter portal masuk
         targetSpawn: { x: 0, z: 4.8, facing: 0 },
-        label:  '↓ Haus verlassen',
-        labelDE: 'Hinausgehen',
+        label:  'Hinausgehen',
       },
     ],
   },
 
   // ═══════════════════════════════════════════════════════════════
-  // STADT — Kota terpadu (Stage 2). Satu peta besar, hanya 1 portal
-  // navigasi (kembali ke rumah Oma) + pintu masuk EDEKA (interior).
+  // STADT — Kota terpadu (Stage 2), dibangun oleh js/stadt.js.
+  // Satu gerbang navigasi (Alte Brücke → rumah Oma) + pintu EDEKA.
   // ═══════════════════════════════════════════════════════════════
   [ZONES.STADT]: {
     id:     ZONES.STADT,
     name:   'Die Stadt',
     nameID: 'Kota',
-    size:   { w: 84, h: 64 },
-    // Masuk dari ujung selatan Schillerstraße (di jalan, bukan di taman)
-    spawn:  { x: -24, z: 26, facing: Math.PI },
+    size:   { w: 84, h: 70 },
+    // Masuk di ujung selatan Schillerstraße, tepat setelah Alte Brücke
+    spawn:  { x: -24, z: 27.6, facing: Math.PI },
     portals: [
       {
-        // SATU-SATUNYA portal navigasi: kembali ke rumah Oma
-        // Ditaruh di UJUNG JALAN Schillerstraße (x=-24), bukan di Stadtpark
-        x: -24, z: 29.5, w: 4, d: 2,
+        // Gerbang di ujung selatan Alte Brücke: kembali ke rumah Oma
+        kind: 'gate',
+        x: -24, y: 0.26, z: 34.2, w: 4.4, d: 1.4,      // y = tinggi dek jembatan
         target: ZONES.HAUS,
         // Spawn di UJUNG TIMUR jembatan (sisi rumah) — BUKAN di sungai (x -9..-5)!
         targetSpawn: { x: -3.5, z: 2.2, facing: Math.PI / 2 },
-        label:  '↓ Nach Hause',
-        labelDE: 'Nach Hause',
+        label:  'Nach Hause',
       },
       {
-        // Pintu masuk EDEKA → interior (bukan navigasi kota)
-        x: -2, z: 19.7, w: 2, d: 1.2,
+        // Pintu kaca EDEKA (fasad timur, menghadap Parkplatz) → interior
+        kind: 'door',
+        x: -8.3, z: 15, w: 2.4, d: 1.0, rotY: Math.PI / 2,
         target: ZONES.SUPERMARKET_INTERIOR,
-        targetSpawn: { x: 0, z: 5, facing: Math.PI },
-        label:  '→ EDEKA betreten',
-        labelDE: 'Eintreten',
-      },
-    ],
-  },
-
-  [ZONES.SUPERMARKT]: {
-    id:     ZONES.SUPERMARKT,
-    name:   'Stadt A — Supermarkt & Markt',
-    nameID: 'Kota A — Supermarket & Pasar',
-    size:   { w: 35, h: 30 },
-    spawn:  { x: 12, z: 0, facing: -Math.PI / 2 },
-    portals: [
-      {
-        x: 14, z: 0, w: 2, d: 2,
-        target: ZONES.HAUS,
-        label:  '← Zurück zum Haus',
-        labelDE: 'Zum Haus',
-      },
-      {
-        x: -14, z: 0, w: 2, d: 2,
-        target: ZONES.SCHULE,
-        label:  '→ Zur Stadt B',
-        labelDE: 'Stadt B',
-      },
-      {
-        x: -12, z: -6.5, w: 2, d: 1.5,
-        target: ZONES.SUPERMARKET_INTERIOR,
-        label:  '→ EDEKA betreten',
-        labelDE: 'Eintreten',
+        targetSpawn: { x: 5, z: 2, facing: -Math.PI / 2 },
+        label:  'EDEKA betreten',
       },
     ],
   },
@@ -152,62 +125,26 @@ export const ZONE_DEFS = {
     name:   'EDEKA Innenraum',
     nameID: 'Interior Supermarket',
     size:   { w: 15, h: 15 },
-    spawn:  { x: 0, z: 5, facing: Math.PI }, // Facing into the room from the entrance
-    // Entrance/Exit portal to go back out
+    // Masuk lewat pintu di dinding timur (sama seperti fasad EDEKA di kota)
+    spawn:  { x: 5, z: 2, facing: -Math.PI / 2 },
     portals: [
       {
-        x: 0, z: 6.5, w: 2, d: 2,
+        kind: 'door',
+        x: 6.9, z: 2, w: 2.2, d: 1.0, rotY: Math.PI / 2,
         target: ZONES.STADT,
-        targetSpawn: { x: -2, z: 22.5, facing: 0 }, // Outside the camera-facing EDEKA entrance trigger.
-        label:  '← Ausgang',
-        labelDE: 'Ausgang',
-      }
+        targetSpawn: { x: -6, z: 15, facing: Math.PI / 2 }, // di depan pintu EDEKA, menghadap Parkplatz
+        label:  'Ausgang',
+      },
     ],
   },
+};
 
-  [ZONES.SCHULE]: {
-    id:     ZONES.SCHULE,
-    name:   'Stadt B — Schule & Park',
-    nameID: 'Kota B — Sekolah & Taman',
-    size:   { w: 35, h: 30 },
-    spawn:  { x: 12, z: 0, facing: -Math.PI / 2 },
-    portals: [
-      {
-        x: 14, z: 0, w: 2, d: 2,
-        target: ZONES.SUPERMARKT,
-        label:  '← Zurück zur Stadt A',
-        labelDE: 'Stadt A',
-      },
-      {
-        x: -14, z: 0, w: 2, d: 2,
-        target: ZONES.HAFEN,
-        label:  '→ Zur Stadt C',
-        labelDE: 'Stadt C',
-      },
-    ],
-  },
-
-  [ZONES.HAFEN]: {
-    id:     ZONES.HAFEN,
-    name:   'Stadt C — Hafen & Elbe',
-    nameID: 'Kota C — Pelabuhan & Sungai Elbe',
-    size:   { w: 35, h: 30 },
-    spawn:  { x: 12, z: 0, facing: -Math.PI / 2 },
-    portals: [
-      {
-        x: 14, z: 0, w: 2, d: 2,
-        target: ZONES.SCHULE,
-        label:  '← Zurück zur Stadt B',
-        labelDE: 'Stadt B',
-      },
-      {
-        x: -14, z: 0, w: 2, d: 2,
-        target: ZONES.HAUS,
-        label:  '← Zurück zum Haus',
-        labelDE: 'Zum Haus',
-      },
-    ],
-  },
+// Zona lama (kota A/B/C terpisah) sudah digabung ke STADT. Simpanan lama
+// yang masih menyebut zona itu diarahkan ke kota terpadu.
+const LEGACY_ZONES = {
+  [ZONES.SUPERMARKT]: ZONES.STADT,
+  [ZONES.SCHULE]:     ZONES.STADT,
+  [ZONES.HAFEN]:      ZONES.STADT,
 };
 
 
@@ -255,6 +192,10 @@ export function initZones() {
  * @param {boolean} [instant] - true = tanpa fade (saat pertama kali)
  */
 export async function loadZone(zoneId, customSpawn = null, instant = false) {
+  if (!ZONE_DEFS[zoneId] && LEGACY_ZONES[zoneId]) {
+    zoneId = LEGACY_ZONES[zoneId];
+    customSpawn = null;
+  }
   const def = ZONE_DEFS[zoneId];
   if (!def) {
     console.error('[zone] Zone not found:', zoneId);
@@ -263,6 +204,7 @@ export async function loadZone(zoneId, customSpawn = null, instant = false) {
 
   if (_transitionBusy) return;
   _transitionBusy = true;
+  let usedSpawn = null;
 
   try {
     if (!instant && currentZoneId) {
@@ -303,9 +245,11 @@ export async function loadZone(zoneId, customSpawn = null, instant = false) {
     // Spawn portal meshes
     buildPortals(def);
 
-    // Teleport pemain
-    const sp = customSpawn || def.spawn;
+    // Teleport pemain (spawn kustom yang kini berada di dalam gedung —
+    // mis. dari simpanan versi lama — diganti spawn default zona)
+    const sp = (customSpawn && isSpawnFree(customSpawn.x, customSpawn.z)) ? customSpawn : def.spawn;
     teleportPlayer(sp.x, sp.z, sp.facing);
+    usedSpawn = sp;
 
     // Toast notification
     if (!instant) {
@@ -340,6 +284,7 @@ export async function loadZone(zoneId, customSpawn = null, instant = false) {
   } finally {
     _transitionBusy = false;
   }
+  return usedSpawn;   // titik spawn yang benar-benar dipakai (atau null bila gagal)
 }
 
 
@@ -393,6 +338,19 @@ function unloadCurrentZone() {
 }
 
 
+// Sama dengan uji tabrakan pemain (player.js, radius 0.4): titik yang gagal
+// di sini akan membuat pemain terkunci dan tidak bisa bergerak.
+function isSpawnFree(x, z) {
+  const r = 0.4;
+  return !World.colliders.some(c => {
+    if (c.type === 'cylinder') return (x - c.x) ** 2 + (z - c.z) ** 2 < (c.radius + r) ** 2;
+    if (c.type === 'box' && c.box) {
+      return x >= c.box.min.x - r && x <= c.box.max.x + r && z >= c.box.min.z - r && z <= c.box.max.z + r;
+    }
+    return false;
+  });
+}
+
 function disposeObject(obj) {
   obj.traverse(child => {
     if (child.geometry) child.geometry.dispose();
@@ -411,118 +369,135 @@ function disposeObject(obj) {
 // 5. PORTAL SYSTEM
 // ═══════════════════════════════════════════════════════════════════
 
+/**
+ * Dua jenis portal:
+ *   kind 'gate' — perjalanan antar zona: gerbang batu dengan balok kayu,
+ *                 papan tujuan dua sisi dan tirai cahaya di lorongnya.
+ *   kind 'door' — masuk/keluar gedung: hanya alas bercahaya di depan pintu,
+ *                 karena pintu gedungnya sendiri sudah menunjukkan jalan masuk.
+ * Frame lokal: lebar lorong (w) di sumbu x, arah berjalan (d) di sumbu z.
+ */
 function buildPortals(zoneDef) {
   if (!zoneDef.portals) return;
 
   zoneDef.portals.forEach(portal => {
+    const kind = portal.kind || 'gate';
+    const w = portal.w || 2, d = portal.d || 2;
     const group = new THREE.Group();
     group.name = `portal-${portal.target}`;
     group.position.set(portal.x, portal.y || 0, portal.z);
     if (portal.rotY) group.rotation.y = portal.rotY;
 
-    // Platform bercahaya
-    const platformGeo = new THREE.RingGeometry(0.78, 0.95, 48);
-    platformGeo.scale((portal.w || 2) / 2, (portal.d || 2) / 2, 1);
-    const platformMat = new THREE.MeshStandardMaterial({
-      color: 0xf4c430,
-      emissive: 0xf4c430,
-      emissiveIntensity: 0.4,
-      transparent: true,
-      opacity: 0.6,
-      side: THREE.DoubleSide,
-      depthWrite: false,
-      roughness: 0.3,
-    });
-    const platform = new THREE.Mesh(platformGeo, platformMat);
-    platform.rotation.x = -Math.PI / 2;
-    platform.position.set(0, 0.035, 0);
-    platform.receiveShadow = true;
-    group.add(platform);
-
-    // Arched gateway fits the configured opening, with a clear walking passage.
-    const radius = Math.max(0.65, (portal.w || 2) / 2);
-    const pillarMat = new THREE.MeshStandardMaterial({color:0x9b7650, roughness:0.8});
-    for (const side of [-1, 1]) {
-      const pillar = new THREE.Mesh(new THREE.CylinderGeometry(0.09,0.12,1.7,8),pillarMat);
-      pillar.position.set(side*radius,0.85,0);
-      pillar.castShadow=true;
-      group.add(pillar);
-    }
-    const arch = new THREE.Mesh(new THREE.TorusGeometry(radius,0.1,8,32,Math.PI),pillarMat);
-    arch.position.y=1.7;
-    group.add(arch);
-    const trim = new THREE.Mesh(new THREE.TorusGeometry(radius-0.04,0.022,5,32,Math.PI),
-      new THREE.MeshStandardMaterial({color:0xf4c430,emissive:0xf4c430,emissiveIntensity:0.5}));
-    trim.position.set(0,1.7,0.095);
-    group.add(trim);
-
-    // Papan nama tujuan
-    const signCanvas = document.createElement('canvas');
-    signCanvas.width = 512; signCanvas.height = 128;
-    const ctx = signCanvas.getContext('2d');
-    ctx.fillStyle = '#1a1410';
-    ctx.fillRect(0, 0, 512, 128);
-    ctx.strokeStyle = '#f4c430';
-    ctx.lineWidth = 4;
-    ctx.strokeRect(6, 6, 500, 116);
-    ctx.fillStyle = '#f4c430';
-    ctx.font = 'bold 40px Georgia, serif';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText(portal.label || portal.target, 256, 64);
-
-    const signTex = new THREE.CanvasTexture(signCanvas);
-    signTex.colorSpace = THREE.SRGBColorSpace;
-    const signMesh = new THREE.Mesh(
-      new THREE.PlaneGeometry(2, 0.5),
-      new THREE.MeshStandardMaterial({
-        map: signTex,
-        emissiveMap: signTex,
-        emissive: 0xffffff,
-        emissiveIntensity: 0.3,
-      })
+    // Alas bercahaya persegi = area pemicu yang sebenarnya
+    const pad = new THREE.Mesh(
+      new THREE.PlaneGeometry(w + 0.3, d + 0.3),
+      new THREE.MeshBasicMaterial({ map: padTexture((w + 0.3) / (d + 0.3)), transparent: true, opacity: 0.85, depthWrite: false })
     );
-    signMesh.position.set(0, 1.7 + radius + 0.38, 0);
-    group.add(signMesh);
+    pad.rotation.x = -Math.PI / 2;
+    pad.position.y = 0.045;
+    pad.renderOrder = 2;
+    group.add(pad);
 
-    // Partikel cahaya (glow di atas platform)
-    const glowGeo = new THREE.SphereGeometry(0.045, 6, 6);
-    const glowMat = new THREE.MeshBasicMaterial({
-      color: 0xf4c430,
-      transparent: true,
-      opacity: 0.6,
-    });
-    for (let i = 0; i < 5; i++) {
-      const glow = new THREE.Mesh(glowGeo, glowMat.clone());
-      glow.position.set(
-        (Math.random() - 0.5) * radius * 1.5,
-        0.5 + Math.random() * 2.5,
-        (Math.random() - 0.5) * 0.3
-      );
-      glow.userData.floatOffset = Math.random() * Math.PI * 2;
-      glow.userData.floatSpeed = 0.5 + Math.random() * 0.5;
-      group.add(glow);
+    if (kind === 'gate') buildGate(group, portal, w);
+
+    // Partikel cahaya di dalam lorong
+    const moteGeo = new THREE.SphereGeometry(0.045, 6, 6);
+    for (let i = 0; i < (kind === 'gate' ? 7 : 4); i++) {
+      const mote = new THREE.Mesh(moteGeo, new THREE.MeshBasicMaterial({ color: 0xf4c430, transparent: true, opacity: 0.6 }));
+      mote.position.set((Math.random() - 0.5) * w * 0.8, 0.5 + Math.random() * 2, (Math.random() - 0.5) * d * 0.5);
+      mote.userData.floatOffset = Math.random() * Math.PI * 2;
+      mote.userData.floatSpeed = 0.5 + Math.random() * 0.5;
+      group.add(mote);
     }
 
-    // Existing interior doorframes already identify the opening. Keep only
-    // the floor light and motes here, avoiding a second arch and duplicate sign.
-    if (zoneDef.id === ZONES.HAUS_INTERIOR) {
-      for (const child of [...group.children]) {
-        if (child !== platform && child.userData.floatOffset === undefined) {
-          group.remove(child);
-          disposeObject(child);
-        }
-      }
-    }
     Game.worldGroup.add(group);
-
-    // Simpan untuk collision check
-    portalMeshes.push({
-      mesh: platform,
-      portal: portal,
-      group: group,
-    });
+    portalMeshes.push({ mesh: pad, portal, group });
   });
+}
+
+function padTexture(aspect) {
+  const H = 128, W = Math.max(64, Math.min(512, Math.round(H * aspect)));
+  const c = document.createElement('canvas'); c.width = W; c.height = H;
+  const ctx = c.getContext('2d');
+  const r = Math.min(W, H) * 0.22;
+  const rr = (x, y, w, h) => {
+    ctx.beginPath();
+    ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r);
+    ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath();
+  };
+  ctx.fillStyle = 'rgba(244,196,48,0.16)'; rr(10, 10, W - 20, H - 20); ctx.fill();
+  ctx.shadowColor = 'rgba(255,214,90,0.9)'; ctx.shadowBlur = 14;
+  ctx.strokeStyle = 'rgba(255,220,110,0.95)'; ctx.lineWidth = 7; rr(12, 12, W - 24, H - 24); ctx.stroke();
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace;
+  return t;
+}
+
+function labelTexture(text) {
+  const c = document.createElement('canvas'); c.width = 512; c.height = 128;
+  const ctx = c.getContext('2d');
+  ctx.fillStyle = '#2a1a0e'; ctx.fillRect(0, 0, 512, 128);
+  ctx.strokeStyle = '#f4c430'; ctx.lineWidth = 6; ctx.strokeRect(7, 7, 498, 114);
+  ctx.fillStyle = '#ffd966'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  let size = 64;
+  do { ctx.font = `bold ${size}px Georgia, serif`; size -= 2; } while (ctx.measureText(text).width > 440 && size > 20);
+  ctx.fillText(text, 256, 68);
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4;
+  return t;
+}
+
+function buildGate(group, portal, w) {
+  const lift = portal.y || 0;               // tiang tetap berdiri di tanah walau alas dinaikkan
+  const lam = (c) => new THREE.MeshLambertMaterial({ color: c, flatShading: true });
+  const box = (bw, bh, bd, m, x, y, z) => {
+    const mesh = new THREE.Mesh(new THREE.BoxGeometry(bw, bh, bd), m);
+    mesh.position.set(x, y, z); mesh.castShadow = true; mesh.receiveShadow = true;
+    group.add(mesh);
+    return mesh;
+  };
+  const stone = lam(0x9c9284), stoneDark = lam(0x7a7166), wood = lam(0x5b3b22);
+  const postX = w / 2 + 0.25;
+  for (const s of [-1, 1]) {
+    box(0.6, 0.35 + lift, 0.6, stoneDark, s * postX, (0.35 + lift) / 2 - lift, 0);
+    box(0.44, 2.95, 0.44, stone, s * postX, 1.82, 0);
+    box(0.6, 0.18, 0.6, stoneDark, s * postX, 3.38, 0);
+    const lantern = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.28, 0.22),
+      new THREE.MeshStandardMaterial({ color: 0xffd27a, emissive: 0xffb84a, emissiveIntensity: 0.9 }));
+    lantern.position.set(s * postX, 3.62, 0);
+    group.add(lantern);
+    // Tiang gerbang tidak bisa ditembus
+    const rot = portal.rotY || 0;
+    World.colliders.push({ type: 'cylinder', x: portal.x + s * postX * Math.cos(rot), z: portal.z - s * postX * Math.sin(rot), radius: 0.3 });
+  }
+  box(w + 1.2, 0.28, 0.38, wood, 0, 3.12, 0);
+  box(w + 0.6, 0.12, 0.24, wood, 0, 2.92, 0);
+
+  // Papan tujuan menggantung, tulisan di kedua sisi
+  const bw = Math.min(w + 0.2, 2.6), bh = bw * 0.25;
+  box(bw + 0.12, bh + 0.12, 0.08, wood, 0, 2.55, 0);
+  const chainTop = 2.86, chainBottom = 2.55 + bh / 2;
+  for (const s of [-1, 1]) box(0.03, chainTop - chainBottom, 0.03, lam(0x333333), s * bw * 0.4, (chainTop + chainBottom) / 2, 0);
+  const tex = labelTexture(portal.label || portal.target);
+  for (const s of [1, -1]) {
+    const face = new THREE.Mesh(new THREE.PlaneGeometry(bw, bh), new THREE.MeshBasicMaterial({ map: tex }));
+    face.position.set(0, 2.55, s * 0.045);
+    if (s < 0) face.rotation.y = Math.PI;
+    group.add(face);
+  }
+
+  // Tirai cahaya lembut di lorong (dianimasikan di updateZones)
+  const cc = document.createElement('canvas'); cc.width = 4; cc.height = 128;
+  const cx = cc.getContext('2d');
+  const grad = cx.createLinearGradient(0, 0, 0, 128);
+  grad.addColorStop(0, 'rgba(255,214,90,0)');
+  grad.addColorStop(1, 'rgba(255,214,90,0.55)');
+  cx.fillStyle = grad; cx.fillRect(0, 0, 4, 128);
+  const curtain = new THREE.Mesh(new THREE.PlaneGeometry(w + 0.05, 2.2), new THREE.MeshBasicMaterial({
+    map: new THREE.CanvasTexture(cc), transparent: true, opacity: 0.55, side: THREE.DoubleSide,
+    depthWrite: false, blending: THREE.AdditiveBlending,
+  }));
+  curtain.position.y = 1.15;
+  curtain.userData.curtain = true;
+  group.add(curtain);
 }
 
 
@@ -543,11 +518,12 @@ export function updateZones(delta, elapsed) {
     });
   });
 
-  // Platform pulse
-  portalMeshes.forEach(({ mesh }) => {
-    if (mesh.material.emissiveIntensity !== undefined) {
-      mesh.material.emissiveIntensity = 0.3 + Math.sin(elapsed * 2) * 0.15;
-    }
+  // Alas & tirai berdenyut pelan
+  portalMeshes.forEach(({ mesh, group }) => {
+    mesh.material.opacity = 0.7 + Math.sin(elapsed * 2) * 0.2;
+    group.children.forEach(child => {
+      if (child.userData.curtain) child.material.opacity = 0.42 + Math.sin(elapsed * 1.6) * 0.14;
+    });
   });
 
   // Cek proximity pemain ke portal (throttle)

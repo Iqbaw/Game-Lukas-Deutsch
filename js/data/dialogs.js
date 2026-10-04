@@ -118,7 +118,7 @@ export const DIALOGS = {
       h2: {
         id:      'h2',
         speaker: 'nachbar_hans',
-        text:    'Er liegt in der Hauptstraße, genau zwischen der Bäckerei und der Post!',
+        text:    'Geh über die alte Brücke in die Stadt und dann geradeaus bis zur Ampel. Dort biegst du rechts ab — der EDEKA ist das Gebäude mit dem großen Parkplatz auf der rechten Seite.',
         end:     true,
       },
     },
@@ -848,29 +848,29 @@ export const DIALOGS = {
       p1_3: {
         id:      'p1_3',
         speaker: 'passant_1',
-        text:    'Natürlich! Gehen Sie diese Straße <vocab title="sepanjang">entlang</vocab>, dann biegen Sie <vocab title="kanan">rechts</vocab> an der <vocab title="Gereja">Kirche</vocab> ab.',
+        text:    'Natürlich! Gehen Sie diese Straße <vocab title="sepanjang">entlang</vocab> bis zur Ampel. Dort biegen Sie an der <vocab title="Gereja">Kirche</vocab> <vocab title="kanan">rechts</vocab> ab.',
         next:    'p1_4',
       },
       p1_4: {
         id:      'p1_4',
         speaker: 'passant_1',
-        text:    'Der Supermarkt ist das große Gebäude <vocab title="di seberang">gegenüber</vocab> dem <vocab title="Gedung parkir">Parkhaus</vocab>. Sie können es nicht verfehlen!',
+        text:    'Der Supermarkt ist das große Gebäude mit dem blauen Dach, direkt <vocab title="di samping">neben</vocab> dem großen <vocab title="Tempat parkir">Parkplatz</vocab>. Sie können es nicht verfehlen!',
         next:    'p1_quiz',
       },
       p1_quiz: {
         id:      'p1_quiz',
         speaker: 'lukas',
-        text:    'Ich habe es! Der Supermarkt liegt gegenüber von...',
+        text:    'Ich habe es! Der Supermarkt liegt neben...',
         choices: [
           { text: 'Der Kirche',                correct: false, score: -10, next: 'p1_wrong' },
-          { text: 'Dem Parkhaus',              correct: true,  score: 100, next: 'p1_correct' },
+          { text: 'Dem Parkplatz',             correct: true,  score: 100, next: 'p1_correct' },
           { text: 'Der Schule',                correct: false, score: -10, next: 'p1_wrong' },
         ],
       },
       p1_correct: {
         id:      'p1_correct',
         speaker: 'passant_1',
-        text:    '<vocab title="Benar">Richtig</vocab>! Gegenüber dem Parkhaus. Guten Einkauf!',
+        text:    '<vocab title="Benar">Richtig</vocab>! Neben dem Parkplatz. Guten Einkauf!',
         onEnter: [
           { type: 'progress_quest', step: 'step2_ask_passant' },
         ],
@@ -879,7 +879,7 @@ export const DIALOGS = {
       p1_wrong: {
         id:      'p1_wrong',
         speaker: 'passant_1',
-        text:    'Nein, nein! Gegenüber dem PARKHAUS! Nicht der Kirche.',
+        text:    'Nein, nein! NEBEN dem PARKPLATZ! An der Kirche biegen Sie nur ab.',
         next:    'p1_quiz',
       },
     },
@@ -905,13 +905,13 @@ export const DIALOGS = {
       p2_2: {
         id:      'p2_2',
         speaker: 'passant_2',
-        text:    'Einen Eisstand? Ja! Gehen Sie <vocab title="lurus">geradeaus</vocab>, dann <vocab title="kiri">links</vocab>.',
+        text:    'Einen Eisstand? Ja! Gehen Sie diese Straße <vocab title="lurus">geradeaus</vocab> bis zum Ende, dann <vocab title="kanan">rechts</vocab> in die Bachstraße.',
         next:    'p2_3',
       },
       p2_3: {
         id:      'p2_3',
         speaker: 'passant_2',
-        text:    'Der Eisstand ist <vocab title="di antara">zwischen</vocab> dem <vocab title="Toko bunga">Blumenladen</vocab> und dem <vocab title="Kafe">Café</vocab>, <vocab title="di sebelah">neben</vocab> der <vocab title="Toko roti">Bäckerei</vocab>.',
+        text:    'Der Eisstand ist <vocab title="di antara">zwischen</vocab> dem <vocab title="Toko bunga">Blumenladen</vocab> und dem <vocab title="Kafe">Café</vocab>, auf der <vocab title="sisi kiri">linken Seite</vocab>.',
         next:    'p2_quiz',
       },
       p2_quiz: {
@@ -963,13 +963,13 @@ export const DIALOGS = {
       p3_2: {
         id:      'p3_2',
         speaker: 'passant_3',
-        text:    'Die alte Brücke? Kein Problem! Gehen Sie <vocab title="kembali">zurück</vocab> zur <vocab title="Jalan utama">Hauptstraße</vocab>, dann links bis zur <vocab title="Jembatan">Brücke</vocab>.',
+        text:    'Die alte Brücke? Kein Problem! Gehen Sie <vocab title="kembali">zurück</vocab> durch den Park bis zur <vocab title="Jalan utama">Hauptstraße</vocab>. Dort biegen Sie rechts ab und gehen geradeaus bis zur Ampel.',
         next:    'p3_3',
       },
       p3_3: {
         id:      'p3_3',
         speaker: 'passant_3',
-        text:    '<vocab title="Menyeberangi">Überqueren</vocab> Sie die Brücke. Dann nehmen Sie die dritte Straße <vocab title="kanan">rechts</vocab>. Das Haus ist das einzige mit dem <vocab title="Pintu gerbang merah">roten Tor</vocab>.',
+        text:    'An der Ampel gehen Sie links in die Schillerstraße, immer geradeaus bis zum Fluss. <vocab title="Menyeberangi">Überqueren</vocab> Sie die alte <vocab title="Jembatan">Brücke</vocab> — dahinter wohnen Ihre Großeltern, gleich neben der <vocab title="Kincir angin">Windmühle</vocab>.',
         next:    'p3_quiz',
       },
       p3_quiz: {
@@ -1221,11 +1221,11 @@ Nützliche Wörter:
 Ich bin verloren... aber ein netter Passant hat mir geholfen:
 
 Um nach Hause zu kommen:
-1. Zurück zur <span class="prep-highlight">HAUPTSTRASSE</span>
-2. Links bis zur <span class="prep-highlight">BRÜCKE</span>
-3. Die Brücke <span class="prep-highlight">ÜBERQUEREN</span>
-4. Die dritte Straße <span class="prep-highlight">RECHTS</span>
-5. Das Haus mit dem ROTEN TOR
+1. <span class="prep-highlight">ZURÜCK</span> durch den Park bis zur Hauptstraße
+2. <span class="prep-highlight">RECHTS</span> bis zur Ampel
+3. An der Ampel <span class="prep-highlight">LINKS</span> in die Schillerstraße
+4. Die alte <span class="prep-highlight">BRÜCKE</span> überqueren
+5. Omas Haus steht neben der WINDMÜHLE
 
 Wichtige Ausdrücke:
 • Entschuldigung, wissen Sie... = Permisi, apakah Anda tahu...

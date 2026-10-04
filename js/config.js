@@ -21,14 +21,17 @@ export const CONFIG = {
   ISO_ZOOM:            7,      // Comfortable isometric overview
   ISO_ANGLE_Y:         Math.PI / 4,    // 45° rotasi horizontal
   ISO_ANGLE_X:         Math.atan(1 / Math.sqrt(2)), // ~35.26° true isometric
-  ISO_CAM_HEIGHT:      20,     // tinggi kamera
+  // Jarak kamera ortografis. Tidak mengubah ukuran tampilan, tetapi harus
+  // cukup jauh supaya atap gedung tinggi di dekat kamera tidak terpotong
+  // near-plane. Kabut digeser dengan jarak yang sama.
+  ISO_CAM_HEIGHT:      50,
   ISO_CAM_FOLLOW_SPEED: 6.0,   // kecepatan kamera mengikuti player
 
   // ── WORLD (per-zona) ───────────────────────────────────
   ZONE_SIZE:           60,     // ukuran zona kota
   GROUND_COLOR:        0x6b6b5a,
-  FOG_NEAR:            40,
-  FOG_FAR:             80,
+  FOG_NEAR:            70,
+  FOG_FAR:             110,
 
   // ── LIGHTING (Bright vibrant daylight) ───────────────────
   AMBIENT_COLOR:       0xffffff,
