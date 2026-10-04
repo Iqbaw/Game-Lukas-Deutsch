@@ -853,9 +853,16 @@ function stadtpark(x0, z0, x1, z1, allee) {
   gap(x0, x1, [[allee.x - allee.w / 2 - 0.2, allee.x + allee.w / 2 + 0.2]]);
   hedge(x0, z0, x0, cz - 1.1); hedge(x0, cz + 1.1, x0, z1);
   hedge(x1, z0, x1, cz - 1.1); hedge(x1, cz + 1.1, x1, z1);
-  // Lampu taman di sekitar plaza & sepanjang jalur — taman tetap terang di malam hari
-  for (const [lx, lz] of [[allee.x - 3.4, cz - 2.4], [allee.x + 3.4, cz + 2.4],
-                          [x0 + 5, cz - 1.4], [x0 + 11, cz + 1.4], [x1 - 4, cz - 1.4]]) parkLamp(lx, lz);
+  // Lampu taman tertata: empat di sudut diagonal plaza (di rumput, bukan di
+  // jalur), lalu berpasangan di kedua tepi jalur utama — tidak ada yang
+  // berdiri di tengah jalan.
+  const PR = 3.7 / Math.SQRT2;                       // radius plaza + 0.5
+  for (const sx of [-1, 1]) for (const sz of [-1, 1]) parkLamp(allee.x + sx * PR, cz + sz * PR);
+  const edgeN = cz - 0.9 - 0.45, edgeS = cz + 0.9 + 0.45;   // 0,45 di luar tepi jalur
+  for (const lx of [x0 + 6, allee.x - 8.5, allee.x + 8.5]) {
+    parkLamp(lx, edgeN);
+    parkLamp(lx, edgeS);
+  }
   (World.fireflyAreas || (World.fireflyAreas = [])).push({ x0: x0 + 0.5, x1: x1 - 0.5, z0: z0 + 0.5, z1: z1 - 0.3, n: 30 });
 }
 
@@ -1117,8 +1124,10 @@ export function buildStadt() {
     [-39.5, -7], [-39.5, -13], [-39, -23], [-39, -31],
     [25, 7.6], [31, 7.6], [37, 7.6], [-41, 5.8],
   ]) tree(tx, tz, 1);
-  for (const lx of [-36, -12, 26, 38]) lamp(lx, mainS + SW - 0.3);
-  for (const lz of [-12, 12]) lamp(wE + SW - 0.3, lz);
+  // Lampu jalan berdiri di tepi trotoar sisi jalan (0,25 dari aspal) —
+  // trotoar tetap lapang, tidak ada lampu di persimpangan / zebra cross.
+  for (const lx of [-36, -12, 26, 38]) lamp(lx, mainS + 0.25);
+  for (const lz of [-12, 12]) lamp(wE + 0.25, lz);
   // Hutan kecil di luar batas peta (mengisi tepi pandangan kamera)
   const rnd = (i) => ((Math.sin(i * 127.1) * 43758.5453) % 1 + 1) % 1;
   for (let i = 0; i < 70; i++) {
@@ -1144,15 +1153,16 @@ export function buildStadt() {
   reg.haltestelle = { x: 34, z: mainS + 1.2, r: 3 };
 
   // ═════════════════════════ LAMPU MALAM TAMBAHAN ═════════════════
-  for (const lx of [-20.5, 4.2, 20.6, 31.6]) lamp(lx, mainN - SW + 0.3);       // Hauptstraße Nord
-  for (const lz of [24, -30]) lamp(wE + SW - 0.3, lz);                           // Schillerstraße
-  lamp(eW - SW + 0.35, 12.6); lamp(eE + 0.35, 12);                               // Bachstraße
-  lamp(30.5, lindN - SW + 0.3); lamp(41, lindN - SW + 0.3);                      // Deichstraße
-  lamp(0.2, 14.5);                                                               // Parkplatz EDEKA
-  for (const [lx, lz] of [[ALLEE.x + 2.2, 8.6], [ALLEE.x - 2.2, 12.2], [ALLEE.x + 2.2, 15.8], [ALLEE.x - 2.2, 19.4]]) parkLamp(lx, lz);
-  parkLamp(EAST_X - 1.8, (parkN.z0 + parkN.z1) / 2 - 1.6);
-  parkLamp(EAST_X + 1.8, (parkN.z0 + parkN.z1) / 2 + 1.4);
-  parkLamp(41.6, riverN - 2.2);
+  for (const lx of [-16, ALLEE.x, 24, 32]) lamp(lx, mainN - 0.25);              // Hauptstraße Nord
+  for (const lz of [21, -30]) lamp(wE + 0.25, lz);                               // Schillerstraße
+  lamp(eW - 0.25, 12.6); lamp(eE + 0.25, 12.6);                                  // Bachstraße (berhadapan)
+  lamp(30.8, lindN - 0.25); lamp(41, lindN - 0.25);                              // Deichstraße
+  lamp(-4, 21.9);                                                                // Parkplatz EDEKA (tepi selatan, di rumput)
+  // Allee: berpasangan di kedua deret pohon, tepat di antara dua pohon
+  for (const lz of [8.6, 15.8]) for (const sx of [-1, 1]) parkLamp(ALLEE.x + sx * 2.2, lz);
+  // Taman kecil di seberang kanal: empat sudut persimpangan jalur
+  { const pcz = (parkN.z0 + parkN.z1) / 2;
+    for (const sx of [-1, 1]) for (const sz of [-1, 1]) parkLamp(EAST_X + sx * 1.75, pcz + sz * 1.35); }
   const ff = World.fireflyAreas || (World.fireflyAreas = []);
   ff.push({ x0: parkN.x0 + 0.5, x1: parkN.x1 - 0.5, z0: parkN.z0 + 0.5, z1: parkN.z1 - 0.5, n: 22 });
   ff.push({ x0: ALLEE.x - 3, x1: ALLEE.x + 3, z0: mainS + SW + 1, z1: 22.5, n: 14 });

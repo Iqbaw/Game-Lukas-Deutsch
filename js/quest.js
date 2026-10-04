@@ -24,6 +24,7 @@ import { setInputEnabled } from './player.js';
 import { spawnNPC, despawnNPC, getNPCRecord, getAllNPCs, setNPCFollowing } from './npc.js';
 import { Journal } from './journal.js';
 import { Cutscene } from './cutscene.js';
+import { playJingle } from './music.js';
 
 const STATE = {
   IDLE:        'IDLE',
@@ -274,6 +275,8 @@ export const QuestSystem = {
 
     const hook = STEP_ENTER[step.id];
     if (hook) hook.call(this, { restored });
+    // Musik latar memilih lagu sesuai quest & langkah (js/music.js)
+    window.dispatchEvent(new CustomEvent('quest:step', { detail: { questId: this.activeQuestId, stepId: step.id } }));
 
     if (step.kind === 'auto') {
       // Dialog pembuka langkah 1 boleh berasal dari quest.intro_dialog
@@ -780,6 +783,7 @@ export const QuestSystem = {
   showCompletionCard(quest) {
     this.closeCard();
     this.currentState = STATE.CARD;
+    playJingle('jingle_complete');
     setInputEnabled(false);
     this.hideMarker();
 
