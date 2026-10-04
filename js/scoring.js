@@ -4,6 +4,9 @@ import { showToast } from './ui.js';
 export const ScoreSystem = {
   score: 0,
   streak: 0,
+  // Rincian untuk panel skor kanan-atas
+  stats: { gained: 0, lost: 0, wrong: 0, history: [] },
+  restoreStats(saved, total) { restoreScoreStats(saved, total); },
   
   init() {
     this.score = 0;
@@ -46,24 +49,7 @@ export const ScoreSystem = {
 
     this.score += finalPoints;
     window.__score__ = this.score;
-
-    // Dispatch a generic UI update for score
-    const scoreEl = document.getElementById('score-value');
-    if (scoreEl) {
-      scoreEl.textContent = this.score;
-      scoreEl.classList.add('score-bump');
-      setTimeout(() => scoreEl.classList.remove('score-bump'), 500);
-      
-      // Show delta
-      const scoreContainer = document.getElementById('score-display');
-      if (scoreContainer) {
-        const deltaEl = document.createElement('div');
-        deltaEl.className = `score-delta${finalPoints < 0 ? ' score-delta-negative' : ''}`;
-        deltaEl.textContent = (finalPoints > 0 ? '+' : '') + finalPoints;
-        scoreContainer.appendChild(deltaEl);
-        setTimeout(() => deltaEl.remove(), 1300);
-      }
-    }
+    noteScoreChange(finalPoints, label);
 
     // Update streak UI
     const streakRow = document.getElementById('streak-row');
@@ -111,3 +97,101 @@ export const ScoreSystem = {
     }
   }
 };
+
+
+// ═══════════════════════════════════════════════════════════════════
+// PANEL SKOR (kanan-atas) — total, poin didapat, poin hilang karena
+// jawaban salah, dan beberapa perubahan terakhir.
+// Semua sumber poin (dialog.js, quest.js lewat SCORE_ADD) lewat sini.
+// ═══════════════════════════════════════════════════════════════════
+
+const HISTORY_MAX = 30;
+const HISTORY_SHOWN = 3;
+
+const fmt = (n) => Math.abs(Math.round(n)).toLocaleString('de-DE');
+
+function cleanLabel(label, delta) {
+  const t = String(label || '').replace(/^[^\p{L}\p{N}]+/u, '').trim();
+  if (t) return t;
+  return delta < 0 ? 'Falsche Antwort' : 'Punkte';
+}
+
+/** Catat satu perubahan skor dan perbarui panel. */
+export function noteScoreChange(delta, label = '') {
+  if (!delta) return;
+  const st = ScoreSystem.stats;
+  if (delta > 0) st.gained += delta;
+  else { st.lost += -delta; st.wrong += 1; }
+  st.history.unshift({ d: delta, l: cleanLabel(label, delta), t: Date.now() });
+  if (st.history.length > HISTORY_MAX) st.history.length = HISTORY_MAX;
+  renderScorePanel({ delta });
+}
+
+export function resetScoreStats() {
+  ScoreSystem.stats = { gained: 0, lost: 0, wrong: 0, history: [] };
+  renderScorePanel();
+}
+
+/** Dari savegame. Save lama tanpa rincian → skornya dihitung sebagai „didapat". */
+export function restoreScoreStats(saved, total = 0) {
+  const ok = saved && Number.isFinite(saved.gained) && Number.isFinite(saved.lost);
+  ScoreSystem.stats = ok ? {
+    gained: saved.gained, lost: saved.lost,
+    wrong: Number.isFinite(saved.wrong) ? saved.wrong : 0,
+    history: Array.isArray(saved.history) ? saved.history.slice(0, HISTORY_MAX) : [],
+  } : { gained: Math.max(0, total), lost: Math.max(0, -total), wrong: 0, history: [] };
+  renderScorePanel();
+}
+
+export function showScorePanel(on = true) {
+  document.getElementById('score-display')?.classList.toggle('hud-hidden', !on);
+}
+
+export function renderScorePanel({ delta = 0 } = {}) {
+  const st = ScoreSystem.stats;
+  const total = Number.isFinite(window.__score__) ? window.__score__ : ScoreSystem.score;
+  const $ = (id) => document.getElementById(id);
+
+  const valEl = $('score-value');
+  if (valEl) {
+    valEl.textContent = (total < 0 ? '−' : '') + fmt(total);
+    if (delta) {
+      valEl.classList.remove('score-bump');
+      void valEl.offsetWidth;
+      valEl.classList.add('score-bump');
+    }
+  }
+  if ($('score-gained')) $('score-gained').textContent = '+' + fmt(st.gained);
+  if ($('score-lost'))   $('score-lost').textContent = (st.lost ? '−' : '') + fmt(st.lost);
+  if ($('score-wrong'))  $('score-wrong').textContent = st.wrong === 1 ? '1× falsch' : `${st.wrong}× falsch`;
+  $('score-display')?.classList.toggle('has-mistakes', st.lost > 0);
+
+  const list = $('score-history');
+  if (list) {
+    list.innerHTML = '';
+    st.history.slice(0, HISTORY_SHOWN).forEach((h, i) => {
+      const li = document.createElement('li');
+      li.className = h.d < 0 ? 'sh-minus' : 'sh-plus';
+      if (i === 0 && delta) li.classList.add('sh-new');
+      const pts = document.createElement('span');
+      pts.className = 'sh-pts';
+      pts.textContent = (h.d < 0 ? '−' : '+') + fmt(h.d);
+      const lbl = document.createElement('span');
+      lbl.className = 'sh-lbl';
+      lbl.textContent = h.l;
+      li.append(pts, lbl);
+      list.appendChild(li);
+    });
+    list.classList.toggle('hud-hidden', st.history.length === 0);
+  }
+
+  // Angka melayang (+50 / −10)
+  const box = $('score-display');
+  if (box && delta) {
+    const el = document.createElement('div');
+    el.className = `score-delta${delta < 0 ? ' score-delta-negative' : ''}`;
+    el.textContent = (delta > 0 ? '+' : '−') + fmt(delta);
+    box.appendChild(el);
+    setTimeout(() => el.remove(), 1300);
+  }
+}

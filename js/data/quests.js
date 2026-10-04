@@ -61,7 +61,7 @@ export const QUESTS = {
       { id: 'step3_phone_call', kind: 'auto', icon: '☎️',
         dialog: 'oma_phone_call', speaker: 'oma_helga',
         description: 'Hör Omas Hinweise am Telefon',
-        hint: 'Dengarkan Oma: di mana letak barang-barang dapur? Perhatikan IN, AUF, UNTER.' },
+        hint: 'Dengarkan Oma: di mana letak barang-barang dapur? Perhatikan kata in, auf, unter.' },
       { id: 'step4_collect_kitchen', kind: 'collect_auto', icon: '🧺',
         target: ['pfanne', 'wurst', 'eier', 'teller', 'besteck'],
         description: 'Sammle die 5 Sachen in der Küche',
@@ -75,12 +75,18 @@ export const QUESTS = {
         ],
         panel: { title: '📞 Oma sagt:', html: `
           <ul>
-            <li>Die <b>Pfanne</b> — ${kw('IN')} dem Schrank</li>
-            <li>Die <b>Wurst</b> — ${kw('AUF')} dem Serviertisch</li>
-            <li>Die <b>Eier</b> — ${kw('UNTER')} dem kleinen Tisch</li>
-            <li>Der <b>Teller</b> — ${kw('AUF')} dem Küchentisch</li>
-            <li>Das <b>Besteck</b> — ${kw('IN')} der Schublade</li>
-          </ul>` } },
+            <li>Die <b>Pfanne</b> — ${kw('in')} dem Schrank</li>
+            <li>Die <b>Wurst</b> — ${kw('auf')} dem Serviertisch</li>
+            <li>Die <b>Eier</b> — ${kw('unter')} dem kleinen Tisch</li>
+            <li>Der <b>Teller</b> — ${kw('auf')} dem Küchentisch</li>
+            <li>Das <b>Besteck</b> — ${kw('in')} der Schublade</li>
+          </ul>
+          <div class="prep-info">
+            <div class="prep-info-title">📘 Präpositionen</div>
+            <div class="prep-info-row"><span class="pi-from">in dem</span><span class="pi-arrow">→</span><b class="pi-to">im</b><span class="pi-ex">im Schrank</span></div>
+            <div class="prep-info-row"><span class="pi-from">in der</span><span class="pi-arrow">→</span><b class="pi-to pi-same">in der</b><span class="pi-ex">tidak disingkat</span></div>
+            <div class="prep-info-legend"><b>in</b> = di dalam · <b>auf</b> = di atas · <b>unter</b> = di bawah</div>
+          </div>` } },
       { id: 'step5_cook', kind: 'auto', icon: '🍳',
         dialog: 'lukas_cooking_timeskip', speaker: 'lukas',
         description: 'Koch dein Frühstück',
@@ -134,7 +140,7 @@ export const QUESTS = {
           <p class="panel-note">⚠️ Tante weiß nicht, wo sie sind. Merk dir den Ort!</p>` } },
       { id: 'step4_send_message', kind: 'auto', action: 'sms', icon: '📱',
         description: 'Schreib Tante, wo die Sachen sind',
-        hint: 'Pilih SMS yang preposisinya benar (IN / AUF / UNTER).' },
+        hint: 'Pilih SMS yang preposisinya benar (in / auf / unter).' },
     ],
 
     done: { de: 'Tante Maria weiß jetzt, wo Socken, Papier und Spielzeug sind.',
@@ -452,7 +458,7 @@ export const QUESTS = {
     prerequisites:['quest_8'],
 
     steps: [
-      { id: 'step1_talk_felix', kind: 'talk_npc', target: 'felix', icon: '🧢',
+      { id: 'step1_talk_felix', kind: 'talk_npc', target: 'felix', icon: '😎',
         dialog: 'felix_quest9_intro',
         description: 'Sprich mit Felix an der Elbe',
         hint: 'Felix dan Leni menunggu di promenade tepi Elbe, di seberang Deichstraße — bicara dengan Felix (tekan E).' },

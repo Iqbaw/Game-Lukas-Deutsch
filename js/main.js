@@ -43,7 +43,7 @@ import { initDialog } from './dialog.js';
 import { initZones, loadZone, updateZones } from './zone.js';
 
 // Gameplay Loop Systems
-import { ScoreSystem } from './scoring.js';
+import { ScoreSystem, resetScoreStats, showScorePanel } from './scoring.js';
 import { QuestSystem } from './quest.js';
 import { initNight } from './night.js';
 import { clearSave, enableAutosave, readSave, restoreSave } from './savegame.js';
@@ -646,6 +646,7 @@ async function startGame(mode = 'new', save = null) {
     ScoreSystem.score = 0;
     ScoreSystem.streak = 0;
     window.__score__ = 0;
+    resetScoreStats();
   } else {
     const restored = await restoreSave(save, { loadZone, teleportPlayer, QuestSystem, ScoreSystem });
     if (!restored) {
@@ -668,6 +669,7 @@ async function startGame(mode = 'new', save = null) {
 
   const hintEl = document.getElementById('controls-hint');
   if (hintEl) hintEl.classList.remove('hud-hidden');
+  showScorePanel(true);
 
   // Import UI and set initial objective
   if (mode === 'new') import('./ui.js').then(({ UI }) => {

@@ -517,6 +517,9 @@ function wireDirector() {
   // Saat dialog terbuka musik sedikit mengecil supaya teks mudah diikuti
   window.addEventListener('dialog:open', () => setDuck(0.72));
   window.addEventListener('dialog:close', () => setDuck(1));
+  // Telepon berdering → musik mengecil supaya deringnya jelas terdengar
+  window.addEventListener('phone:ring', () => setDuck(0.5));
+  window.addEventListener('phone:stop', () => setDuck(Music._duck < 0.72 ? 1 : Music._duck));
   document.addEventListener('visibilitychange', () => {
     if (!Music.ctx) return;
     if (document.hidden) Music.ctx.suspend().catch(() => {});

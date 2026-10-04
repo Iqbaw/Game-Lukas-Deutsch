@@ -183,8 +183,26 @@
         <div class="sms-hint">💡 Lies sorgfältig! Nur EINE Nachricht hat keine Fehler.</div>
       </div>
 
-      <!-- TOP RIGHT: Score & Streak — DIHILANGKAN sesuai permintaan.
-           Skor tetap dihitung internal (window.__score__) tapi TIDAK ditampilkan. -->
+      <!-- TOP RIGHT: Panel skor — total, poin didapat, poin hilang karena jawaban salah,
+           dan 3 perubahan terakhir (diisi js/scoring.js → renderScorePanel) -->
+      <div id="score-display" class="hud-score hud-hidden" aria-live="polite">
+        <div class="score-row">
+          <span class="score-label">⭐ Punkte</span>
+          <span id="score-value" class="score-value">0</span>
+        </div>
+        <div class="score-breakdown">
+          <span class="sb-chip sb-plus" title="Poin yang didapat">
+            <span class="sb-ico">✔</span><b id="score-gained">+0</b>
+          </span>
+          <span class="sb-chip sb-minus" title="Poin yang hilang karena jawaban salah">
+            <span class="sb-ico">✖</span><b id="score-lost">0</b><small id="score-wrong">0× falsch</small>
+          </span>
+        </div>
+        <ul id="score-history" class="score-history hud-hidden"></ul>
+        <div id="streak-row" class="streak-row hud-hidden">
+          <span class="streak-icon">🔥</span> Combo <span id="streak-value">×3</span>
+        </div>
+      </div>
 
       <!-- BOTTOM LEFT: Minimap & Controls hint -->
       <div id="minimap-container" class="hud-minimap hud-hidden">
