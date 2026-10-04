@@ -90,9 +90,16 @@ function buildLukasMesh() {
 // ═══════════════════════════════════════════════════════════════════
 
 function setupInput() {
-  // WASD dan tombol panah sama-sama menggerakkan Lukas. Tombol yang sedang
-  // ditekan disimpan per tombol fisik, jadi melepas W tidak menghentikan
-  // gerak selama ↑ masih ditekan (dan sebaliknya).
+  // WASD dan tombol panah sama-sama menggerakkan Lukas.
+  //
+  // Tombol yang sedang DITAHAN selalu dicatat (juga saat dialog, cutscene
+  // atau menu pause sedang terbuka); geraknya baru diterapkan bila input
+  // aktif. Dulu tombol yang ditekan saat input terkunci dibuang — tombol
+  // yang terus ditahan baru "hidup" lagi bila keyboard mengirim auto-repeat
+  // (di sebagian laptop/browser tidak pernah), sehingga A/S/D terasa mati.
+  //
+  // Event dibaca di fase CAPTURE pada window (lewat index.html sedini
+  // mungkin), jadi skrip lain di halaman tidak bisa mencegatnya.
   const CODE_ACTION = {
     KeyW: 'fwd',  ArrowUp:    'fwd',
     KeyS: 'back', ArrowDown:  'back',
@@ -105,46 +112,74 @@ function setupInput() {
     arrowup: 'fwd', arrowdown: 'back', arrowleft: 'left', arrowright: 'right',
     up: 'fwd', down: 'back', left: 'left', right: 'right',
   };
-  const pressed = new Map();   // tombol → aksi
-  const actionOf = (e) => CODE_ACTION[e.code] || KEY_ACTION[(e.key || '').toLowerCase()];
-  const keyId = (e) => e.code || (e.key || '').toLowerCase();
-  const sync = () => {
-    for (const a of ['fwd', 'back', 'left', 'right']) Player.input[a] = 0;
-    pressed.forEach(a => { Player.input[a] = 1; });
+  const KEYCODE_ACTION = { 87: 'fwd', 83: 'back', 65: 'left', 68: 'right', 38: 'fwd', 40: 'back', 37: 'left', 39: 'right' };
+  const DIRS = ['fwd', 'back', 'left', 'right'];
+  const pressed = new Map();   // tombol fisik → aksi
+  let shiftHeld = false;
+  const actionOf = (e) => CODE_ACTION[e.code] || KEY_ACTION[(e.key || '').toLowerCase()] || KEYCODE_ACTION[e.keyCode];
+  const keyId = (e) => e.code || ('key:' + actionOf(e));
+  const isShift = (e) => e.code === 'ShiftLeft' || e.code === 'ShiftRight' || e.key === 'Shift';
+  const UI_TOUCH = () => document.body.classList.contains('input-touch');   // tombol ⚡ di layar sentuh
+
+  // Petunjuk tombol di HUD menyala saat tombolnya diterima game
+  let chips = null;
+  const lightChips = (held) => {
+    if (!chips) chips = Array.from(document.querySelectorAll('#controls-hint [data-k]'));
+    for (const c of chips) c.classList.toggle('is-down', held.has(c.dataset.k));
   };
 
-  window.addEventListener('keydown', (e) => {
+  let kbDriving = false;     // keyboard yang terakhir mengisi arah (bukan joystick)
+  const apply = () => {
+    const live = Player.inputEnabled && !Game.isPaused;
+    const held = new Set(pressed.values());
+    if (!live || held.size || kbDriving) {
+      for (const a of DIRS) Player.input[a] = 0;
+      if (live) held.forEach(a => { Player.input[a] = 1; });
+      kbDriving = live && held.size > 0;
+    }
+    if (!live || shiftHeld || !UI_TOUCH()) Player.input.run = live && shiftHeld;
+    if (shiftHeld) held.add('run');
+    lightChips(held);
+  };
+
+  const onKey = (e, down) => {
+    if (!e) { pressed.clear(); shiftHeld = false; apply(); return; }    // jendela kehilangan fokus
     const action = actionOf(e);
-    if (action && (e.code || '').startsWith('Arrow')) e.preventDefault();   // halaman tidak ikut scroll
-    if (!Player.inputEnabled) return;
-    if (Game.isPaused) return;
-    if (e.ctrlKey || e.metaKey || e.altKey) return;
-    if (e.code === 'Space') {
-      e.preventDefault();
-      if (!e.repeat) requestJump();
-      return;
+    if (isShift(e)) { shiftHeld = down; apply(); return; }
+    if (down) {
+      if (action && (e.code || '').startsWith('Arrow')) e.preventDefault();   // halaman tidak ikut scroll
+      if (e.code === 'Space' || e.key === ' ') {
+        if (Player.inputEnabled && !Game.isPaused) {
+          e.preventDefault();
+          if (!e.repeat) requestJump();
+        }
+        return;
+      }
+      if (!action || e.ctrlKey || e.metaKey || e.altKey) return;
+      pressed.set(keyId(e), action);
+    } else {
+      if (!action) return;
+      // Lepas tombol ini; bila browser mengirim kode berbeda saat keyup,
+      // lepas semua tombol dengan aksi yang sama (cegah tombol "nyangkut").
+      if (!pressed.delete(keyId(e))) {
+        for (const [k, a] of pressed) if (a === action) pressed.delete(k);
+      }
     }
-    if (action) { pressed.set(keyId(e), action); sync(); }
-    if (e.code === 'ShiftLeft' || e.code === 'ShiftRight' || e.key === 'Shift') {
-      Player.input.run = true;
-    }
-  });
-
-  window.addEventListener('keyup', (e) => {
-    // Selalu lepas, apa pun status inputEnabled
-    if (pressed.delete(keyId(e)) || actionOf(e)) sync();
-    if (e.code === 'ShiftLeft' || e.code === 'ShiftRight' || e.key === 'Shift') {
-      Player.input.run = false;
-    }
-  });
-
-  const releaseAll = () => {
-    pressed.clear();
-    sync();
-    Player.input.run = false;
+    apply();
   };
-  window.addEventListener('blur', releaseAll);
-  Player._releaseKeys = releaseAll;
+
+  const hub = window.__heldKeys__;
+  if (hub && Array.isArray(hub.listeners)) {
+    hub.listeners.push(onKey);
+  } else {
+    window.addEventListener('keydown', (e) => onKey(e, true), true);
+    window.addEventListener('keyup', (e) => onKey(e, false), true);
+    window.addEventListener('blur', () => onKey(null, false));
+  }
+
+  Player._syncKeys = apply;
+  Player._releaseKeys = () => onKey(null, false);
+  Player._heldKeys = () => Array.from(pressed.keys());
 }
 
 
@@ -386,8 +421,10 @@ export function setInputEnabled(enabled, source = 'misc') {
   if (enabled) _inputLocks.delete(source);
   else _inputLocks.add(source);
   Player.inputEnabled = _inputLocks.size === 0;
-  if (!enabled) {
-    if (Player._releaseKeys) Player._releaseKeys();
+  // Tombol yang masih ditahan tetap tercatat: saat terkunci Lukas diam,
+  // begitu kunci terakhir lepas ia langsung berjalan lagi.
+  if (Player._syncKeys) Player._syncKeys();
+  else if (!enabled) {
     Player.input.fwd = Player.input.back = 0;
     Player.input.left = Player.input.right = 0;
     Player.input.run = false;
@@ -398,6 +435,7 @@ export function setInputEnabled(enabled, source = 'misc') {
 export function resetInputLocks() {
   _inputLocks.clear();
   Player.inputEnabled = true;
+  if (Player._syncKeys) Player._syncKeys();
 }
 
 export function inputLocks() { return [..._inputLocks]; }
