@@ -761,12 +761,8 @@ export function setupTouchControls() {
 // ═══════════════════════════════════════════════════════════════════
 
 function updateHUD(delta, elapsed) {
-  // Update score display
-  // (score.js akan set window.__score__ untuk dibaca di sini)
-  const scoreEl = document.getElementById('score-value');
-  if (scoreEl && window.__score__ !== undefined) {
-    scoreEl.textContent = window.__score__;
-  }
+  // Panel skor diperbarui oleh scoring.js (renderScorePanel) setiap ada
+  // perubahan poin — tidak perlu ditulis ulang tiap frame.
 }
 
 

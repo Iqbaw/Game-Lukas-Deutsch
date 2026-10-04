@@ -25,6 +25,7 @@ import { spawnNPC, despawnNPC, getNPCRecord, getAllNPCs, setNPCFollowing } from 
 import { Journal } from './journal.js';
 import { Cutscene } from './cutscene.js';
 import { playJingle } from './music.js';
+import { startPhoneRing, stopPhoneRing, setPhoneRingLevel, RING_PATTERN, RING_CYCLE } from './sfx.js';
 import { logActivity, questTitle, plainText } from './activitylog.js';
 
 const STATE = {
@@ -41,20 +42,20 @@ const STATE = {
 // ═══════════════════════════════════════════════════════════════════
 const ITEM_DESCRIPTIONS = {
   // ── Quest 1 (sarapan) ──
-  pfanne:  { emoji: '🍳', text: 'Die Pfanne ist <span class="prep">IN</span> dem Schrank.' },
-  wurst:   { emoji: '🌭', text: 'Die Wurst ist <span class="prep">AUF</span> dem Serviertisch.' },
-  eier:    { emoji: '🥚', text: 'Die Eier sind <span class="prep">UNTER</span> dem Tisch.' },
-  teller:  { emoji: '🍽', text: 'Der Teller ist <span class="prep">AUF</span> dem Küchentisch.' },
-  besteck: { emoji: '🍴', text: 'Das Besteck ist <span class="prep">IN</span> der Schublade.' },
+  pfanne:  { emoji: '🍳', text: 'Die Pfanne ist <span class="prep">in</span> dem Schrank.' },
+  wurst:   { emoji: '🌭', text: 'Die Wurst ist <span class="prep">auf</span> dem Serviertisch.' },
+  eier:    { emoji: '🥚', text: 'Die Eier sind <span class="prep">unter</span> dem Tisch.' },
+  teller:  { emoji: '🍽', text: 'Der Teller ist <span class="prep">auf</span> dem Küchentisch.' },
+  besteck: { emoji: '🍴', text: 'Das Besteck ist <span class="prep">in</span> der Schublade.' },
   // ── Quest 2 (barang Tante) ──
-  socken:    { emoji: '🧦', text: 'Die Socken sind <span class="prep">IN</span> dem Schrank.' },
-  papier:    { emoji: '📄', text: 'Das Papier liegt <span class="prep">AUF</span> dem Tisch.' },
-  spielzeug: { emoji: '🧸', text: 'Das Spielzeug ist <span class="prep">UNTER</span> dem Esstisch.' },
+  socken:    { emoji: '🧦', text: 'Die Socken sind <span class="prep">im</span> Schrank.' },
+  papier:    { emoji: '📄', text: 'Das Papier liegt <span class="prep">auf</span> dem Tisch.' },
+  spielzeug: { emoji: '🧸', text: 'Das Spielzeug ist <span class="prep">unter</span> dem Esstisch.' },
   // ── Quest 4 (belanja di EDEKA) ──
-  kartoffeln: { emoji: '🥔', text: 'Die Kartoffeln liegen <span class="prep">IM</span> Gemüseregal.' },
-  salat:      { emoji: '🥬', text: 'Der Salat liegt <span class="prep">NEBEN</span> den Kartoffeln.' },
-  fleisch:    { emoji: '🥩', text: 'Das Fleisch ist <span class="prep">IN</span> der Kühltheke.' },
-  butter:     { emoji: '🧈', text: 'Die Butter ist <span class="prep">IM</span> Kühlregal.' },
+  kartoffeln: { emoji: '🥔', text: 'Die Kartoffeln liegen <span class="prep">im</span> Gemüseregal.' },
+  salat:      { emoji: '🥬', text: 'Der Salat liegt <span class="prep">neben</span> den Kartoffeln.' },
+  fleisch:    { emoji: '🥩', text: 'Das Fleisch ist <span class="prep">in</span> der Kühltheke.' },
+  butter:     { emoji: '🧈', text: 'Die Butter ist <span class="prep">im</span> Kühlregal.' },
 };
 
 /** Pop-up 3 detik di tengah layar (barang, pencapaian, hint). */
@@ -271,8 +272,9 @@ export const QuestSystem = {
     // Telepon berdering lagi (Tante menelepon) — pemicu harus bisa aktif ulang
     if (step.kind === 'reach_trigger' && window.__sceneTriggers__?.[step.target]) {
       window.__sceneTriggers__[step.target].triggered = false;
-      if (step.target === 'wired_phone' && this.activeQuestId !== 'quest_1' && !restored) {
-        this.ringPhoneAnimation();
+      if (step.target === 'wired_phone' && this.activeQuestId !== 'quest_1') {
+        // Berdering begitu kartu quest / dialog sudah tertutup
+        this.whenFree(token, () => this.ringPhoneAnimation(), restored ? 1200 : 300);
       }
     }
 
@@ -527,7 +529,7 @@ export const QuestSystem = {
 
     this.spawnConfetti();
     window.dispatchEvent(new CustomEvent(EVENTS.SCORE_ADD, {
-      detail: { points: 50, label: `Gefunden: ${itemName}` },
+      detail: { points: 50, label: `Gefunden: ${step.items?.find(i => i.id === itemName)?.label || itemName}` },
     }));
     const desc = ITEM_DESCRIPTIONS[itemName];
     if (desc) showCenterPopup(desc.text, desc.emoji, 3000);
@@ -587,7 +589,7 @@ export const QuestSystem = {
   },
 
   // ═════════════════════════════════════════════════════════════════
-  // PENANDA TUJUAN (panah emas di atas NPC / benda / pintu)
+  // PENANDA TUJUAN (panah emas di atas benda / pintu — tidak untuk NPC)
   // ═════════════════════════════════════════════════════════════════
 
   ensureMarker() {
@@ -629,11 +631,8 @@ export const QuestSystem = {
     if (!step || !zone || !Game.player) return null;
     const p = Game.player.position;
 
-    if (step.kind === 'talk_npc') {
-      const rec = getNPCRecord(step.target);
-      if (rec) return { x: rec.group.position.x, z: rec.group.position.z, y: 2.7, ring: false, follow: rec.group };
-      return null;
-    }
+    // NPC sengaja TANPA panah: pemain mencari sendiri lewat petunjuk quest.
+    if (step.kind === 'talk_npc') return null;
     if (step.kind === 'reach_trigger') {
       const trig = window.__sceneTriggers__?.[step.target];
       if (trig && zone === (trig.zone || ZONES.HAUS_INTERIOR) && !trig.triggered) return { x: trig.x, z: trig.z, y: 2.4, ring: true };
@@ -713,9 +712,15 @@ export const QuestSystem = {
     const tracker = document.getElementById('quest-tracker');
     const col = document.querySelector('.hud-left-column');
     if (!tracker || !col) return;
-    if (tracker.classList.contains('hud-hidden')) { col.style.top = ''; return; }
+    if (tracker.classList.contains('hud-hidden')) { col.style.top = ''; col.style.maxHeight = ''; return; }
     const r = tracker.getBoundingClientRect();
-    if (r.height > 0) col.style.top = `${Math.round(r.bottom + 12)}px`;
+    if (r.height > 0) {
+      const top = Math.round(r.bottom + 12);
+      col.style.top = `${top}px`;
+      // Desktop: bis knapp über die Steuerungsleiste — sonst ragt die Spalte
+      // unten aus dem Bild statt zu rollen. (Mobil regelt das CSS.)
+      col.style.maxHeight = window.innerWidth > 768 ? `${Math.max(160, window.innerHeight - top - 64)}px` : '';
+    }
   },
 
   showStepPanels(step) {
@@ -869,26 +874,60 @@ export const QuestSystem = {
   // TELEPON, SURAT, SMS
   // ═════════════════════════════════════════════════════════════════
 
+  /**
+   * Telepon berdering (suara dering + telepon bergetar) sampai langkah ini
+   * selesai, yaitu saat Lukas mengangkatnya. Makin dekat makin keras;
+   * dari luar rumah terdengar samar; diam saat jeda/dialog.
+   */
   ringPhoneAnimation() {
-    const phone = window.__sceneTriggers__?.wired_phone?.mesh;
+    const token = this._stepToken;
+    this.stopRinging();
     showToast({ title: '📞 Das Telefon klingelt!', body: 'Geh schnell zum Telefon im Flur.', type: 'info', icon: '📞', duration: 5000 });
-    if (!phone) return;
+    startPhoneRing();
     const startTime = performance.now();
-    const duration = 4000;
-    const origY = phone.rotation.y;
-    const ringTick = () => {
-      const elapsed = performance.now() - startTime;
-      if (elapsed >= duration) {
-        phone.rotation.y = origY;
-        phone.position.y = 0;
-        return;
+    let mesh = null, origY = 0;
+    const rest = () => { if (mesh) { mesh.rotation.y = origY; mesh.position.y = 0; } };
+    const tick = () => {
+      if (token !== this._stepToken || !this.activeQuestId) { this.stopRinging(); return; }
+      const trig = window.__sceneTriggers__?.wired_phone;
+      if ((trig?.mesh || null) !== mesh) {        // zona dibangun ulang → mesh baru
+        rest();
+        mesh = trig?.mesh || null;
+        origY = mesh ? mesh.rotation.y : 0;
       }
-      const t = elapsed / 1000;
-      phone.rotation.y = origY + Math.sin(t * 30) * 0.12;
-      phone.position.y = Math.abs(Math.sin(t * 18)) * 0.08;
-      requestAnimationFrame(ringTick);
+      const paused = !Game.isRunning || Game.isPaused || Dialog.isOpen ||
+        this.currentState === STATE.CUTSCENE || this.currentState === STATE.CARD;
+      const cyc = ((performance.now() - startTime) / 1000) % RING_CYCLE;
+      const ringing = !paused && RING_PATTERN.some(r => cyc >= r.at && cyc < r.at + r.dur);
+      if (mesh) {
+        if (ringing) {
+          mesh.rotation.y = origY + Math.sin(cyc * 60) * 0.12;
+          mesh.position.y = Math.abs(Math.sin(cyc * 36)) * 0.08;
+        } else rest();
+      }
+      let level = 0;
+      if (!paused) {
+        const sameZone = trig && window.__currentZoneId__ === (trig.zone || ZONES.HAUS_INTERIOR);
+        if (sameZone && Game.player) {
+          const d = Math.hypot(Game.player.position.x - trig.x, Game.player.position.z - trig.z);
+          level = 1 - Math.min(1, d / 28) * 0.6;   // dekat 1.0 … jauh 0.4
+        } else {
+          level = 0.18;                            // dari halaman / kota: samar
+        }
+      }
+      setPhoneRingLevel(level);
+      this._ringRaf = requestAnimationFrame(tick);
     };
-    requestAnimationFrame(ringTick);
+    this._ringRest = rest;
+    this._ringRaf = requestAnimationFrame(tick);
+  },
+
+  stopRinging() {
+    if (this._ringRaf) cancelAnimationFrame(this._ringRaf);
+    this._ringRaf = null;
+    this._ringRest?.();
+    this._ringRest = null;
+    stopPhoneRing();
   },
 
   /** Quest 4: surat Oma di tengah layar → klik → kuis isi surat. */
@@ -946,17 +985,17 @@ export const QuestSystem = {
 
     const SMS_VARIANTS = [
       { correct: false, lines: [
-        { icon: '🧦', text: 'Die Socken sind AUF dem Schrank.' },
-        { icon: '📄', text: 'Das Papier liegt AUF dem Tisch.' },
-        { icon: '🧸', text: 'Das Spielzeug ist UNTER dem Esstisch.' } ] },
+        { icon: '🧦', text: 'Die Socken sind <b>auf</b> dem Schrank.' },
+        { icon: '📄', text: 'Das Papier liegt <b>auf</b> dem Tisch.' },
+        { icon: '🧸', text: 'Das Spielzeug ist <b>unter</b> dem Esstisch.' } ] },
       { correct: false, lines: [
-        { icon: '🧦', text: 'Die Socken sind IM Schrank.' },
-        { icon: '📄', text: 'Das Papier liegt UNTER dem Tisch.' },
-        { icon: '🧸', text: 'Das Spielzeug ist UNTER dem Esstisch.' } ] },
+        { icon: '🧦', text: 'Die Socken sind <b>im</b> Schrank.' },
+        { icon: '📄', text: 'Das Papier liegt <b>unter</b> dem Tisch.' },
+        { icon: '🧸', text: 'Das Spielzeug ist <b>unter</b> dem Esstisch.' } ] },
       { correct: true, lines: [
-        { icon: '🧦', text: 'Die Socken sind IM Schrank.' },
-        { icon: '📄', text: 'Das Papier liegt AUF dem Tisch.' },
-        { icon: '🧸', text: 'Das Spielzeug ist UNTER dem Esstisch.' } ] },
+        { icon: '🧦', text: 'Die Socken sind <b>im</b> Schrank.' },
+        { icon: '📄', text: 'Das Papier liegt <b>auf</b> dem Tisch.' },
+        { icon: '🧸', text: 'Das Spielzeug ist <b>unter</b> dem Esstisch.' } ] },
     ];
     const shuffled = [...SMS_VARIANTS].sort(() => Math.random() - 0.5);
 

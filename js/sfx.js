@@ -164,3 +164,110 @@ export function setSfxVolume(v) {
 export function setSfxEnabled(on) {
   Sfx.enabled = !!on;
 }
+
+
+// ═══════════════════════════════════════════════════════════════════
+// TELEFONKLINGELN — altes Wählscheibentelefon im Flur
+// Ein Klöppel schlägt ~24× pro Sekunde abwechselnd zwei kleine
+// Glocken an: „Brrring … brrring“. Der Klang wird einmal als
+// AudioBuffer berechnet und dann im Rhythmus abgespielt.
+// ═══════════════════════════════════════════════════════════════════
+
+export const RING_PATTERN = [
+  { at: 0.00, dur: 0.80 },        // brrring
+  { at: 1.05, dur: 0.80 },        // brrring
+];
+export const RING_CYCLE = 3.45;   // danach Pause bis zum nächsten Doppelklingeln
+
+const Ring = { buffer: null, gain: null, timer: null, nextCycle: 0, sources: [], level: 1 };
+
+function buildRingBuffer(ctx, dur) {
+  const sr   = ctx.sampleRate;
+  const tail = 0.35;
+  const len  = Math.floor(sr * (dur + tail));
+  const buf  = ctx.createBuffer(1, len, sr);
+  const out  = buf.getChannelData(0);
+  const T    = 1 / 24;                                  // Klöppel-Takt
+  // Teiltöne (Hz, Gewicht) — unharmonisch wie echte Glocken
+  const bellA = [[1046, 1.0], [2507, 0.42], [3952, 0.22], [5280, 0.08]];
+  const bellB = [[ 988, 0.9], [2370, 0.38], [3730, 0.20], [5010, 0.07]];
+  const TAU = Math.PI * 2;
+  for (let i = 0; i < len; i++) {
+    const t = i / sr;
+    const n = Math.floor(Math.min(t, dur - 1e-4) / T);  // letzter Schlag
+    const sinceA = t - (n % 2 === 0 ? n : n - 1) * T;    // A: gerade Schläge
+    const sinceB = n >= 1 ? t - (n % 2 === 1 ? n : n - 1) * T : 1e9;
+    const ampA = Math.exp(-sinceA * 22) * (0.6 + 0.4 * Math.exp(-sinceA * 140));
+    const ampB = Math.exp(-sinceB * 22) * (0.6 + 0.4 * Math.exp(-sinceB * 140));
+    let s = 0;
+    for (const [f, w] of bellA) s += ampA * w * Math.sin(TAU * f * t);
+    for (const [f, w] of bellB) s += ampB * w * Math.sin(TAU * f * t + 1.3);
+    const fadeIn = Math.min(1, t / 0.006);
+    out[i] = s * 0.22 * fadeIn;
+  }
+  return buf;
+}
+
+function scheduleRing() {
+  const ctx = Sfx.ctx;
+  if (!ctx || !Ring.gain) return;
+  if (document.hidden) {                           // Tab im Hintergrund → nicht klingeln
+    Ring.nextCycle = Math.max(Ring.nextCycle, ctx.currentTime + 0.4);
+    return;
+  }
+  while (Ring.nextCycle < ctx.currentTime + 0.4) {
+    for (const p of RING_PATTERN) {
+      const src = ctx.createBufferSource();
+      src.buffer = Ring.buffer;
+      src.connect(Ring.gain);
+      src.start(Math.max(ctx.currentTime, Ring.nextCycle + p.at));
+      src.onended = () => { Ring.sources = Ring.sources.filter(x => x !== src); };
+      Ring.sources.push(src);
+    }
+    Ring.nextCycle += RING_CYCLE;
+  }
+}
+
+/** Telefon klingelt, bis stopPhoneRing() kommt. Gibt false zurück, wenn stumm. */
+export function startPhoneRing() {
+  stopPhoneRing();
+  const ctx = ensureContext();
+  if (!ctx) return false;
+  if (ctx.state === 'suspended') ctx.resume().catch(() => {});
+  if (!Ring.buffer) Ring.buffer = buildRingBuffer(ctx, RING_PATTERN[0].dur);
+  const g = ctx.createGain();
+  g.gain.value = Sfx.enabled ? Ring.level : 0;
+  g.connect(Sfx.dry);
+  g.connect(Sfx.convolver);          // etwas Flur-Hall
+  Ring.gain = g;
+  Ring.nextCycle = ctx.currentTime + 0.05;
+  scheduleRing();
+  Ring.timer = setInterval(scheduleRing, 150);
+  window.dispatchEvent(new CustomEvent('phone:ring'));
+  return true;
+}
+
+/** Lautstärke des Klingelns 0..1 (Entfernung, Pause, anderer Raum). */
+export function setPhoneRingLevel(v) {
+  Ring.level = Math.max(0, Math.min(1, v));
+  if (!Ring.gain || !Sfx.ctx) return;
+  Ring.gain.gain.setTargetAtTime(Sfx.enabled ? Ring.level : 0, Sfx.ctx.currentTime, 0.08);
+}
+
+export function stopPhoneRing() {
+  const wasRinging = !!Ring.gain;
+  clearInterval(Ring.timer);
+  Ring.timer = null;
+  if (Ring.gain && Sfx.ctx) {
+    const g = Ring.gain, t = Sfx.ctx.currentTime;
+    g.gain.cancelScheduledValues(t);
+    g.gain.setTargetAtTime(0, t, 0.03);
+    Ring.sources.forEach(s => { try { s.stop(t + 0.15); } catch (_) {} });
+    setTimeout(() => { try { g.disconnect(); } catch (_) {} }, 400);
+  }
+  Ring.gain = null;
+  Ring.sources = [];
+  if (wasRinging) window.dispatchEvent(new CustomEvent('phone:stop'));
+}
+
+export function isPhoneRinging() { return !!Ring.gain; }

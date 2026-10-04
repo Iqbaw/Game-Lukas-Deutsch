@@ -238,31 +238,31 @@ export const DIALOGS = {
       p3: {
         id:      'p3',
         speaker: 'oma_helga',
-        text:    'Kein Problem! Hör gut zu: Die <vocab title="wajan">Pfanne</vocab> ist <vocab title="di dalam">IN</vocab> dem <vocab title="kabinet">Schrank</vocab>.',
+        text:    'Kein Problem! Hör gut zu: Die <vocab title="wajan">Pfanne</vocab> ist <vocab title="di dalam">in</vocab> dem <vocab title="kabinet">Schrank</vocab>.',
         next:    'p4',
       },
       p4: {
         id:      'p4',
         speaker: 'oma_helga',
-        text:    'Der <vocab title="spatula">Pfannenwender</vocab>, die <vocab title="garpu">Gabel</vocab> und das <vocab title="pisau">Messer</vocab> sind <vocab title="di dalam">IN</vocab> der <vocab title="laci">Schublade</vocab>.',
+        text:    'Der <vocab title="spatula">Pfannenwender</vocab>, die <vocab title="garpu">Gabel</vocab> und das <vocab title="pisau">Messer</vocab> sind <vocab title="di dalam">in</vocab> der <vocab title="laci">Schublade</vocab>.',
         next:    'p5',
       },
       p5: {
         id:      'p5',
         speaker: 'oma_helga',
-        text:    'Der <vocab title="piring">Teller</vocab> liegt <vocab title="di atas">AUF</vocab> dem <vocab title="meja dapur">Küchentisch</vocab>.',
+        text:    'Der <vocab title="piring">Teller</vocab> liegt <vocab title="di atas">auf</vocab> dem <vocab title="meja dapur">Küchentisch</vocab>.',
         next:    'p6',
       },
       p6: {
         id:      'p6',
         speaker: 'oma_helga',
-        text:    'Die <vocab title="telur">Eier</vocab> findest du <vocab title="di bawah">UNTER</vocab> dem kleinen Tisch.',
+        text:    'Die <vocab title="telur">Eier</vocab> findest du <vocab title="di bawah">unter</vocab> dem kleinen Tisch.',
         next:    'p7',
       },
       p7: {
         id:      'p7',
         speaker: 'oma_helga',
-        text:    'Und die <vocab title="sosis">Wurst</vocab> ist <vocab title="di atas">AUF</vocab> dem <vocab title="meja saji">Serviertisch</vocab>. Viel Spaß, mein Schatz!',
+        text:    'Und die <vocab title="sosis">Wurst</vocab> ist <vocab title="di atas">auf</vocab> dem <vocab title="meja saji">Serviertisch</vocab>. Viel Spaß, mein Schatz!',
         next:    'p8',
       },
       p8: {
@@ -363,7 +363,7 @@ export const DIALOGS = {
       r1_correct: {
         id:      'r1_correct',
         speaker: 'oma_helga',
-        text:    '<vocab title="bagus sekali">Ausgezeichnet</vocab>, Lukas! Du hast alles gelernt: <b>IN, AUF, UNTER</b>!',
+        text:    '<vocab title="bagus sekali">Ausgezeichnet</vocab>, Lukas! Du hast alles gelernt: <b>in, auf, unter</b>!',
         onEnter: [
           { type: 'complete_quest', questId: 'quest_1' },
           { type: 'add_score',      delta: 200, label: 'Stage 1 Quest 1 abgeschlossen' },
@@ -373,7 +373,7 @@ export const DIALOGS = {
       r1_wrong: {
         id:      'r1_wrong',
         speaker: 'oma_helga',
-        text:    'Hmm, denk nochmal! Die Pfanne war IM Schrank, die Eier UNTER dem kleinen Tisch, die Wurst AUF dem Serviertisch.',
+        text:    'Hmm, denk nochmal! Die Pfanne war <b>im</b> Schrank, die Eier <b>unter</b> dem kleinen Tisch, die Wurst <b>auf</b> dem Serviertisch.',
         next:    'r1_quiz',
       },
       r1_done: {
@@ -812,7 +812,7 @@ export const DIALOGS = {
       p1_wrong: {
         id:      'p1_wrong',
         speaker: 'passant_1',
-        text:    'Nein, nein! NEBEN dem PARKPLATZ! An der Kirche biegen Sie nur ab.',
+        text:    'Nein, nein! <b>neben</b> dem <b>Parkplatz</b>! An der Kirche biegen Sie nur ab.',
         next:    'p1_quiz',
       },
     },
@@ -866,7 +866,7 @@ export const DIALOGS = {
       p2_wrong: {
         id:      'p2_wrong',
         speaker: 'passant_2',
-        text:    'Nein! ZWISCHEN dem Blumenladen und dem Café! Nicht woanders.',
+        text:    'Nein! <b>zwischen</b> dem Blumenladen und dem Café! Nicht woanders.',
         next:    'p2_quiz',
       },
     },
@@ -1363,11 +1363,11 @@ export const JOURNAL_ENTRIES = {
     body: `
 Oma ist nicht zu Hause. Am Telefon hat sie mir gesagt, wo alles ist:
 
-• Die <b>Pfanne</b> ist <span class="prep-highlight">IN</span> dem Schrank.
-• Die <b>Wurst</b> ist <span class="prep-highlight">AUF</span> dem Serviertisch.
-• Die <b>Eier</b> sind <span class="prep-highlight">UNTER</span> dem kleinen Tisch.
-• Der <b>Teller</b> ist <span class="prep-highlight">AUF</span> dem Küchentisch.
-• Das <b>Besteck</b> ist <span class="prep-highlight">IN</span> der Schublade.
+• Die <b>Pfanne</b> ist <span class="prep-highlight">in</span> dem Schrank.
+• Die <b>Wurst</b> ist <span class="prep-highlight">auf</span> dem Serviertisch.
+• Die <b>Eier</b> sind <span class="prep-highlight">unter</span> dem kleinen Tisch.
+• Der <b>Teller</b> ist <span class="prep-highlight">auf</span> dem Küchentisch.
+• Das <b>Besteck</b> ist <span class="prep-highlight">in</span> der Schublade.
     `.trim(),
     words: [['in', 'di dalam'], ['auf', 'di atas'], ['unter', 'di bawah'], ['der Schrank', 'lemari'], ['die Schublade', 'laci']],
     done: 'Ich habe alles gefunden und ein leckeres Frühstück gekocht! 🍳',
@@ -1384,9 +1384,9 @@ Tipp: Merk dir, WO du jede Sache findest. Du musst es Tante schreiben!
     `.trim(),
     words: [['die Socken', 'kaus kaki'], ['das Papier', 'kertas'], ['das Spielzeug', 'mainan'], ['der Esstisch', 'meja makan']],
     done: `Gefunden:
-• Die Socken sind <span class="prep-highlight">IM</span> Schrank.
-• Das Papier liegt <span class="prep-highlight">AUF</span> dem Tisch.
-• Das Spielzeug ist <span class="prep-highlight">UNTER</span> dem Esstisch.`,
+• Die Socken sind <span class="prep-highlight">im</span> Schrank.
+• Das Papier liegt <span class="prep-highlight">auf</span> dem Tisch.
+• Das Spielzeug ist <span class="prep-highlight">unter</span> dem Esstisch.`,
   },
 
   // ── STAGE 2 ───────────────────────────────────────────────────

@@ -17,6 +17,7 @@ import { getDialog, NPC_DEFAULT_DIALOG } from './data/dialogs.js';
 import { NPC_DATA }         from './data/npcs.js';
 import { showToast }        from './ui.js';
 import { logActivity, plainText } from './activitylog.js';
+import { noteScoreChange } from './scoring.js';
 
 // Nama pembicara per node (dialog bisa berisi beberapa orang: Oma, Opa, Kellner …)
 const SPEAKER_NAMES = {
@@ -222,7 +223,7 @@ function showNode(nodeId) {
     SPEAKER_ALIAS[Dialog.currentNPC?.id] !== node.speaker ? node.speaker : null;
   if (spk === 'lukas' || (!spk && node.speaker === 'lukas')) {
     $name.textContent = 'Lukas';
-    $name.style.color = '#88ccff';
+    $name.style.color = '#000';
     if ($avatar?.parentElement) $avatar.parentElement.dataset.emoji = '🧑';
   } else if (spk && SPEAKER_NAMES[spk]) {
     $name.textContent = SPEAKER_NAMES[spk];
@@ -649,30 +650,10 @@ function addScore(delta, label) {
   // Update global score
   window.__score__ = (window.__score__ || 0) + delta;
   if (window.__SCORE_SYSTEM__) window.__SCORE_SYSTEM__.score = window.__score__;
+
+  // Panel skor kanan-atas (total, didapat, hilang karena salah)
+  noteScoreChange(delta, label);
   window.dispatchEvent(new CustomEvent('save:request'));
-
-  // Update UI
-  const scoreEl = document.getElementById('score-value');
-  if (scoreEl) {
-    scoreEl.textContent = window.__score__;
-    scoreEl.classList.add('score-bump');
-    setTimeout(() => scoreEl.classList.remove('score-bump'), 500);
-
-    // Floating delta
-    const scoreContainer = document.getElementById('score-display');
-    if (scoreContainer && delta !== 0) {
-      const deltaEl = document.createElement('div');
-      deltaEl.className = `score-delta${delta < 0 ? ' score-delta-negative' : ''}`;
-      deltaEl.textContent = (delta > 0 ? '+' : '') + delta;
-      scoreContainer.style.position = 'relative';
-      scoreContainer.appendChild(deltaEl);
-      setTimeout(() => deltaEl.remove(), 1300);
-    }
-  }
-
-  // Tampilkan score HUD kalau belum terlihat
-  const scoreDisplay = document.getElementById('score-display');
-  if (scoreDisplay) scoreDisplay.classList.remove('hud-hidden');
 
   if (label && delta > 0) {
     showToast({ title: label, body: `+${delta} Punkte`, type: 'success', duration: 2000 });
@@ -744,7 +725,7 @@ function getNPCEmoji(id) {
     leni:        '👧',
     leni_elbe:   '👧',
     leni_haus:   '👧',
-    felix:       '🧢',
+    felix:       '😎',
     frau_weber:  '👩‍🦳',
     kassiererin: '👩‍💼',
     kellner:     '🤵',

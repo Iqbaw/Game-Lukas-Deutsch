@@ -190,7 +190,7 @@ const SCENES = {
     const whisper = saal?.querySelector('#cs-whisper');
     const FRAMES = [
       { cls: 'f-title', html: '<div class="ft">Abenteuer an der Elbe</div><div class="fs">Ein Film für die ganze Familie</div>', sub: '', ms: 2600,
-        whisper: '🧢 Felix: „Psst, Lukas! Der Film fängt an!"' },
+        whisper: '😎 Felix: „Psst, Lukas! Der Film fängt an!"' },
       { cls: 'f-ship', html: '<div class="sun"></div><div class="sea"></div><div class="ship">⛵</div><div class="gull">🕊️</div>', sub: 'Kapitän Jan segelt auf der Elbe nach Hamburg.', ms: 3600 },
       { cls: 'f-storm', html: '<div class="rain"></div><div class="sea storm"></div><div class="ship rock">⛵</div><div class="bolt">⚡</div>', sub: 'Plötzlich kommt ein Sturm! Wo ist der Hafen?', ms: 3400,
         whisper: '🧑 Lukas: „Oh nein!" 🍿' },

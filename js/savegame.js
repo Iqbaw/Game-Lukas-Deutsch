@@ -46,6 +46,7 @@ export function saveNow() {
     },
     score: finite(window.__score__),
     streak: finite(window.__SCORE_SYSTEM__?.streak),
+    scoreStats: window.__SCORE_SYSTEM__?.stats || null,
     questState: { ...(window.__questState__ || {}) },
     activeQuestId: quest.activeQuestId || null,
     activeStep: Math.max(0, finite(quest.activeStep)),
@@ -107,8 +108,9 @@ export async function restoreSave(data, { loadZone, teleportPlayer, QuestSystem,
   ScoreSystem.score = finite(data.score);
   ScoreSystem.streak = Math.max(0, finite(data.streak));
   window.__score__ = ScoreSystem.score;
-  const scoreEl = document.getElementById('score-value');
-  if (scoreEl) scoreEl.textContent = String(ScoreSystem.score);
+  // Rincian panel skor (didapat / hilang karena salah) — lewat objek yang
+  // dioper, supaya savegame.js tidak menarik seluruh modul game.
+  ScoreSystem.restoreStats?.(data.scoreStats, ScoreSystem.score);
   const streakRow = document.getElementById('streak-row');
   const streakValue = document.getElementById('streak-value');
   if (streakRow && streakValue && ScoreSystem.streak >= 3) {
