@@ -1,7 +1,7 @@
 <!doctype html><html lang="de"><meta charset="utf-8"><title>Latihan Soal checks</title><link rel="stylesheet" href="../style.css">
 <body><output id="test-result" style="position:fixed;right:12px;top:12px;z-index:99999;background:#fff;color:#111;padding:10px;border-radius:8px">Checking…</output>
 <script type="module">
-// Lokaler Modus (ohne Supabase): Navigation, Autosave, Fortsetzen, Abgabe ohne Ergebnis.
+// Lokaler Modus (ohne Google-Sheets-Server): Navigation, Autosave, Fortsetzen, Abgabe ohne Ergebnis.
 const out = document.querySelector('#test-result');
 const KEYS = ['lukas_player_v1', 'lukas_known_players_v1', 'lukas_quiz_v1:test schueler'];
 const backup = KEYS.map((k) => localStorage.getItem(k));

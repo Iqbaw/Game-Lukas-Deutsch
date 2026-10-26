@@ -1,7 +1,8 @@
-# Setup Online: Akun, Save Progress, Latihan Soal & Google Sheets
+# Setup Online dengan Google Sheets
 
-Panduan ini menyambungkan game ke **Supabase** (database gratis) dan **Google Sheets**.
-Waktu yang dibutuhkan kira-kira **15 menit** dan cukup dilakukan **sekali**.
+Game ini memakai **Google Sheets + Google Apps Script** sebagai server. Tidak perlu
+Supabase atau layanan lain, cukup **satu akun Google**. Setup ini hanya perlu dilakukan
+**sekali** dan memakan waktu kira-kira **10 menit**.
 
 Hasil akhirnya:
 
@@ -10,123 +11,84 @@ Hasil akhirnya:
 - Setelah Quest 10, siswa mengerjakan **Latihan Soal** (20 soal). Jawaban **dinilai
   otomatis di server**. Siswa **tidak** melihat nilai atau benar/salah.
 - Guru melihat nilai semua siswa di **halaman Admin** (bisa reset) dan di
-  **Google Sheets** yang rapi dan terisi otomatis.
+  **Google Sheets**. Sheet **Rekap**, **Detail Jawaban**, dan **Analisis Soal** terisi
+  dan diperbarui otomatis.
 
-> Kalau langkah ini belum dilakukan, game tetap berjalan normal dalam **mode lokal**:
+> Kalau setup ini belum dilakukan, game tetap berjalan normal dalam **mode lokal**:
 > akun dan progress hanya tersimpan di browser itu, dan nilai tidak bisa dilihat guru.
 
 ---
 
-## Bagian A — Supabase (database)
+## 1. Buat spreadsheet dan script
 
-### 1. Buat project
-1. Buka <https://supabase.com>, lalu daftar atau masuk (bisa pakai akun GitHub/Google).
-2. Klik **New project**. Isi nama (misal `lukas-abenteuer`), buat *database password*
-   (simpan, tapi tidak dipakai di game), lalu pilih region **Southeast Asia (Singapore)**.
-3. Tunggu sekitar 1–2 menit sampai project siap.
+1. Buka <https://sheets.google.com>, lalu buat spreadsheet baru,
+   misal **"Rekap Nilai Lukas Abenteuer"**.
+2. Buka menu **Extensions → Apps Script**.
+3. Hapus semua isi `Code.gs`, lalu tempel **seluruh** isi file
+   [`google-sheets/Code.gs`](google-sheets/Code.gs) dari repo ini. Simpan dengan ikon 💾.
 
-### 2. Jalankan schema
-1. Di menu kiri, buka **SQL Editor**, lalu klik **New query**.
-2. Buka file [`supabase/schema.sql`](supabase/schema.sql) dari repo ini, salin **seluruh**
-   isinya, tempel di editor, lalu klik **Run**.
-3. Pastikan muncul `Success. No rows returned`. File ini aman dijalankan ulang.
+## 2. Jalankan `setup` sekali
 
-Schema ini membuat tabel pemain, save, dan jawaban, plus **kunci jawaban 20 soal**.
-Kunci jawaban hanya ada di database dan tidak pernah dikirim ke browser siswa.
+1. Di toolbar Apps Script, pilih fungsi **`setup`** di dropdown, lalu klik **▶ Run**.
+2. Google akan meminta izin. Pilih akunmu → **Advanced** →
+   **Go to … (unsafe)** → **Allow**. Ini script milikmu sendiri, jadi aman.
+3. Kembali ke spreadsheet. Sekarang ada sheet **Rekap**, **Detail Jawaban**, dan
+   **Analisis Soal**, plus menu baru **🎓 Lukas**.
 
-### 3. Password admin
-Password admin di database **sama dengan password admin di dalam game**
-(menu tersembunyi: `Ctrl + Shift + A`, atau ketuk judul game 5×).
-Kalau mau menggantinya, jalankan ini di SQL Editor:
+`setup` juga membuat sheet data tersembunyi (`_players`, `_saves`, `_quiz`) dan pemicu
+otomatis yang memperbarui rekap setiap menit, tapi hanya kalau ada perubahan.
 
-```sql
-update public.admin_config
-   set password_sha256 = encode(extensions.digest('PasswordBaru', 'sha256'), 'hex');
-```
+> ⚠️ Jangan edit atau hapus sheet `_players`, `_saves`, dan `_quiz`. Di situlah akun,
+> progress, dan jawaban siswa disimpan.
 
-Setelah itu, ganti juga `PASSWORD_HASH` di `js/admin.js` dengan hasil dari query ini:
-`select encode(extensions.digest('PasswordBaru','sha256'),'hex');`
+## 3. Publikasikan sebagai Web App
 
-### 4. Ambil URL & key
-Buka **Project Settings → API Keys** (atau **Connect**):
-- **Project URL**, contoh: `https://abcdxyz.supabase.co`
-- **anon / publishable key** (key ini memang boleh publik)
+1. Di Apps Script, klik **Deploy → New deployment**.
+2. Klik ⚙️ di samping *Select type*, lalu pilih **Web app**.
+3. Isi:
+   - *Execute as*: **Me**
+   - *Who has access*: **Anyone**
+4. Klik **Deploy**, lalu salin **Web app URL** (berakhiran `/exec`).
 
-> ⚠️ **Jangan** pakai `service_role` / `secret` key di game.
+## 4. Isi di game
 
-### 5. Isi di game
-Buka [`js/config.js`](js/config.js) dan isi:
+Buka [`js/config.js`](js/config.js), lalu isi:
 
 ```js
-SUPABASE_URL:        'https://abcdxyz.supabase.co',
-SUPABASE_ANON_KEY:   'eyJhbGciOi…',      // anon / publishable key
-SHEETS_URL:          '',                 // diisi di Bagian B
+SHEETS_API_URL:      'https://script.google.com/macros/s/XXXX/exec',  // dari langkah 3
+SHEETS_URL:          'https://docs.google.com/spreadsheets/d/YYYY',   // link spreadsheet-mu
 ```
 
-Commit, lalu deploy ulang game. Coba buka game, ketik nama, lalu klik **Los geht's**.
-Di Supabase → **Table Editor → players**, nama tersebut seharusnya muncul.
+Commit, lalu deploy ulang game (Vercel). Untuk mengetesnya, buka game, ketik nama,
+lalu klik **Los geht's**. Dalam satu menit, nama itu akan muncul di sheet **Rekap**.
+
+> Kalau `Code.gs` diubah nanti, buka **Deploy → Manage deployments → ✏️ Edit**,
+> pilih *Version*: **New version**, lalu klik **Deploy**. URL-nya tetap sama.
 
 ---
 
-## Bagian B — Google Sheets (rekap nilai)
+## Password admin
 
-### 1. Buat spreadsheet & script
-1. Buat Google Spreadsheet baru, misal **"Rekap Nilai Lukas Abenteuer"**.
-2. Buka menu **Extensions → Apps Script**.
-3. Hapus isi `Code.gs`, lalu tempel seluruh isi
-   [`google-sheets/Code.gs`](google-sheets/Code.gs) dan simpan (ikon 💾).
+Password admin di server **sama dengan password admin di dalam game**
+(menu tersembunyi: `Ctrl + Shift + A`, atau ketuk judul game 5×).
 
-### 2. Isi Script properties
-Di Apps Script, buka **Project Settings (⚙️) → Script properties → Add script property**,
-lalu tambahkan tiga property ini:
-
-| Property | Isi |
-|---|---|
-| `SUPABASE_URL` | Project URL dari Bagian A.4 |
-| `SUPABASE_ANON_KEY` | anon / publishable key |
-| `ADMIN_PASSWORD` | password admin game |
-
-### 3. Coba sekali
-1. Kembali ke spreadsheet dan muat ulang halamannya. Menu **🎓 Lukas** akan muncul.
-2. Klik **🎓 Lukas → Einrichtung prüfen**. Google akan meminta izin; pilih akunmu →
-   *Advanced* → *Go to … (unsafe)* → **Allow**. Ini script milikmu sendiri.
-3. Klik **🎓 Lukas → Jetzt aktualisieren**. Sheet **Rekap**, **Detail Jawaban**, dan
-   **Analisis Soal** akan terbentuk.
-4. (Disarankan) Klik **🎓 Lukas → Aktualisierung alle 5 Min. einschalten** supaya progress
-   quest siswa juga ikut diperbarui secara berkala.
-
-### 4. Update instan saat siswa mengirim (webhook)
-1. Di Apps Script, klik **Deploy → New deployment**, lalu pilih type **Web app**.
-2. Isi *Execute as*: **Me**, dan *Who has access*: **Anyone**. Klik **Deploy**, lalu salin
-   **Web app URL** (berakhiran `/exec`).
-3. Di Supabase → SQL Editor, jalankan:
-
-   ```sql
-   update public.admin_config
-      set sheets_webhook = 'https://script.google.com/macros/s/XXXX/exec'
-    where id = 1;
-   ```
-
-Sekarang setiap kali siswa menekan **Abgeben** (atau admin melakukan reset), spreadsheet
-langsung dibangun ulang.
-
-### 5. Link di halaman Admin
-Salin link spreadsheet, tempel di `SHEETS_URL` pada `js/config.js`, lalu deploy ulang.
-Tombol **📗 Google Sheets** akan muncul di halaman *Ergebnisse*.
-
----
+Untuk menggantinya, buka spreadsheet → **🎓 Lukas → Admin-Passwort ändern**. Script
+akan menampilkan *hash* baru. Tempel hash itu ke `PASSWORD_HASH` di `js/admin.js`
+supaya login admin di game ikut berubah.
 
 ## Cara pakai (guru)
 
 | Mau apa | Caranya |
 |---|---|
-| Lihat nilai semua siswa | Admin (`Ctrl+Shift+A`) → **📊 Ergebnisse aller Spieler** |
-| Lihat jawaban per soal | Klik baris siswa: jawaban benar ditandai ✓ hijau, salah ✗ merah |
+| Lihat nilai semua siswa | Admin (`Ctrl+Shift+A`) → **📊 Ergebnisse aller Spieler**, atau buka sheet **Rekap** |
+| Lihat jawaban per soal | Klik baris siswa di Admin (✓ hijau benar, ✗ merah salah), atau sheet **Detail Jawaban** |
+| Soal mana yang paling sulit | Sheet **Analisis Soal** (% benar dan pengecoh terbanyak) |
 | Siswa boleh mengulang Latihan Soal | Buka baris siswa → **↺ Reset Latihan** |
 | Siswa mulai game dari awal | Buka baris siswa → **↺ Reset Progress** |
 | Hapus satu siswa | Buka baris siswa → **🗑 Hapus** |
 | Hapus semua data (kelas baru) | **🗑 Alle zurücksetzen**, lalu ketik `RESET` |
-| Unduh ke Excel | **⬇ CSV** |
+| Perbarui rekap sekarang juga | Spreadsheet → **🎓 Lukas → Jetzt aktualisieren** |
+| Unduh ke Excel | **⬇ CSV** di halaman Admin, atau *File → Download* di Sheets |
 
 **Nilai** = jumlah benar ÷ 20 × 100. Di Sheets, nilai ≥ 80 berwarna hijau,
 60–79 kuning, dan < 60 merah.
@@ -135,8 +97,13 @@ Tombol **📗 Google Sheets** akan muncul di halaman *Ergebnisse*.
 
 - **Tanpa password berarti nama = akun.** Siapa pun yang mengetik nama yang sama
   (huruf besar/kecil dan spasi tidak berpengaruh) akan masuk ke akun yang sama.
-  Minta siswa memakai **nama lengkap**.
+  Minta siswa memakai **nama lengkap**. Nama harus diawali huruf, 2–40 karakter.
 - Komputer lab bisa dipakai bergantian: setiap nama punya save sendiri.
   Klik **"Nicht du? Wechseln"** di menu untuk ganti siswa.
+- Google Apps Script sedikit lebih lambat dari database biasa. Login dan **Abgeben**
+  butuh sekitar 1–3 detik. Progress dikirim di latar belakang paling sering setiap
+  30 detik, dan langsung saat quest selesai atau halaman ditutup. Ini cukup untuk
+  satu kelas (±40 siswa bermain bersamaan).
 - Kalau internet putus, progress tetap tersimpan di browser dan dikirim ulang otomatis.
   Pengiriman Latihan Soal yang gagal bisa diulang dengan menekan **Abgeben** lagi.
+- Kunci jawaban hanya ada di `Code.gs` (server), tidak pernah dikirim ke browser siswa.

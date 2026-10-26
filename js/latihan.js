@@ -7,7 +7,7 @@
 //
 // SENGAJA tanpa umpan balik: tidak ada benar/salah, tidak ada skor.
 // Siswa hanya menjawab, mundur/maju, lalu mengirim. Penilaian otomatis
-// terjadi di database (quiz_submit, supabase/schema.sql) dan hasilnya
+// terjadi di server (quiz_submit, google-sheets/Code.gs) dan hasilnya
 // hanya terlihat oleh Admin & di Google Sheets.
 //
 // Jawaban tersimpan otomatis (localStorage per pemain + draft online),

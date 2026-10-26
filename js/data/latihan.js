@@ -6,7 +6,7 @@
 // Setelah semua Quest selesai, siswa mengerjakan soal ini (js/latihan.js).
 //
 // SENGAJA TANPA KUNCI JAWABAN: penilaian berjalan di database
-// (tabel quiz_key, lihat supabase/schema.sql), supaya kunci tidak bisa
+// (ANSWER_KEY di google-sheets/Code.gs), supaya kunci tidak bisa
 // diintip lewat DevTools. Jawaban disimpan sebagai indeks opsi (0 = A).
 // ═══════════════════════════════════════════════════════════════════
 

@@ -456,7 +456,7 @@ function openLatihanFromMenu() {
 // ═══════════════════════════════════════════════════════════════════
 
 const LOGIN_ERRORS = {
-  invalid_name: 'Bitte mindestens 2 Buchstaben eingeben. · Minimal 2 huruf.',
+  invalid_name: 'Bitte deinen Namen eingeben (2–40 Zeichen, mit einem Buchstaben am Anfang). · Ketik namamu (2–40 huruf, diawali huruf).',
   network:      'Keine Verbindung zum Server. Bitte Internet prüfen. · Tidak ada koneksi internet.',
   other:        'Anmeldung fehlgeschlagen. Bitte noch einmal versuchen. · Gagal masuk, coba lagi.',
 };
@@ -478,7 +478,7 @@ async function submitLogin(e) {
     showPanel('main', { focus: true });
     flashWelcome(isNew ? `Willkommen, ${player.name}!` : `Willkommen zurück, ${player.name}!`);
   } catch (err) {
-    const code = err.code === 'invalid_name' || err.code === '22023' ? 'invalid_name'
+    const code = err.code === 'invalid_name' ? 'invalid_name'
       : (err.status === undefined ? 'network' : 'other');
     error.textContent = LOGIN_ERRORS[code];
     error.hidden = false;

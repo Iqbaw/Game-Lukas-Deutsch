@@ -1,13 +1,13 @@
 // ═══════════════════════════════════════════════════════════════════
-// js/cloud.js — AKUN & SIMPAN ONLINE (Supabase)
+// js/cloud.js — AKUN & SIMPAN ONLINE (Google Sheets / Apps Script)
 // Lukas Abenteuer — Willkommen in Hamburg!
 //
 // Akun tanpa password: siswa cukup mengetik nama. Nama yang sama
 // (tanpa beda huruf besar/spasi) = akun yang sama.
 //
-// Semua panggilan memakai fungsi RPC di supabase/schema.sql lewat fetch
-// biasa — tanpa library tambahan. Kalau SUPABASE_URL di config kosong,
-// game berjalan dalam mode lokal (akun & progress hanya di browser ini).
+// Semua panggilan ke Web App Google Apps Script (google-sheets/Code.gs):
+// POST text/plain {fn, args} → {ok, data}. Kalau SHEETS_API_URL di config
+// kosong, game berjalan dalam mode lokal (akun & progress hanya di browser ini).
 //
 // Bewusst OHNE Import aus main.js: das Hauptmenü nutzt dieses Modul,
 // bevor Three.js geladen ist.
@@ -18,11 +18,16 @@ import { CONFIG } from './config.js';
 const PLAYER_KEY   = 'lukas_player_v1';
 const KNOWN_KEY    = 'lukas_known_players_v1';   // nama → id (untuk login offline)
 const QUIZ_PREFIX  = 'lukas_quiz_v1';
-const SAVE_THROTTLE_MS = 10000;
-const RETRY_MS         = 15000;
+// Apps Script verträgt keine Flut: ±40 Schüler gleichzeitig → höchstens
+// alle 30 s ein Spielstand pro Schüler (sofort bei Quest-Ende / Schließen).
+const SAVE_THROTTLE_MS = 30000;
+const DRAFT_DEBOUNCE_MS = 3000;
+const RETRY_MS         = 20000;
 
-const URL_BASE = String(CONFIG.SUPABASE_URL || '').replace(/\/+$/, '');
-const API_KEY  = String(CONFIG.SUPABASE_ANON_KEY || '');
+const API_URL = String(CONFIG.SHEETS_API_URL || '').trim();
+
+// Wie im Server (Code.gs): mit einem Buchstaben beginnen, 2–40 Zeichen.
+const NAME_RE = /^[\p{L}][\p{L}\p{M} .'\-]{1,39}$/u;
 
 export const Cloud = {
   player:      null,     // { id, name, key, local }
@@ -39,7 +44,7 @@ let retryTimer = null;
 // ── Dasar ─────────────────────────────────────────────────────────
 
 export function cloudEnabled() {
-  return !!(URL_BASE && API_KEY);
+  return !!API_URL;
 }
 
 export function nameKey(name) {
@@ -69,28 +74,27 @@ function writeJSON(key, value) {
   }
 }
 
-/** Panggil fungsi RPC Supabase. Melempar Error { status, code } bila gagal. */
+/** Panggil fungsi di Apps Script. Melempar Error { status, code } bila gagal. */
 export async function rpc(fn, args = {}, { keepalive = false } = {}) {
   if (!cloudEnabled()) throw Object.assign(new Error('cloud_disabled'), { code: 'cloud_disabled' });
-  const headers = { apikey: API_KEY, 'Content-Type': 'application/json' };
-  // Legacy anon key (JWT) juga dikirim sebagai Bearer; publishable key cukup di apikey.
-  if (API_KEY.startsWith('eyJ')) headers.Authorization = `Bearer ${API_KEY}`;
-  const res = await fetch(`${URL_BASE}/rest/v1/rpc/${fn}`, {
+  // text/plain = „simple request“: kein CORS-Preflight, den Apps Script nicht beantworten kann
+  const res = await fetch(API_URL, {
     method: 'POST',
-    headers,
-    body: JSON.stringify(args),
+    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+    body: JSON.stringify({ fn, args }),
+    redirect: 'follow',
     keepalive,
   });
   const text = await res.text();
-  let data = null;
-  try { data = text ? JSON.parse(text) : null; } catch (_) { data = text; }
-  if (!res.ok) {
-    const err = new Error(data?.message || res.statusText || 'request_failed');
-    err.status = res.status;
-    err.code = data?.code || null;
+  let body = null;
+  try { body = text ? JSON.parse(text) : null; } catch (_) { body = null; }
+  if (!res.ok || !body || body.ok !== true) {
+    const err = new Error(body?.error?.message || res.statusText || 'request_failed');
+    err.status = res.ok ? 400 : res.status;
+    err.code = body?.error?.code || null;
     throw err;
   }
-  return data;
+  return body.data;
 }
 
 
@@ -116,7 +120,7 @@ export function playerStorageKey(base) {
 export async function login(rawName) {
   const name = cleanName(rawName);
   const key = nameKey(name);
-  if (name.length < 2 || name.length > 40) {
+  if (!NAME_RE.test(name)) {
     throw Object.assign(new Error('invalid_name'), { code: 'invalid_name' });
   }
 
@@ -198,7 +202,7 @@ function adoptLegacySave(player) {
   if (!player.local) queueSave(legacy, { now: true });
 }
 
-/** Kirim snapshot ke Supabase (debounce). `now` = segera. */
+/** Kirim snapshot ke server (dibatasi tiap 30 s). `now` = segera. */
 export function queueSave(data, { now = false } = {}) {
   const p = currentPlayer();
   if (!p || p.local || !cloudEnabled() || !data) return;
@@ -290,7 +294,7 @@ export function queueQuizDraft(answers) {
   clearTimeout(draftTimer);
   draftTimer = setTimeout(() => {
     rpc('quiz_save_draft', { p_id: p.id, p_answers: answers }).catch(() => {});
-  }, 1500);
+  }, DRAFT_DEBOUNCE_MS);
 }
 
 /** Kirim jawaban final. Nilai TIDAK dikembalikan. Melempar Error bila gagal. */

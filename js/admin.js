@@ -28,7 +28,7 @@ const PASSWORD_HASH = '33606b36c7aa4ac03db6d3c8266206c293178646bdae5c8b6be44990c
 
 const SESSION_KEY = 'lukas_admin_unlocked';
 // Passwort für die Server-Funktionen (Ergebnisse) — nur für diese Sitzung.
-// Die eigentliche Prüfung macht die Datenbank (supabase/schema.sql).
+// Die eigentliche Prüfung macht der Server (google-sheets/Code.gs).
 const PASS_KEY = 'lukas_admin_pass';
 
 function getAdminPassword() {

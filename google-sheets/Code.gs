@@ -1,26 +1,28 @@
 /**
  * ═══════════════════════════════════════════════════════════════════
- * google-sheets/Code.gs — REKAP NILAI · Lukas Abenteuer
+ * google-sheets/Code.gs — SERVER & REKAP NILAI · Lukas Abenteuer
  *
- * Google Apps Script yang menempel di sebuah Google Spreadsheet.
- * Menarik data semua pemain dari Supabase (fungsi admin_results) lalu
- * MEMBANGUN ULANG tiga sheet yang rapi:
+ * Google Apps Script yang menempel di sebuah Google Spreadsheet dan
+ * dipublikasikan sebagai Web App. Script ini adalah satu-satunya server
+ * game (tanpa Supabase):
  *
- *   1. Rekap          — satu baris per siswa: status, benar, nilai, Teil 1/2,
- *                       quest, poin game, waktu kirim + ringkasan kelas
- *   2. Detail Jawaban — matriks siswa × soal (A–E), hijau benar / merah salah
- *   3. Analisis Soal  — % benar per soal, sebaran jawaban, pengecoh terbanyak
+ *   • API untuk game (doPost): login dengan nama, simpan progress,
+ *     draft & kirim Latihan Soal, fungsi admin (lihat nilai, reset).
+ *   • Data mentah disimpan di sheet tersembunyi _players, _saves, _quiz.
+ *     Sheet ini jangan diedit manual.
+ *   • KUNCI JAWABAN hanya ada di file ini (server). Browser siswa tidak
+ *     pernah menerimanya, dan nilai dihitung di sini.
+ *   • Rekap rapi yang dibangun ulang otomatis (pemicu 1 menit, hanya
+ *     kalau ada perubahan):
+ *       1. Rekap          — satu baris per siswa + ringkasan kelas
+ *       2. Detail Jawaban — siswa × soal (A–E), hijau benar / merah salah
+ *       3. Analisis Soal  — % benar per soal, sebaran, pengecoh terbanyak
  *
- * Kapan diperbarui:
- *   • otomatis setiap ada siswa yang mengirim jawaban / admin reset
- *     (Supabase memanggil doPost lewat webhook — lihat SETUP-ONLINE.md)
- *   • setiap 5 menit (pemicu waktu, menu „Lukas › Aktualisierung …“)
- *   • manual lewat menu „🎓 Lukas › Jetzt aktualisieren“
+ * Pemasangan: lihat SETUP-ONLINE.md (jalankan setup() sekali, lalu
+ * Deploy → Web app: Execute as „Me“, Who has access „Anyone“).
  *
- * Script Properties (Project Settings → Script properties):
- *   SUPABASE_URL       https://xxxx.supabase.co
- *   SUPABASE_ANON_KEY  anon / publishable key
- *   ADMIN_PASSWORD     password admin game (sama seperti di dalam game)
+ * Password admin: sama dengan password admin di dalam game. Ganti lewat
+ * menu „🎓 Lukas › Admin-Passwort ändern“.
  * ═══════════════════════════════════════════════════════════════════
  */
 
@@ -48,6 +50,13 @@ var QUESTIONS = [
 ];
 var LETTERS = ['A', 'B', 'C', 'D', 'E'];
 
+// Kunci jawaban dari SOAL.docx (✅) — 0 = A … 4 = E. Soal 1–10 = Teil 1, 11–20 = Teil 2.
+var ANSWER_KEY = [3, 4, 3, 3, 2, 4, 3, 3, 2, 3,  2, 3, 3, 3, 4, 3, 3, 4, 4, 4];
+var TOTAL = ANSWER_KEY.length;
+
+// SHA-256 password admin awal = js/admin.js → PASSWORD_HASH
+var DEFAULT_ADMIN_HASH = '33606b36c7aa4ac03db6d3c8266206c293178646bdae5c8b6be44990c7890c7e';
+
 // Farben wie im Spiel
 var C = {
   forest:  '#24402c',
@@ -70,109 +79,422 @@ var SHEET_REKAP = 'Rekap';
 var SHEET_DETAIL = 'Detail Jawaban';
 var SHEET_ANALISIS = 'Analisis Soal';
 
+// Datenblätter: Spalten in dieser Reihenfolge. Zeitstempel als Millisekunden.
+var DATA = {
+  players: { name: '_players', cols: ['id', 'name', 'name_key', 'created_at', 'last_seen', 'progress_reset_at', 'quiz_reset_at'] },
+  saves:   { name: '_saves',   cols: ['player_id', 'saved_at', 'updated_at', 'quests_done', 'data'] },
+  quiz:    { name: '_quiz',    cols: ['player_id', 'status', 'answers', 'correct', 'total', 'started_at', 'updated_at', 'submitted_at'] }
+};
 
-// ── Menü & Auslöser ────────────────────────────────────────────────
+var MAX_SAVE_CHARS = 45000;      // Zellgrenze in Sheets: 50 000 Zeichen
+var NAME_RE = /^[\p{L}][\p{L}\p{M} .'\-]{1,39}$/u;
+
+
+// ── Menü & Einrichtung ─────────────────────────────────────────────
 
 function onOpen() {
   SpreadsheetApp.getUi().createMenu('🎓 Lukas')
     .addItem('Jetzt aktualisieren · Perbarui sekarang', 'refresh')
     .addSeparator()
-    .addItem('Aktualisierung alle 5 Min. einschalten', 'installTimer')
-    .addItem('Aktualisierung alle 5 Min. ausschalten', 'removeTimer')
-    .addSeparator()
-    .addItem('Einrichtung prüfen · Cek pengaturan', 'checkSetup')
+    .addItem('Einrichtung (einmalig) · Setup', 'setup')
+    .addItem('Admin-Passwort ändern · Ganti password admin', 'changeAdminPassword')
     .addToUi();
 }
 
-/** Webhook dari Supabase (lihat trigger _notify_sheets di schema.sql). */
-function doPost(e) {
-  refresh();
-  return ContentService.createTextOutput('ok');
-}
-
-/** Untuk tes di browser: membuka URL Web App = perbarui. */
-function doGet(e) {
-  refresh();
-  return ContentService.createTextOutput('Lukas Rekap diperbarui: ' + new Date());
-}
-
-function installTimer() {
-  removeTimer();
-  ScriptApp.newTrigger('refresh').timeBased().everyMinutes(5).create();
-  toast_('Aktualisierung alle 5 Minuten ist eingeschaltet.');
-}
-
-function removeTimer() {
+/** Einmal ausführen: Datenblätter anlegen, 1-Minuten-Auslöser setzen, Rekap bauen. */
+function setup() {
+  var ss = SpreadsheetApp.getActive();
+  Object.keys(DATA).forEach(function (k) { dataSheet_(DATA[k]); });
   ScriptApp.getProjectTriggers().forEach(function (t) {
-    if (t.getHandlerFunction() === 'refresh') ScriptApp.deleteTrigger(t);
+    var fn = t.getHandlerFunction();
+    if (fn === 'rebuildIfDirty' || fn === 'refresh') ScriptApp.deleteTrigger(t);
   });
-}
-
-function checkSetup() {
-  var ui = SpreadsheetApp.getUi();
+  ScriptApp.newTrigger('rebuildIfDirty').timeBased().everyMinutes(1).create();
+  refresh();
+  ss.setActiveSheet(ss.getSheetByName(SHEET_REKAP));
   try {
-    var data = fetchResults_();
-    ui.alert('✅ Verbindung OK', 'Supabase erreichbar. ' + data.players.length + ' Spieler gefunden.', ui.ButtonSet.OK);
+    SpreadsheetApp.getUi().alert('✅ Setup selesai',
+      'Sheet data & pemicu otomatis sudah dibuat.\n\nLangkah berikutnya: Deploy → New deployment → Web app ' +
+      '(Execute as: Me · Who has access: Anyone), lalu salin URL /exec ke SHEETS_API_URL di js/config.js.',
+      SpreadsheetApp.getUi().ButtonSet.OK);
+  } catch (_) {}
+}
+
+function changeAdminPassword() {
+  var ui = SpreadsheetApp.getUi();
+  var res = ui.prompt('Admin-Passwort ändern', 'Password admin baru (min. 4 karakter).\n' +
+    'Ganti juga PASSWORD_HASH di js/admin.js agar login admin di game ikut berubah.', ui.ButtonSet.OK_CANCEL);
+  if (res.getSelectedButton() !== ui.Button.OK) return;
+  var pass = res.getResponseText();
+  if (!pass || pass.length < 4) { ui.alert('Password terlalu pendek.'); return; }
+  var hash = sha256Hex_(pass);
+  PropertiesService.getScriptProperties().setProperty('ADMIN_PASSWORD_SHA256', hash);
+  ui.alert('✅ Password diganti', 'PASSWORD_HASH untuk js/admin.js:\n\n' + hash, ui.ButtonSet.OK);
+}
+
+
+// ── Web-App-Schnittstelle ──────────────────────────────────────────
+
+var API = {
+  player_login: apiLogin_,
+  save_progress: apiSaveProgress_,
+  quiz_save_draft: apiQuizDraft_,
+  quiz_submit: apiQuizSubmit_,
+  admin_results: apiAdminResults_,
+  admin_reset_quiz: apiAdminResetQuiz_,
+  admin_reset_progress: apiAdminResetProgress_,
+  admin_delete_player: apiAdminDeletePlayer_,
+  admin_reset_all: apiAdminResetAll_
+};
+
+/** Body (text/plain): {"fn": "player_login", "args": {"p_name": "…"}} → {"ok": true, "data": …} */
+function doPost(e) {
+  var out;
+  try {
+    var req = JSON.parse((e && e.postData && e.postData.contents) || '{}');
+    var fn = API[req.fn];
+    if (!fn) fail_('unknown_function', 'Unbekannte Funktion: ' + req.fn);
+    var lock = LockService.getScriptLock();
+    lock.waitLock(20000);
+    try {
+      out = { ok: true, data: fn(req.args || {}) };
+    } finally {
+      lock.releaseLock();
+    }
   } catch (err) {
-    ui.alert('⚠️ Problem', String(err.message || err), ui.ButtonSet.OK);
+    out = { ok: false, error: { code: err.code || 'server_error', message: String(err.message || err) } };
   }
+  return ContentService.createTextOutput(JSON.stringify(out)).setMimeType(ContentService.MimeType.JSON);
+}
+
+function doGet() {
+  return ContentService.createTextOutput(JSON.stringify({ ok: true, service: 'Lukas Abenteuer', time: new Date().toISOString() }))
+    .setMimeType(ContentService.MimeType.JSON);
+}
+
+function fail_(code, message) {
+  var err = new Error(message || code);
+  err.code = code;
+  throw err;
 }
 
 
-// ── Daten ─────────────────────────────────────────────────────────
+// ── Datenblätter ───────────────────────────────────────────────────
 
-function props_() {
-  var p = PropertiesService.getScriptProperties();
-  var url = String(p.getProperty('SUPABASE_URL') || '').replace(/\/+$/, '');
-  var key = String(p.getProperty('SUPABASE_ANON_KEY') || '');
-  var pass = String(p.getProperty('ADMIN_PASSWORD') || '');
-  if (!url || !key || !pass) {
-    throw new Error('Script properties SUPABASE_URL, SUPABASE_ANON_KEY dan ADMIN_PASSWORD belum diisi (Project Settings → Script properties).');
+function dataSheet_(def) {
+  var ss = SpreadsheetApp.getActive();
+  var sh = ss.getSheetByName(def.name);
+  if (!sh) {
+    sh = ss.insertSheet(def.name);
+    sh.getRange(1, 1, 1, def.cols.length).setValues([def.cols]).setFontWeight('bold').setBackground(C.creamD);
+    sh.setFrozenRows(1);
+    // Alles als Klartext speichern: Sheets soll weder Namen noch JSON umdeuten
+    sh.getRange(1, 1, sh.getMaxRows(), def.cols.length).setNumberFormat('@');
+    sh.hideSheet();
+    try { sh.protect().setDescription('Daten des Spiels — nicht bearbeiten').setWarningOnly(true); } catch (_) {}
   }
-  return { url: url, key: key, pass: pass };
+  return sh;
 }
 
-function fetchResults_() {
-  var cfg = props_();
-  var headers = { apikey: cfg.key };
-  if (cfg.key.indexOf('eyJ') === 0) headers.Authorization = 'Bearer ' + cfg.key;
-  var res = UrlFetchApp.fetch(cfg.url + '/rest/v1/rpc/admin_results', {
-    method: 'post',
-    contentType: 'application/json',
-    headers: headers,
-    payload: JSON.stringify({ p_pass: cfg.pass }),
-    muteHttpExceptions: true
+/** Alle Zeilen als Objekte: [{ _row, id, name, … }] */
+function readRows_(def) {
+  var sh = dataSheet_(def);
+  var last = sh.getLastRow();
+  if (last < 2) return [];
+  var values = sh.getRange(2, 1, last - 1, def.cols.length).getValues();
+  return values.map(function (v, i) {
+    var o = { _row: i + 2 };
+    def.cols.forEach(function (c, j) { o[c] = v[j]; });
+    return o;
+  }).filter(function (o) { return o[def.cols[0]] !== ''; });
+}
+
+function writeRow_(def, row, obj) {
+  var sh = dataSheet_(def);
+  var values = [def.cols.map(function (c) { return obj[c] === undefined || obj[c] === null ? '' : String(obj[c]); })];
+  if (!row) {
+    row = sh.getLastRow() + 1;
+    if (row > sh.getMaxRows()) {
+      sh.insertRowsAfter(sh.getMaxRows(), 500);
+      sh.getRange(row, 1, 500, def.cols.length).setNumberFormat('@');
+    }
+  }
+  sh.getRange(row, 1, 1, def.cols.length).setValues(values);
+}
+
+function deleteRows_(def, rows) {
+  var sh = dataSheet_(def);
+  rows.map(function (r) { return r._row; }).sort(function (a, b) { return b - a; })
+    .forEach(function (r) { sh.deleteRow(r); });
+}
+
+function find_(def, key, value) {
+  var rows = readRows_(def);
+  for (var i = 0; i < rows.length; i++) if (String(rows[i][key]) === String(value)) return rows[i];
+  return null;
+}
+
+function num_(v) {
+  var n = Number(v);
+  return isFinite(n) ? n : 0;
+}
+
+function json_(text, fallback) {
+  try { return text ? JSON.parse(text) : fallback; } catch (_) { return fallback; }
+}
+
+function iso_(ms) {
+  return num_(ms) ? new Date(num_(ms)).toISOString() : null;
+}
+
+function markDirty_() {
+  PropertiesService.getScriptProperties().setProperty('DIRTY', String(Date.now()));
+}
+
+function cleanName_(name) {
+  return String(name || '').trim().replace(/\s+/g, ' ');
+}
+
+/** Nur Indizes 0–4 für existierende Fragen. */
+function cleanAnswers_(answers) {
+  var out = {};
+  if (!answers || typeof answers !== 'object') return out;
+  for (var q = 1; q <= TOTAL; q++) {
+    var a = answers[String(q)];
+    if (typeof a === 'number' && a >= 0 && a <= 4 && Math.floor(a) === a) out[String(q)] = a;
+  }
+  return out;
+}
+
+function score_(answers, part) {
+  var n = 0;
+  for (var q = 1; q <= TOTAL; q++) {
+    if (part && (q <= 10 ? 1 : 2) !== part) continue;
+    if (answers[String(q)] === ANSWER_KEY[q - 1]) n++;
+  }
+  return n;
+}
+
+function questsDone_(data) {
+  var qs = (data && data.questState) || {};
+  return Object.keys(qs).filter(function (k) { return qs[k] === 'completed'; }).length;
+}
+
+function player_(id) {
+  var p = find_(DATA.players, 'id', id);
+  if (!p) fail_('unknown_player', 'Spieler unbekannt');
+  return p;
+}
+
+function sha256Hex_(text) {
+  var bytes = Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, String(text || ''), Utilities.Charset.UTF_8);
+  return bytes.map(function (b) { var h = ((b + 256) % 256).toString(16); return h.length < 2 ? '0' + h : h; }).join('');
+}
+
+function adminCheck_(pass) {
+  var stored = PropertiesService.getScriptProperties().getProperty('ADMIN_PASSWORD_SHA256') || DEFAULT_ADMIN_HASH;
+  if (sha256Hex_(pass) !== stored) fail_('forbidden', 'forbidden');
+}
+
+
+// ── API: Spieler ───────────────────────────────────────────────────
+
+/** Anmelden mit Namen. Gleicher Name (ohne Groß/klein & Leerzeichen) = gleiches Konto. */
+function apiLogin_(args) {
+  var name = cleanName_(args.p_name);
+  if (!NAME_RE.test(name)) fail_('invalid_name', 'invalid_name');
+  var key = name.toLowerCase();
+  var now = Date.now();
+  var p = find_(DATA.players, 'name_key', key);
+  var isNew = !p;
+  if (isNew) {
+    p = { id: Utilities.getUuid(), name: name, name_key: key, created_at: now, last_seen: now, progress_reset_at: 0, quiz_reset_at: 0 };
+    writeRow_(DATA.players, null, p);
+    markDirty_();
+  } else {
+    p.last_seen = now;
+    writeRow_(DATA.players, p._row, p);
+  }
+  var save = find_(DATA.saves, 'player_id', p.id);
+  var quiz = find_(DATA.quiz, 'player_id', p.id);
+  return {
+    id: p.id,
+    name: p.name,
+    isNew: isNew,
+    progressResetAt: num_(p.progress_reset_at),
+    quizResetAt: num_(p.quiz_reset_at),
+    save: save ? json_(save.data, null) : null,
+    quiz: quiz ? { status: quiz.status, answers: json_(quiz.answers, {}) } : null
+  };
+}
+
+/** Spielstand sichern. Ältere Stände als der gespeicherte werden ignoriert. */
+function apiSaveProgress_(args) {
+  var data = args.p_data;
+  if (!data || typeof data !== 'object' || Array.isArray(data)) return false;
+  var text = JSON.stringify(data);
+  if (text.length > MAX_SAVE_CHARS) return false;
+  var at = num_(data.savedAt) || Date.now();
+  var p = find_(DATA.players, 'id', args.p_id);
+  if (!p || at < num_(p.progress_reset_at)) return false;
+
+  var s = find_(DATA.saves, 'player_id', p.id);
+  if (s && num_(s.saved_at) > at) return false;
+  var quests = questsDone_(data);
+  if (!s || num_(s.quests_done) !== quests) markDirty_();
+  writeRow_(DATA.saves, s ? s._row : null, { player_id: p.id, saved_at: at, updated_at: Date.now(), quests_done: quests, data: text });
+  return true;
+}
+
+/** Zwischenstand der Latihan Soal. Nach dem Abgeben ohne Wirkung. */
+function apiQuizDraft_(args) {
+  var p = player_(args.p_id);
+  var q = find_(DATA.quiz, 'player_id', p.id);
+  if (q && q.status === 'submitted') return 'submitted';
+  var now = Date.now();
+  writeRow_(DATA.quiz, q ? q._row : null, {
+    player_id: p.id, status: 'in_progress', answers: JSON.stringify(cleanAnswers_(args.p_answers)),
+    correct: '', total: '', started_at: q ? q.started_at : now, updated_at: now, submitted_at: ''
   });
-  var code = res.getResponseCode();
-  var body = res.getContentText();
-  if (code === 403 || /forbidden/.test(body)) throw new Error('ADMIN_PASSWORD salah (forbidden).');
-  if (code >= 300) throw new Error('Supabase ' + code + ': ' + body.slice(0, 300));
-  return JSON.parse(body);
+  if (!q) markDirty_();
+  return 'in_progress';
+}
+
+/** Abgabe. Die Note wird hier berechnet und NICHT zurückgegeben. */
+function apiQuizSubmit_(args) {
+  var p = player_(args.p_id);
+  var q = find_(DATA.quiz, 'player_id', p.id);
+  if (q && q.status === 'submitted') return { ok: true, alreadySubmitted: true };
+  var answers = cleanAnswers_(args.p_answers);
+  var now = Date.now();
+  writeRow_(DATA.quiz, q ? q._row : null, {
+    player_id: p.id, status: 'submitted', answers: JSON.stringify(answers),
+    correct: score_(answers), total: TOTAL, started_at: q ? q.started_at : now, updated_at: now, submitted_at: now
+  });
+  markDirty_();
+  return { ok: true, alreadySubmitted: false };
 }
 
 
-// ── Aufbau ────────────────────────────────────────────────────────
+// ── API: Admin ─────────────────────────────────────────────────────
+
+function apiAdminResults_(args) {
+  adminCheck_(args.p_pass);
+  return collect_();
+}
+
+function apiAdminResetQuiz_(args) {
+  adminCheck_(args.p_pass);
+  var p = find_(DATA.players, 'id', args.p_id);
+  if (!p) return false;
+  deleteRows_(DATA.quiz, readRows_(DATA.quiz).filter(function (r) { return r.player_id === p.id; }));
+  p.quiz_reset_at = Date.now();
+  writeRow_(DATA.players, p._row, p);
+  markDirty_();
+  return true;
+}
+
+function apiAdminResetProgress_(args) {
+  adminCheck_(args.p_pass);
+  var p = find_(DATA.players, 'id', args.p_id);
+  if (!p) return false;
+  deleteRows_(DATA.saves, readRows_(DATA.saves).filter(function (r) { return r.player_id === p.id; }));
+  deleteRows_(DATA.quiz, readRows_(DATA.quiz).filter(function (r) { return r.player_id === p.id; }));
+  p.progress_reset_at = Date.now();
+  p.quiz_reset_at = p.progress_reset_at;
+  writeRow_(DATA.players, p._row, p);
+  markDirty_();
+  return true;
+}
+
+function apiAdminDeletePlayer_(args) {
+  adminCheck_(args.p_pass);
+  var p = find_(DATA.players, 'id', args.p_id);
+  if (!p) return false;
+  deleteRows_(DATA.saves, readRows_(DATA.saves).filter(function (r) { return r.player_id === p.id; }));
+  deleteRows_(DATA.quiz, readRows_(DATA.quiz).filter(function (r) { return r.player_id === p.id; }));
+  deleteRows_(DATA.players, [p]);
+  markDirty_();
+  return true;
+}
+
+/** Alle Spieler, Spielstände und Ergebnisse löschen. */
+function apiAdminResetAll_(args) {
+  adminCheck_(args.p_pass);
+  var count = readRows_(DATA.players).length;
+  Object.keys(DATA).forEach(function (k) {
+    var sh = dataSheet_(DATA[k]);
+    if (sh.getLastRow() > 1) sh.deleteRows(2, sh.getLastRow() - 1);
+  });
+  markDirty_();
+  return count;
+}
+
+/** Gleiche Form wie früher admin_results: { generatedAt, key, players[] } */
+function collect_() {
+  var saves = {}, quizzes = {};
+  readRows_(DATA.saves).forEach(function (s) { saves[s.player_id] = s; });
+  readRows_(DATA.quiz).forEach(function (q) { quizzes[q.player_id] = q; });
+  var players = readRows_(DATA.players).map(function (p) {
+    var s = saves[p.id], q = quizzes[p.id];
+    var data = s ? json_(s.data, {}) : null;
+    var answers = q ? json_(q.answers, {}) : {};
+    var submitted = q && q.status === 'submitted';
+    return {
+      id: p.id, name: p.name, name_key: p.name_key,
+      created_at: iso_(p.created_at), last_seen: iso_(p.last_seen),
+      quests_done: data ? questsDone_(data) : 0,
+      active_quest: data ? (data.activeQuestId || null) : null,
+      game_score: data && isFinite(Number(data.score)) ? Math.round(Number(data.score)) : null,
+      save_updated_at: s ? iso_(s.updated_at) : null,
+      quiz_status: q ? q.status : 'none',
+      answers: answers,
+      correct: submitted ? num_(q.correct) : null,
+      part1: submitted ? score_(answers, 1) : null,
+      part2: submitted ? score_(answers, 2) : null,
+      answered: Object.keys(answers).length,
+      total: TOTAL,
+      started_at: q ? iso_(q.started_at) : null,
+      submitted_at: submitted ? iso_(q.submitted_at) : null
+    };
+  }).sort(function (a, b) { return a.name_key.localeCompare(b.name_key, 'de'); });
+  return {
+    generatedAt: new Date().toISOString(),
+    key: ANSWER_KEY.map(function (c, i) { return { q: i + 1, part: i < 10 ? 1 : 2, correct: c }; }),
+    players: players
+  };
+}
+
+
+// ── Aufbau der Übersicht ───────────────────────────────────────────
+
+/** Auslöser (jede Minute): nur neu bauen, wenn sich etwas geändert hat. */
+function rebuildIfDirty() {
+  var props = PropertiesService.getScriptProperties();
+  if (!props.getProperty('DIRTY')) return;
+  props.deleteProperty('DIRTY');
+  refresh();
+}
 
 function refresh() {
   var lock = LockService.getScriptLock();
-  if (!lock.tryLock(25000)) return;
+  if (!lock.tryLock(25000)) { markDirty_(); return; }
+  var data;
   try {
-    var data = fetchResults_();
-    var ss = SpreadsheetApp.getActive();
-    var key = {};
-    (data.key || []).forEach(function (k) { key[k.q] = k.correct; });
-    var players = (data.players || []).slice().sort(function (a, b) {
-      return a.name_key.localeCompare(b.name_key, 'de');
-    });
-    var stamp = Utilities.formatDate(new Date(), ss.getSpreadsheetTimeZone(), 'dd.MM.yyyy HH:mm');
-
-    buildRekap_(sheet_(ss, SHEET_REKAP, 0), players, stamp);
-    buildDetail_(sheet_(ss, SHEET_DETAIL, 1), players, key, stamp);
-    buildAnalisis_(sheet_(ss, SHEET_ANALISIS, 2), players, key, stamp);
-    SpreadsheetApp.flush();
+    data = collect_();
   } finally {
     lock.releaseLock();
   }
+  var ss = SpreadsheetApp.getActive();
+  var key = {};
+  data.key.forEach(function (k) { key[k.q] = k.correct; });
+  var players = data.players;
+  var stamp = Utilities.formatDate(new Date(), ss.getSpreadsheetTimeZone(), 'dd.MM.yyyy HH:mm');
+
+  buildRekap_(sheet_(ss, SHEET_REKAP, 0), players, stamp);
+  buildDetail_(sheet_(ss, SHEET_DETAIL, 1), players, key, stamp);
+  buildAnalisis_(sheet_(ss, SHEET_ANALISIS, 2), players, key, stamp);
+  SpreadsheetApp.flush();
 }
 
 function sheet_(ss, name, index) {
@@ -449,9 +771,4 @@ function buildAnalisis_(sh, players, key, stamp) {
 
   [44, 60, 360, 56, 72, 150, 40, 40, 40, 40, 40, 150].forEach(function (w, j) { sh.setColumnWidth(j + 1, w); });
   sh.setFrozenRows(hr);
-}
-
-
-function toast_(msg) {
-  try { SpreadsheetApp.getActive().toast(msg, 'Lukas', 5); } catch (_) {}
 }

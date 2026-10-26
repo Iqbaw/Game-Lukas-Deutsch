@@ -2,13 +2,13 @@
 // js/adminscores.js — ERGEBNISSE ALLER SPIELER (nur Admin-Modus)
 // Lukas Abenteuer — Willkommen in Hamburg!
 //
-// Zeigt alle Spieler aus Supabase: Fortschritt im Spiel und Ergebnis der
+// Zeigt alle Spieler aus Google Sheets: Fortschritt im Spiel und Ergebnis der
 // Latihan Soal (automatisch korrigiert in der Datenbank). Pro Spieler:
 // Latihan zurücksetzen, Fortschritt zurücksetzen, löschen. Dazu Export
 // als CSV und Link zur Google-Sheets-Übersicht.
 //
 // Alle Daten kommen über RPC-Funktionen mit Admin-Passwort
-// (supabase/schema.sql) — der Browser der Schüler sieht keine Ergebnisse.
+// (google-sheets/Code.gs) — der Browser der Schüler sieht keine Ergebnisse.
 // ═══════════════════════════════════════════════════════════════════
 
 import { CONFIG } from './config.js';
@@ -62,7 +62,7 @@ async function load() {
   try {
     View.data = await adminRpc('admin_results', pass);
   } catch (err) {
-    View.error = err.code === '42501' || /forbidden/.test(err.message) ? 'password' : (err.message || 'Fehler');
+    View.error = err.code === 'forbidden' ? 'password' : (err.message || 'Fehler');
   } finally {
     View.loading = false;
     render();
@@ -177,8 +177,8 @@ function renderBody() {
   if (!cloudEnabled()) {
     body.innerHTML = `<div class="alog-empty asc-empty">
       <p class="asc-empty-ic">☁️</p>
-      <p><b>Supabase belum diatur.</b></p>
-      <p>Isi <code>SUPABASE_URL</code> dan <code>SUPABASE_ANON_KEY</code> di <code>js/config.js</code>.<br>
+      <p><b>Google Sheets belum diatur.</b></p>
+      <p>Isi <code>SHEETS_API_URL</code> (URL Web App Apps Script) di <code>js/config.js</code>.<br>
          Panduan lengkap ada di <code>SETUP-ONLINE.md</code>.</p>
     </div>`;
     return;
