@@ -20,6 +20,7 @@ import { getDialog } from './data/dialogs.js';
 import { QUEST_ORDER } from './data/quests.js';
 import { setMusicOverride } from './music.js';
 import { logActivity } from './activitylog.js';
+import { isQuizSubmitted } from './cloud.js';
 
 const wait = (ms) => new Promise(r => setTimeout(r, ms));
 
@@ -272,6 +273,9 @@ const SCENES = {
     const qs = window.__questState__ || {};
     const done = QUEST_ORDER.filter(id => qs[id] === 'completed').length;
     const score = window.__score__ || 0;
+    const quizLabel = () => isQuizSubmitted()
+      ? '✓ Latihan Soal terkirim'
+      : '✎ Latihan Soal starten';
     await scene(`
       <div class="finale-sky"></div>
       <div class="finale-card">
@@ -283,14 +287,25 @@ const SCENES = {
           <span>✅ ${done} / ${QUEST_ORDER.length} Quests</span>
           <span>⭐ ${score} Punkte</span>
         </div>
+        <div class="finale-quiz">
+          <p class="finale-quiz-text">Zum Abschluss: <b>Latihan Soal</b> — 20 Fragen zu den Wechselpräpositionen.</p>
+          <button type="button" class="finale-btn primary finale-btn-quiz" data-act="latihan">${quizLabel()}</button>
+        </div>
         <div class="finale-btns">
           <button type="button" class="finale-btn" data-act="stay">Weiter erkunden</button>
-          <button type="button" class="finale-btn primary" data-act="menu">Zum Hauptmenü</button>
+          <button type="button" class="finale-btn" data-act="menu">Zum Hauptmenü</button>
         </div>
       </div>`, 300, 'cs-dark');
     await new Promise(resolve => {
       root?.querySelectorAll('.finale-btn').forEach(b => b.addEventListener('click', () => {
         if (b.dataset.act === 'menu') { window.location.reload(); return; }
+        if (b.dataset.act === 'latihan') {
+          // Latihan Soal liegt über der Finalkarte; danach zurück hierher
+          import('./latihan.js').then(m => m.openLatihan({
+            onClose: () => { b.textContent = quizLabel(); },
+          }));
+          return;
+        }
         resolve();
       }));
     });

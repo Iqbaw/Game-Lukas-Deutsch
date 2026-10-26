@@ -78,6 +78,14 @@ export const CONFIG = {
   // ── STORAGE ────────────────────────────────────────────
   STORAGE_KEY:         'lukas_adventure_save',
 
+  // ── ONLINE (Supabase + Google Sheets) — lihat SETUP-ONLINE.md ──
+  // Kosong = mode lokal: akun & progress hanya tersimpan di browser ini.
+  // Anon/publishable key memang boleh publik; keamanan ada di fungsi RPC
+  // (supabase/schema.sql).
+  SUPABASE_URL:        '',     // contoh: 'https://abcdxyz.supabase.co'
+  SUPABASE_ANON_KEY:   '',     // Project Settings → API Keys → anon / publishable
+  SHEETS_URL:          '',     // link Google Sheets rekap nilai (tombol di Admin)
+
   // ── DEBUG ──────────────────────────────────────────────
   DEBUG:               false,  // set true untuk axes helper, stats, dll.
 };

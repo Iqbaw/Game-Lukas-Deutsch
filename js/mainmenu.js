@@ -18,11 +18,16 @@
 // Kommunikation läuft über CustomEvents:
 //   → 'menu:start'           Spieler will das Abenteuer starten
 //   → 'settings:change'      Einstellungen wurden im Menü geändert
+//
+// Vor dem Hauptmenü steht die Anmeldung „Wer spielt?“: nur der Name,
+// kein Passwort (js/cloud.js). Danach gehören Spielstand und
+// Latihan Soal zu diesem Namen.
 // ═══════════════════════════════════════════════════════════════════
 
 import { playSfx, unlockSfx, setSfxVolume, setSfxEnabled } from './sfx.js';
 import { initMusic, unlockMusic, setMusicVolume, setMusicEnabled } from './music.js';
-import { hasSave, readSave } from './savegame.js';
+import { readSave } from './savegame.js';
+import { cloudEnabled, currentPlayer, login, logout, readQuizState } from './cloud.js';
 
 const BG_BASE      = 'assets/images/main-menu-bg';
 const BG_LQIP      = 'data:image/webp;base64,UklGRu4AAABXRUJQVlA4IOIAAABwBQCdASogABIAPrFInUmnJCKhMAgA4BYJZACdMxsnJD98vZKuaYI66LTBifPj8LQfGUUAAP72k9e/F7P7aLqqIZw/jZPG7XL+xH2c8aXrn1/JcrJ8ALrUcNk7I5PaWSA8u3YcDAkGPLl3wvJJeGiT/31nyAbzLG2qz8Fi8WqwieWTJLSmUG76BTeNvkxHaHtAWoh1JywRk1Drt0bHAKxbrfwFoFVl+Y/FheeuktJ0Yq9Ww+t2pY7fGpuo+ph0QAmcn3YmpYF8CWiI8BixPrYmC3+DXDHQf4NgFP0l4l7kwAAA';
@@ -37,13 +42,25 @@ const DEFAULT_SETTINGS = {
   showHint:     true,
 };
 
-// Reihenfolge = Reihenfolge im Panel
-let MENU_ITEMS = [
-  ...(hasSave() ? [{ id: 'continue', icon: '↻', label: 'Weiterspielen', sub: 'Lanjutkan permainan' }] : []),
-  { id: 'start',    icon: '▶', label: 'Neues Abenteuer',     sub: 'Mulai permainan baru'  },
-  { id: 'settings', icon: '⚙', label: 'Einstellungen',      sub: 'Pengaturan'     },
-  { id: 'about',    icon: '❔', label: 'Über das Spiel',     sub: 'Tentang game'   },
-];
+// Reihenfolge = Reihenfolge im Panel. Hängt vom angemeldeten Spieler ab
+// (eigener Spielstand, Latihan Soal erst nach Quest 10).
+function buildMenuItems() {
+  const save = readSave();
+  const quiz = readQuizState();
+  const allDone = save?.questState?.quest_10 === 'completed';
+  return [
+    ...(save ? [{ id: 'continue', icon: '↻', label: 'Weiterspielen', sub: 'Lanjutkan permainan' }] : []),
+    ...(allDone || quiz.submitted ? [{
+      id: 'latihan', icon: '✎', label: 'Latihan Soal',
+      sub: quiz.submitted ? 'Jawaban sudah terkirim ✓' : 'Wechselpräpositionen · 20 Fragen',
+    }] : []),
+    { id: 'start',    icon: '▶', label: 'Neues Abenteuer',     sub: 'Mulai permainan baru'  },
+    { id: 'settings', icon: '⚙', label: 'Einstellungen',      sub: 'Pengaturan'     },
+    { id: 'about',    icon: '❔', label: 'Über das Spiel',     sub: 'Tentang game'   },
+  ];
+}
+
+let MENU_ITEMS = buildMenuItems();
 
 const HINT_DEFAULT = '<kbd>↑</kbd><kbd>↓</kbd> wählen &nbsp;·&nbsp; <kbd>Enter</kbd> bestätigen';
 
@@ -51,7 +68,7 @@ const HINT_DEFAULT = '<kbd>↑</kbd><kbd>↓</kbd> wählen &nbsp;·&nbsp; <kbd>E
 export const MainMenu = {
   root:        null,
   isOpen:      false,
-  panel:       'main',   // 'main' | 'settings' | 'about'
+  panel:       'main',   // 'login' | 'main' | 'settings' | 'about'
   activeIndex: 0,
   items:       [],       // <button class="mm-item">
   settings:    { ...DEFAULT_SETTINGS },
@@ -148,21 +165,28 @@ function render() {
       <div class="mm-panel-stack">
 
         <!-- ── Hauptliste ───────────────────────────────────── -->
+        <!-- ── Anmeldung: nur der Name ─────────────────────── -->
+        <section class="mm-panel mm-panel-sub mm-panel-login" id="mm-panel-login" aria-label="Anmelden" hidden>
+          <h2 class="mm-sub-title">Wer spielt?</h2>
+          <p class="mm-login-lead">Siapa yang bermain? Ketik nama lengkapmu.</p>
+          <form class="mm-login-form" id="mm-login-form" autocomplete="off" novalidate>
+            <label class="mm-login-label" for="mm-login-name">Dein Name · Namamu</label>
+            <input type="text" class="mm-login-input" id="mm-login-name" maxlength="40"
+                   autocomplete="off" autocapitalize="words" spellcheck="false"
+                   placeholder="z. B. Budi Santoso" />
+            <p class="mm-login-error" id="mm-login-error" role="alert" hidden></p>
+            <button type="submit" class="mm-login-btn" id="mm-login-btn">
+              <span>Los geht's</span><span aria-hidden="true">→</span>
+            </button>
+          </form>
+          <p class="mm-note">${cloudEnabled()
+            ? 'Kein Passwort nötig · Progress tersimpan otomatis secara online.'
+            : 'Kein Passwort nötig · Progress tersimpan di browser ini.'}</p>
+        </section>
+
         <nav class="mm-panel mm-panel-main" id="mm-panel-main" aria-label="Hauptmenü">
-          <ul class="mm-list" id="mm-list">
-            <span class="mm-pill" id="mm-pill" aria-hidden="true"></span>
-            ${MENU_ITEMS.map((it, i) => `
-              <li class="mm-list-item">
-                <button type="button" class="mm-item" data-action="${it.id}" data-index="${i}">
-                  <span class="mm-item-icon" aria-hidden="true">${it.icon}</span>
-                  <span class="mm-item-text">
-                    <span class="mm-item-label">${it.label}</span>
-                    <span class="mm-item-sub">${it.sub}</span>
-                  </span>
-                </button>
-              </li>
-            `).join('')}
-          </ul>
+          <div class="mm-player" id="mm-player"></div>
+          <ul class="mm-list" id="mm-list">${listMarkup()}</ul>
           <p class="mm-hint" id="mm-hint">${HINT_DEFAULT}</p>
         </nav>
 
@@ -253,6 +277,49 @@ function render() {
 }
 
 
+function listMarkup() {
+  return `
+    <span class="mm-pill" id="mm-pill" aria-hidden="true"></span>
+    ${MENU_ITEMS.map((it, i) => `
+      <li class="mm-list-item">
+        <button type="button" class="mm-item" data-action="${it.id}" data-index="${i}">
+          <span class="mm-item-icon" aria-hidden="true">${it.icon}</span>
+          <span class="mm-item-text">
+            <span class="mm-item-label">${it.label}</span>
+            <span class="mm-item-sub">${it.sub}</span>
+          </span>
+        </button>
+      </li>
+    `).join('')}`;
+}
+
+const escHtml = (t) => String(t ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+/** Einträge neu aufbauen (anderer Spieler, Spielstand gelöscht …). */
+function refreshMenu() {
+  MENU_ITEMS = buildMenuItems();
+  const list = MainMenu.root?.querySelector('#mm-list');
+  if (!list) return;
+  list.innerHTML = listMarkup();
+  MainMenu.items = Array.from(list.querySelectorAll('.mm-item'));
+  bindItems();
+  MainMenu.activeIndex = Math.min(MainMenu.activeIndex, MainMenu.items.length - 1);
+  const player = currentPlayer();
+  const chip = MainMenu.root.querySelector('#mm-player');
+  if (chip) {
+    chip.hidden = !player;
+    chip.innerHTML = player ? `
+      <span class="mm-player-avatar" aria-hidden="true">${escHtml(player.name.charAt(0).toUpperCase())}</span>
+      <span class="mm-player-text">
+        <span class="mm-player-hi">Hallo,</span>
+        <span class="mm-player-name">${escHtml(player.name)}</span>
+      </span>
+      <button type="button" class="mm-player-switch" data-action="switch">Nicht du? Wechseln</button>` : '';
+    chip.querySelector('[data-action="switch"]')?.addEventListener('click', () => activate('switch'));
+  }
+}
+
+
 // ═══════════════════════════════════════════════════════════════════
 // PILL — gleitet zur aktiven Auswahl
 // ═══════════════════════════════════════════════════════════════════
@@ -296,7 +363,7 @@ function setActive(index, { focus = true, sound = false } = {}) {
 
 function showPanel(name, { focus = true } = {}) {
   MainMenu.panel = name;
-  ['main', 'settings', 'about'].forEach((p) => {
+  ['login', 'main', 'settings', 'about'].forEach((p) => {
     const el = MainMenu.root.querySelector(`#mm-panel-${p}`);
     if (el) el.hidden = (p !== name);
   });
@@ -307,6 +374,8 @@ function showPanel(name, { focus = true } = {}) {
       movePill(MainMenu.activeIndex, false);
       setActive(MainMenu.activeIndex, { focus });
     });
+  } else if (name === 'login') {
+    if (focus) requestAnimationFrame(() => MainMenu.root.querySelector('#mm-login-name')?.focus({ preventScroll: true }));
   } else if (focus) {
     requestAnimationFrame(() => {
       MainMenu.root.querySelector(`#mm-panel-${name} .mm-back`)?.focus({ preventScroll: true });
@@ -337,6 +406,16 @@ function activate(action) {
       playSfx('select');
       showPanel('about');
       break;
+    case 'latihan':
+      playSfx('select');
+      openLatihanFromMenu();
+      break;
+    case 'switch':
+      playSfx('back');
+      logout();
+      refreshMenu();
+      showPanel('login');
+      break;
     case 'back':
       playSfx('back');
       showPanel('main');
@@ -353,10 +432,7 @@ function startGame() {
 function continueGame() {
   const save = readSave();
   if (!save) {
-    MENU_ITEMS = MENU_ITEMS.filter(item => item.id !== 'continue');
-    render();
-    MainMenu.items = Array.from(MainMenu.root.querySelectorAll('.mm-item'));
-    bindEvents();
+    refreshMenu();
     showPanel('main', { focus: true });
     return;
   }
@@ -365,6 +441,60 @@ function continueGame() {
   window.__pendingContinueSave__ = save;
   closeMainMenu();
   window.dispatchEvent(new CustomEvent('menu:continue', { detail: { save } }));
+}
+
+
+function openLatihanFromMenu() {
+  import('./latihan.js')
+    .then((m) => m.openLatihan({ onClose: () => { refreshMenu(); showPanel('main'); } }))
+    .catch((err) => console.error('[menu] Latihan Soal konnte nicht geladen werden', err));
+}
+
+
+// ═══════════════════════════════════════════════════════════════════
+// ANMELDUNG — nur der Name, kein Passwort
+// ═══════════════════════════════════════════════════════════════════
+
+const LOGIN_ERRORS = {
+  invalid_name: 'Bitte mindestens 2 Buchstaben eingeben. · Minimal 2 huruf.',
+  network:      'Keine Verbindung zum Server. Bitte Internet prüfen. · Tidak ada koneksi internet.',
+  other:        'Anmeldung fehlgeschlagen. Bitte noch einmal versuchen. · Gagal masuk, coba lagi.',
+};
+
+async function submitLogin(e) {
+  e.preventDefault();
+  const root = MainMenu.root;
+  const input = root.querySelector('#mm-login-name');
+  const error = root.querySelector('#mm-login-error');
+  const btn = root.querySelector('#mm-login-btn');
+  if (btn.disabled) return;
+  error.hidden = true;
+  btn.disabled = true;
+  btn.classList.add('is-busy');
+  try {
+    const { player, isNew } = await login(input.value);
+    playSfx('select');
+    refreshMenu();
+    showPanel('main', { focus: true });
+    flashWelcome(isNew ? `Willkommen, ${player.name}!` : `Willkommen zurück, ${player.name}!`);
+  } catch (err) {
+    const code = err.code === 'invalid_name' || err.code === '22023' ? 'invalid_name'
+      : (err.status === undefined ? 'network' : 'other');
+    error.textContent = LOGIN_ERRORS[code];
+    error.hidden = false;
+    playSfx('back');
+    input.focus();
+  } finally {
+    btn.disabled = false;
+    btn.classList.remove('is-busy');
+  }
+}
+
+function flashWelcome(text) {
+  const hint = MainMenu.root?.querySelector('#mm-hint');
+  if (!hint) return;
+  hint.innerHTML = `<span class="mm-hint-welcome">${escHtml(text)}</span>`;
+  setTimeout(() => { if (MainMenu.gameReady) hint.innerHTML = HINT_DEFAULT; }, 3200);
 }
 
 
@@ -409,12 +539,8 @@ function bindEvents() {
     setTimeout(reveal, 1200);
   }
 
-  // Menüeinträge
-  MainMenu.items.forEach((btn, i) => {
-    btn.addEventListener('click',      () => { setActive(i, { focus: false }); activate(btn.dataset.action); });
-    btn.addEventListener('mouseenter', () => setActive(i, { focus: false, sound: true }));
-    btn.addEventListener('focus',      () => setActive(i, { focus: false }));
-  });
+  bindItems();
+  root.querySelector('#mm-login-form')?.addEventListener('submit', submitLogin);
 
   // Pill folgt der Maus, springt beim Verlassen zur Auswahl zurück
   root.querySelector('#mm-list')?.addEventListener('mouseleave', () => movePill(MainMenu.activeIndex));
@@ -502,10 +628,20 @@ function bindEvents() {
   }
 }
 
+function bindItems() {
+  MainMenu.items.forEach((btn, i) => {
+    btn.addEventListener('click',      () => { setActive(i, { focus: false }); activate(btn.dataset.action); });
+    btn.addEventListener('mouseenter', () => setActive(i, { focus: false, sound: true }));
+    btn.addEventListener('focus',      () => setActive(i, { focus: false }));
+  });
+}
+
 function onKeyDown(e) {
   if (!MainMenu.isOpen) return;
 
   // In Unterpanels: nur ESC bringt zurück, damit Slider die Pfeiltasten behalten
+  if (MainMenu.panel === 'login') return;
+  if (document.body.classList.contains('latihan-open')) return;
   if (MainMenu.panel !== 'main') {
     if (e.key === 'Escape') { e.preventDefault(); activate('back'); }
     return;
@@ -558,7 +694,8 @@ export function initMainMenu(root = document.getElementById('main-menu')) {
 
   MainMenu.items = Array.from(root.querySelectorAll('.mm-item'));
   bindEvents();
-  showPanel('main', { focus: false });
+  refreshMenu();
+  showPanel(currentPlayer() ? 'main' : 'login', { focus: false });
 
   // Musik startet sofort (stumm) und wird bei der ersten Geste hörbar
   applyAudioSettings();
@@ -580,6 +717,8 @@ export function openMainMenu() {
 
   requestAnimationFrame(() => {
     MainMenu.root.classList.add('main-menu-active');
+    refreshMenu();
+    if (!currentPlayer()) { showPanel('login'); return; }
     showPanel('main', { focus: false });
     movePill(0, false);
     setActive(0, { focus: false });
@@ -608,7 +747,7 @@ function boot() {
   initMainMenu();
   openMainMenu();
   // Globaler Zugriff für das Bootstrap-Skript in index.html
-  window.LukasMainMenu = { open: openMainMenu, close: closeMainMenu, state: MainMenu };
+  window.LukasMainMenu = { open: openMainMenu, close: closeMainMenu, refresh: refreshMenu, state: MainMenu };
 }
 
 if (document.readyState === 'loading') {

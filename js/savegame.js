@@ -1,9 +1,16 @@
 import { CONFIG } from './config.js';
+import { playerStorageKey, queueSave } from './cloud.js';
 
 const VERSION = 2;
 let enabled = false;
 let timer = null;
 let interval = null;
+let urgent = false;     // nächster Snapshot sofort online sichern (Quest fertig)
+
+// Pro Spieler ein eigener Spielstand — Laborrechner werden geteilt.
+function storageKey() {
+  return playerStorageKey(CONFIG.STORAGE_KEY);
+}
 
 function finite(value, fallback = 0) {
   return Number.isFinite(value) ? value : fallback;
@@ -11,7 +18,7 @@ function finite(value, fallback = 0) {
 
 export function readSave() {
   try {
-    const data = JSON.parse(localStorage.getItem(CONFIG.STORAGE_KEY) || 'null');
+    const data = JSON.parse(localStorage.getItem(storageKey()) || 'null');
     if (!data || data.version !== VERSION || !data.zone || !data.questState) return null;
     if (!data.player || !Number.isFinite(data.player.x) || !Number.isFinite(data.player.z)) return null;
     return data;
@@ -25,7 +32,7 @@ export function hasSave() {
 }
 
 export function clearSave() {
-  try { localStorage.removeItem(CONFIG.STORAGE_KEY); } catch (_) {}
+  try { localStorage.removeItem(storageKey()); } catch (_) {}
 }
 
 export function saveNow() {
@@ -56,7 +63,9 @@ export function saveNow() {
   };
 
   try {
-    localStorage.setItem(CONFIG.STORAGE_KEY, JSON.stringify(data));
+    localStorage.setItem(storageKey(), JSON.stringify(data));
+    queueSave(data, { now: urgent });
+    urgent = false;
     window.dispatchEvent(new CustomEvent('save:complete', { detail: { savedAt: data.savedAt } }));
     return true;
   } catch (error) {
@@ -77,6 +86,7 @@ export function enableAutosave() {
   const events = ['zone:enter', 'quest:start', 'quest:progress', 'quest:complete', 'score:add', 'item:collect'];
   events.forEach(name => window.addEventListener(name, scheduleSave));
   window.addEventListener('save:request', scheduleSave);
+  window.addEventListener('quest:complete', () => { urgent = true; });
   window.addEventListener('pagehide', saveNow);
   document.addEventListener('visibilitychange', () => { if (document.hidden) saveNow(); });
   interval = setInterval(saveNow, 5000);

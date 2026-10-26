@@ -21,11 +21,26 @@
 
 import { initLogViewer, openLogViewer, closeLogViewer, toggleLogViewer, isLogViewerOpen, logSummary } from './adminlog.js';
 import { logActivity, subscribe } from './activitylog.js';
+import { initScoresViewer, openScoresViewer, closeScoresViewer, isScoresViewerOpen } from './adminscores.js';
 
 // SHA-256 des Admin-Passworts
 const PASSWORD_HASH = '33606b36c7aa4ac03db6d3c8266206c293178646bdae5c8b6be44990c7890c7e';
 
 const SESSION_KEY = 'lukas_admin_unlocked';
+// Passwort für die Server-Funktionen (Ergebnisse) — nur für diese Sitzung.
+// Die eigentliche Prüfung macht die Datenbank (supabase/schema.sql).
+const PASS_KEY = 'lukas_admin_pass';
+
+function getAdminPassword() {
+  try { return sessionStorage.getItem(PASS_KEY); } catch (_) { return null; }
+}
+
+function setAdminPassword(value) {
+  try {
+    if (value) sessionStorage.setItem(PASS_KEY, value);
+    else sessionStorage.removeItem(PASS_KEY);
+  } catch (_) {}
+}
 
 // Zonen mit lesbaren Namen — Reihenfolge wie im Spielverlauf.
 // Alle Orte der Stufe 2 liegen in EINER Stadt (js/stadt.js); `spot` springt
@@ -131,6 +146,14 @@ function render() {
           `).join('')}
         </div>
         <p class="adm-note">Springt zur Quest; die davor gelten als erledigt.</p>
+      </section>
+
+      <section class="adm-section">
+        <h3 class="adm-h3">Latihan Soal</h3>
+        <button type="button" class="adm-btn adm-btn-wide adm-btn-log" id="adm-scores">
+          📊 Ergebnisse aller Spieler
+        </button>
+        <p class="adm-note">Nilai, jawaban &amp; progress semua siswa · reset.</p>
       </section>
 
       <section class="adm-section">
@@ -269,7 +292,7 @@ export function promptAdmin() {
 function syncRoot() {
   if (!Admin.root) return;
   const loginOpen = !Admin.root.querySelector('#adm-login').hidden;
-  Admin.root.hidden = !(Admin.panelOpen || loginOpen || isLogViewerOpen());
+  Admin.root.hidden = !(Admin.panelOpen || loginOpen || isLogViewerOpen() || isScoresViewerOpen());
 }
 
 function closeLogin() {
@@ -305,7 +328,9 @@ function unlock() {
 function logout() {
   Admin.unlocked = false;
   closeLogViewer();
+  closeScoresViewer();
   setAutoSkip(false);
+  setAdminPassword(null);
   try { sessionStorage.removeItem(SESSION_KEY); } catch (_) {}
   document.body.classList.remove('admin-unlocked');
   togglePanel(false);
@@ -324,7 +349,7 @@ function bindEvents() {
     e.preventDefault();
     const field = root.querySelector('#adm-pass');
     const ok = await checkPassword(field.value);
-    if (ok) { unlock(); return; }
+    if (ok) { setAdminPassword(field.value); unlock(); return; }
     root.querySelector('#adm-error').hidden = false;
     field.value = '';
     field.focus();
@@ -336,6 +361,7 @@ function bindEvents() {
   root.querySelector('#adm-skip').addEventListener('click', skipCurrentDialog);
   root.querySelector('#adm-autoskip').addEventListener('click', () => setAutoSkip(!Admin.autoSkip));
   root.querySelector('#adm-log').addEventListener('click', () => { if (Admin.unlocked) openLogViewer(); });
+  root.querySelector('#adm-scores').addEventListener('click', () => { if (Admin.unlocked) openScoresViewer(); });
 
   root.addEventListener('click', (e) => {
     const zone = e.target.closest('[data-zone]');
@@ -366,6 +392,12 @@ export function initAdmin(root = document.getElementById('admin-overlay')) {
   bindEvents();
   // Protokoll-Ansicht: nur für entsperrte Admins
   initLogViewer(root, { canOpen: () => Admin.unlocked, onToggle: syncRoot });
+  initScoresViewer(root, {
+    canOpen: () => Admin.unlocked,
+    onToggle: syncRoot,
+    getPassword: getAdminPassword,
+    setPassword: setAdminPassword,
+  });
   let sumTimer = null;
   subscribe(() => {
     if (!Admin.panelOpen) return;
@@ -395,6 +427,7 @@ function boot() {
     prompt: promptAdmin,
     skipDialog: skipCurrentDialog,
     openLog: openLogViewer,
+    openScores: openScoresViewer,
     state: Admin,
   };
 }

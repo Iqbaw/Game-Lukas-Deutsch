@@ -1,0 +1,74 @@
+<!doctype html><html lang="de"><meta charset="utf-8"><title>Latihan Soal checks</title><link rel="stylesheet" href="../style.css">
+<body><output id="test-result" style="position:fixed;right:12px;top:12px;z-index:99999;background:#fff;color:#111;padding:10px;border-radius:8px">Checking…</output>
+<script type="module">
+// Lokaler Modus (ohne Supabase): Navigation, Autosave, Fortsetzen, Abgabe ohne Ergebnis.
+const out = document.querySelector('#test-result');
+const KEYS = ['lukas_player_v1', 'lukas_known_players_v1', 'lukas_quiz_v1:test schueler'];
+const backup = KEYS.map((k) => localStorage.getItem(k));
+const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+const $ = (s) => document.querySelector(s);
+const click = (s) => { const el = $(s); if (!el) throw Error('missing ' + s); el.click(); };
+const key = (k) => window.dispatchEvent(new KeyboardEvent('keydown', { key: k, bubbles: true }));
+try {
+  KEYS.forEach((k) => localStorage.removeItem(k));
+  const cloud = await import('../js/cloud.js');
+  await cloud.login('  Test   Schüler ');
+  if (cloud.currentPlayer().name !== 'Test Schüler') throw Error('name not cleaned');
+  const { openLatihan, closeLatihan } = await import('../js/latihan.js');
+  const { LATIHAN_TOTAL } = await import('../js/data/latihan.js');
+  if (LATIHAN_TOTAL !== 20) throw Error('expected 20 questions');
+
+  let closed = null;
+  openLatihan({ onClose: (s) => { closed = s; } });
+  await wait(50);
+  if (!$('.lt-intro')) throw Error('intro not shown');
+  click('[data-act="start"]'); await wait(20);
+  if (!$('#lt-text') || !$('#lt-qcard')) throw Error('quiz layout missing');
+  if (document.querySelectorAll('.lt-opt').length !== 5) throw Error('need 5 options');
+
+  key('d');                                   // Frage 1 → D
+  if (!$('.lt-opt[data-opt="3"]').classList.contains('is-picked')) throw Error('pick by key failed');
+  key('ArrowRight'); await wait(10);
+  if (!/Frage\s*2/.test($('.lt-qcount').textContent)) throw Error('next failed');
+  click('.lt-opt[data-opt="4"]');             // Frage 2 → E
+  key('ArrowLeft'); await wait(10);
+  if (!$('.lt-opt[data-opt="3"]').classList.contains('is-picked')) throw Error('answer not kept on back');
+  click('.lt-dot[data-go="10"]'); await wait(10);
+  if (!$('.lt-text.is-fresh')) throw Error('Teil 2 text not marked as new');
+  key('3');                                   // Frage 11 → C
+
+  const saved = cloud.readQuizState();
+  if (saved.answers['1'] !== 3 || saved.answers['2'] !== 4 || saved.answers['11'] !== 2 || saved.current !== 10) throw Error('autosave mismatch ' + JSON.stringify(saved));
+
+  closeLatihan(); await wait(20);
+  if (!closed || closed.submitted) throw Error('onClose not called correctly');
+  openLatihan(); await wait(20);
+  if (!/3\/20/.test($('[data-act="start"]').textContent)) throw Error('resume count missing');
+  click('[data-act="start"]'); await wait(10);
+  if (!/Frage\s*11/.test($('.lt-qcount').textContent)) throw Error('did not resume at 11');
+
+  click('.lt-dot[data-go="19"]'); await wait(10);
+  click('.lt-nav .lt-btn-primary'); await wait(10);
+  if (!$('.lt-review')) throw Error('review not shown');
+  if (document.querySelectorAll('.lt-tile.is-open').length !== 17) throw Error('open count wrong');
+  if (/richtig|falsch|benar\b|salah/i.test($('.lt-review').textContent.replace('belum dijawab', ''))) throw Error('review leaks correctness');
+
+  click('[data-act="confirm"]'); await wait(10);
+  if ($('#lt-modal').hidden) throw Error('confirm not shown');
+  click('[data-act="submit"]'); await wait(50);
+  if (!$('.lt-done')) throw Error('done not shown');
+  if (/\d+\s*\/\s*20|Punkte|Nilai|%/.test($('.lt-done').textContent)) throw Error('done screen shows a score');
+  if (!cloud.readQuizState().submitted) throw Error('not marked submitted');
+
+  closeLatihan(); await wait(20);
+  openLatihan(); await wait(20);
+  if (!$('.lt-done') || !/schon abgegeben/.test($('.lt-done').textContent)) throw Error('re-open not locked');
+  closeLatihan();
+  out.textContent = 'PASS: login, layout, keys, autosave, resume, review, submit without score, lock';
+} catch (e) {
+  out.textContent = 'FAIL: ' + e.message;
+  out.style.background = '#ffb4b4';
+} finally {
+  KEYS.forEach((k, i) => (backup[i] === null ? localStorage.removeItem(k) : localStorage.setItem(k, backup[i])));
+}
+</script></body></html>
