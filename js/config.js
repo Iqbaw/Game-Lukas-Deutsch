@@ -78,6 +78,13 @@ export const CONFIG = {
   // ── STORAGE ────────────────────────────────────────────
   STORAGE_KEY:         'lukas_adventure_save',
 
+  // ── ONLINE (Google Sheets + Apps Script) — lihat SETUP-ONLINE.md ──
+  // Kosong = mode lokal: akun & progress hanya tersimpan di browser ini.
+  // URL Web App boleh publik; kunci jawaban & cek password admin ada di
+  // server (google-sheets/Code.gs).
+  SHEETS_API_URL:      'https://script.google.com/macros/s/AKfycbyL4TLyML3vuWg-dJ37fv2-VoPYiYudherxZ79_7X2buigC4HrhGR5GdHzaeIwalHWV/exec',     // Web App URL, contoh: 'https://script.google.com/macros/s/…/exec'
+  SHEETS_URL:          '',     // link Google Sheets rekap nilai (tombol di Admin)
+
   // ── DEBUG ──────────────────────────────────────────────
   DEBUG:               false,  // set true untuk axes helper, stats, dll.
 };

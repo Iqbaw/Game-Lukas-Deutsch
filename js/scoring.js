@@ -1,5 +1,6 @@
 import { CONFIG, EVENTS } from './config.js';
 import { showToast } from './ui.js';
+import { readSave } from './savegame.js';
 
 export const ScoreSystem = {
   score: 0,
@@ -87,11 +88,8 @@ export const ScoreSystem = {
 
   loadProgress() {
     try {
-      const saved = localStorage.getItem(CONFIG.STORAGE_KEY);
-      if (saved) {
-        const data = JSON.parse(saved);
-        if (data.version === 2 && Number.isFinite(data.score)) this.score = data.score;
-      }
+      const data = readSave();
+      if (data && Number.isFinite(data.score)) this.score = data.score;
     } catch (e) {
       console.warn("Could not load from localStorage", e);
     }

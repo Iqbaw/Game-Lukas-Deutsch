@@ -132,6 +132,8 @@ function actRow(e, start, convs) {
     case 'cutscene':    ic = '🎬'; txt = `${e.transition ? 'Übergang' : 'Zwischensequenz'}: ${esc(CUTSCENE_LABELS[e.name] || e.name)}`; cls = 'k-cut'; break;
     case 'sms':         ic = '💌'; txt = `SMS an Tante Maria: ${e.result === 'ok' ? '<span class="alog-ok">✓ richtig</span>' : '<span class="alog-bad">✗ falsch</span>'}`; badge = pts(e.points); cls = 'k-sms'; break;
     case 'admin':       ic = '🔧'; txt = `Admin: ${esc(e.label || e.action)}`; cls = 'k-admin'; break;
+    case 'quiz_open':   ic = '✎'; txt = `Latihan Soal geöffnet (${esc(e.answered)}/20 beantwortet)`; cls = 'k-quest'; break;
+    case 'quiz_submit': ic = '📨'; txt = `<b>Latihan Soal abgegeben</b> (${esc(e.answered)}/${esc(e.total)} beantwortet)`; cls = 'k-done'; break;
     case 'dlg_open': {
       const c = convs.get(e.conv);
       const self = e.npcId === 'lukas' || e.npc === 'Lukas';
@@ -347,6 +349,8 @@ function exportText() {
       case 'cutscene':    out.push(`${t} Zwischensequenz: ${CUTSCENE_LABELS[e.name] || e.name}`); break;
       case 'sms':         out.push(`${t} SMS an Tante Maria: ${e.result === 'ok' ? 'richtig' : 'falsch'} (${e.points})`); break;
       case 'admin':       out.push(`${t} Admin: ${e.label || e.action}`); break;
+      case 'quiz_open':   out.push(`${t} Latihan Soal geöffnet (${e.answered}/20)`); break;
+      case 'quiz_submit': out.push(`${t} Latihan Soal abgegeben (${e.answered}/${e.total} beantwortet)`); break;
       case 'dlg_open': {
         const c = convs.get(e.conv);
         const self = e.npcId === 'lukas' || e.npc === 'Lukas';
